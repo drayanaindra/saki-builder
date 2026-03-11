@@ -87,6 +87,7 @@ immediately makes new patterns available to Claude Code.
 | `/retro` | Session retrospective — captures corrections, discoveries, patterns |
 | `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly) |
 | `/init-env` | Scaffold `.claude/` config for a new project |
+| `/sync` | Commit and push `memory/` changes to remote (run after `/reflect`) |
 
 ## Execution Protocol
 
