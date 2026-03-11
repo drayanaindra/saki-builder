@@ -39,13 +39,13 @@ Click **Fork** on GitHub/GitLab. This gives you your own copy to customize.
 ### 2. Install on any machine
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/claude-config/main/get.sh | \
-  REPO_URL=git@github.com:YOUR_USER/claude-config.git bash
+curl -fsSL https://raw.githubusercontent.com/drayanaindra/claude-config/main/get.sh | \
+  REPO_URL=git@github.com:drayanaindra/claude-config.git bash
 ```
 
 Or clone manually:
 ```bash
-git clone git@github.com:YOUR_USER/claude-config.git ~/claude-config
+git clone git@github.com:drayanaindra/claude-config.git ~/claude-config
 chmod +x ~/claude-config/*.sh && ~/claude-config/install.sh
 ```
 
