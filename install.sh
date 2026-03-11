@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh — Symlink claude-config into ~/.claude/
+# install.sh — Install claude-config into ~/.claude/
 # Usage: ./install.sh
 # Run this on any machine after cloning the repo.
 
@@ -19,7 +19,7 @@ mkdir -p "$CLAUDE_DIR"
 BACKUP="$CLAUDE_DIR/backup-$(date +%Y%m%d-%H%M%S)"
 backed_up=false
 
-for item in CLAUDE.md RTK.md settings.json docs skills hooks memory; do
+for item in CLAUDE.md settings.json docs skills hooks memory; do
   target="$CLAUDE_DIR/$item"
   if [ -e "$target" ] && [ ! -L "$target" ]; then
     if [ "$backed_up" = false ]; then
@@ -37,29 +37,49 @@ if [ "$backed_up" = true ]; then
   echo ""
 fi
 
-# Create symlinks
+# Create symlinks for shared config
 link() {
   local src="$1"
   local dst="$2"
-  # Remove existing symlink if present
   [ -L "$dst" ] && rm "$dst"
   ln -s "$src" "$dst"
   echo "  ✓ ~/.claude/$(basename "$dst") → $src"
 }
 
 echo "Creating symlinks:"
-link "$REPO_DIR/config/CLAUDE.md"     "$CLAUDE_DIR/CLAUDE.md"
-link "$REPO_DIR/config/RTK.md"        "$CLAUDE_DIR/RTK.md"
 link "$REPO_DIR/config/settings.json" "$CLAUDE_DIR/settings.json"
 link "$REPO_DIR/config/docs"          "$CLAUDE_DIR/docs"
 link "$REPO_DIR/config/skills"        "$CLAUDE_DIR/skills"
 link "$REPO_DIR/config/hooks"         "$CLAUDE_DIR/hooks"
 link "$REPO_DIR/memory"               "$CLAUDE_DIR/memory"
 
+# CLAUDE.md is a LOCAL wrapper file (not a symlink) so each user can
+# add personal @imports (RTK, project-specific tools) without touching
+# the shared config. Skipped if already exists.
+CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+if [ ! -f "$CLAUDE_MD" ] || [ -L "$CLAUDE_MD" ]; then
+  # Remove old symlink if present
+  [ -L "$CLAUDE_MD" ] && rm "$CLAUDE_MD"
+  cat > "$CLAUDE_MD" << EOF
+# My Claude Code Config
+# This file is LOCAL — not synced to the shared repo.
+# Add personal @imports below (RTK, etc.)
+
+@$REPO_DIR/config/CLAUDE.md
+
+# Personal extensions (uncomment and customize):
+# @$REPO_DIR/personal/RTK.md
+EOF
+  echo "  ✓ ~/.claude/CLAUDE.md (local wrapper — add personal @imports here)"
+else
+  echo "  ~ ~/.claude/CLAUDE.md already exists, skipping (add @$REPO_DIR/config/CLAUDE.md if needed)"
+fi
+
 echo ""
 echo "✓ Done! Claude Code config installed."
 echo ""
 echo "Next steps:"
 echo "  1. Restart Claude Code (claude) to pick up new config"
-echo "  2. After /reflect runs, use sync.sh to commit updated learnings"
-echo "  3. On other machines: git pull && ./install.sh"
+echo "  2. Edit ~/.claude/CLAUDE.md to uncomment personal @imports (RTK, etc.)"
+echo "  3. After /reflect runs, use sync.sh to commit updated learnings"
+echo "  4. On other machines: git pull && ./install.sh"
