@@ -39,6 +39,13 @@ Review accumulated learnings and promote confirmed patterns.
    - Archive promoted patterns (mark as promoted, don't delete)
    - Update MEMORY.md if key facts changed
 
+6. **Sync to repo** (if claude-config is installed):
+   - After writing to `~/.claude/memory/patterns.md`, remind user to run:
+     ```bash
+     cd ~/claude-config && ./sync.sh
+     ```
+   - This commits and pushes the updated learnings so other machines stay in sync.
+
 ## Rules
 
 - Only promote patterns with evidence from multiple sessions

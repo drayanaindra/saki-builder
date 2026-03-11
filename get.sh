@@ -1,12 +1,23 @@
 #!/bin/bash
 # get.sh — One-line installer for claude-config
-# Usage: curl -fsSL https://gitlab.com/drayanaindra/claude-config/-/raw/main/get.sh | bash
+#
+# Usage (after forking this repo):
+#   curl -fsSL https://raw.githubusercontent.com/YOUR_USER/claude-config/main/get.sh | bash
+#
+# Or pass your repo URL directly:
+#   curl -fsSL .../get.sh | REPO_URL=git@github.com:you/claude-config.git bash
+#   curl -fsSL .../get.sh | bash -s -- git@github.com:you/claude-config.git
 
 set -e
 
-REPO_URL="git@gitlab.com:drayanaindra/claude-config.git"
-REPO_HTTPS="https://gitlab.com/drayanaindra/claude-config.git"
 INSTALL_DIR="$HOME/claude-config"
+
+# Determine repo URL: argument > env var > auto-detect from existing install > error
+REPO_URL="${1:-${REPO_URL:-}}"
+
+if [ -z "$REPO_URL" ] && [ -d "$INSTALL_DIR/.git" ]; then
+  REPO_URL="$(git -C "$INSTALL_DIR" remote get-url origin 2>/dev/null || true)"
+fi
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
@@ -16,8 +27,20 @@ err()  { echo -e "  ${RED}✗${NC} $*"; exit 1; }
 hdr()  { echo -e "\n${BOLD}$*${NC}"; }
 
 hdr "claude-config installer"
-echo "  Personal Claude Code config with skills, protocols, and learning sync"
+echo "  Structured workflow, skills, and learning sync for Claude Code"
 echo ""
+
+if [ -z "$REPO_URL" ]; then
+  echo -e "  ${RED}No repo URL provided.${NC}"
+  echo ""
+  echo "  Fork this repo, then run:"
+  echo "    curl -fsSL <raw-url-to-get.sh> | REPO_URL=git@github.com:YOU/claude-config.git bash"
+  echo ""
+  echo "  Or clone manually and run install.sh:"
+  echo "    git clone git@github.com:YOU/claude-config.git ~/claude-config"
+  echo "    ~/claude-config/install.sh"
+  exit 1
+fi
 
 # ── Prerequisites ────────────────────────────────────────────────────────────
 hdr "Checking prerequisites..."
@@ -35,13 +58,7 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   git -C "$INSTALL_DIR" pull --ff-only
   ok "Updated to latest"
 else
-  # Try SSH first, fall back to HTTPS
-  if ssh -T git@gitlab.com 2>&1 | grep -q "Welcome"; then
-    git clone "$REPO_URL" "$INSTALL_DIR"
-  else
-    warn "SSH not configured, using HTTPS..."
-    git clone "$REPO_HTTPS" "$INSTALL_DIR"
-  fi
+  git clone "$REPO_URL" "$INSTALL_DIR" || err "Clone failed. Check your repo URL and SSH/HTTPS access."
   ok "Cloned to $INSTALL_DIR"
 fi
 

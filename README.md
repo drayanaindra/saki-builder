@@ -1,14 +1,15 @@
 # claude-config
 
-Personal Claude Code configuration — installable, with centralized learning data.
+A structured Claude Code configuration with skills, execution protocols, and centralized learning sync.
+
+**Fork this repo, customize it, and install it on any machine in one command.**
 
 ## What's Inside
 
 ```
-config/                  # Static config (install once)
+config/                  # Shared config (safe for all users)
 ├── CLAUDE.md            # Global instructions & execution protocol
-├── RTK.md               # RTK token-optimizer config
-├── settings.json        # Global hooks (RTK rewrite, notifications)
+├── settings.json        # Global hooks (notifications, context restore)
 ├── docs/
 │   ├── execution-protocol.md   # RESEARCH > PLAN > EXECUTE > VERIFY workflow
 │   └── plan-template.md        # Structured plan format with confidence scoring
@@ -18,62 +19,65 @@ config/                  # Static config (install once)
 │   ├── retro/SKILL.md   # /retro command — session retrospective
 │   ├── reflect/SKILL.md # /reflect command — cross-project pattern promotion
 │   └── init-env/SKILL.md# /init-env command — scaffold new project
-└── hooks/
-    └── rtk-rewrite.sh   # PreToolUse hook for RTK token savings
+└── hooks/               # (add your shared hooks here)
 
-memory/                  # Dynamic learning data (updated by /reflect)
-├── patterns.md          # Confirmed cross-project patterns (auto-updated)
-├── rag-research.md      # RAG best practices research
+memory/                  # Learning data — updated by /reflect, synced via git
+├── patterns.md          # Confirmed cross-project patterns
+├── rag-research.md      # RAG best practices
 └── agent-architecture-research.md
+
+personal/                # Your personal stuff — gitignored, not shared
+└── README.md            # Instructions for personal customizations (RTK, etc.)
 ```
 
-## Install on a New Machine
+## Getting Started
+
+### 1. Fork this repo
+
+Click **Fork** on GitHub/GitLab. This gives you your own copy to customize.
+
+### 2. Install on any machine
 
 ```bash
-curl -fsSL https://gitlab.com/drayanaindra/claude-config/-/raw/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/YOUR_USER/claude-config/main/get.sh | \
+  REPO_URL=git@github.com:YOUR_USER/claude-config.git bash
 ```
 
-That's it. The script will:
-1. Clone this repo to `~/claude-config/`
-2. Back up any existing `~/.claude/` files
-3. Symlink `~/.claude/` dirs into the repo
-4. Print next steps
+Or clone manually:
+```bash
+git clone git@github.com:YOUR_USER/claude-config.git ~/claude-config
+chmod +x ~/claude-config/*.sh && ~/claude-config/install.sh
+```
+
+This creates symlinks from `~/.claude/` into `~/claude-config/`. Your existing
+`~/.claude/` files are backed up automatically before being replaced.
 
 After install, restart Claude Code:
 ```bash
 claude
 ```
 
-> **Manual install** (if you prefer):
-> ```bash
-> git clone git@gitlab.com:drayanaindra/claude-config.git ~/claude-config
-> chmod +x ~/claude-config/*.sh && ~/claude-config/install.sh
-> ```
+### 3. Customize
+
+Edit any file in `config/` — changes take effect immediately (symlinked).
+
+For personal tools (RTK, personal hooks, etc.): see `personal/README.md`.
 
 ## Keep Learnings in Sync
 
 After running `/reflect` in Claude Code (weekly recommended):
 
 ```bash
-cd ~/claude-config
-./sync.sh       # commits memory/ changes and pushes
+cd ~/claude-config && ./sync.sh   # commits memory/ changes and pushes
 ```
 
-On other machines, get the latest learnings:
+On other machines, pull the latest learnings:
 ```bash
-cd ~/claude-config
-git pull
+cd ~/claude-config && git pull
 ```
 
 Since `~/.claude/memory/` is a symlink to `~/claude-config/memory/`, the pull
 immediately makes new patterns available to Claude Code.
-
-## Uninstall
-
-```bash
-cd ~/claude-config
-./uninstall.sh  # removes symlinks, restores from backup if available
-```
 
 ## Workflow
 
@@ -100,8 +104,15 @@ Key rules:
 - `/retro` after long sessions, `/reflect` weekly
 - HIGH risk (DB, auth, delete, push) always requires human gate
 
+## Uninstall
+
+```bash
+cd ~/claude-config && ./uninstall.sh  # removes symlinks, restores from backup
+```
+
 ## Notes
 
-- `settings.local.json` is gitignored — never commit secrets or personal permissions
+- `settings.local.json` in `~/.claude/` is always gitignored — never commit secrets or personal permissions there
 - Project-level `.claude/` (agents, project hooks) stays per-project, not here
-- Conversation logs, telemetry, debug transcripts are ephemeral — not synced (~1.8 GB)
+- Conversation logs, telemetry, debug transcripts are ephemeral — not synced (~1+ GB)
+- `personal/` is gitignored — safe to put personal tools there without polluting the shared repo

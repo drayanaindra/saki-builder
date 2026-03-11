@@ -1,5 +1,3 @@
-@RTK.md
-
 # Global Development Environment
 
 ## Execution Protocol (BLOCKING)

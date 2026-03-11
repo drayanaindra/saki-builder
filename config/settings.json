@@ -1,17 +1,5 @@
 {
-  "model": "sonnet",
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/asep.indrayana/.claude/hooks/rtk-rewrite.sh"
-          }
-        ]
-      }
-    ],
     "Notification": [
       {
         "matcher": "",
@@ -34,8 +22,5 @@
         ]
       }
     ]
-  },
-  "enabledPlugins": {
-    "frontend-design@claude-code-plugins": true
   }
 }

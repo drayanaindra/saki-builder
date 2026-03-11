@@ -1,3 +1,9 @@
+# Personal customizations (each user's own, never shared)
+personal/RTK.md
+personal/hooks/
+personal/settings-personal.json
+personal/patterns-personal.md
+
 # OS
 .DS_Store
 Thumbs.db
