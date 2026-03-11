@@ -29,7 +29,7 @@ git commit -m "sync: update learnings $DATE"
 
 echo ""
 echo "✓ Committed. Pushing to remote..."
-git push
+git push -u origin main
 
 echo ""
 echo "✓ Synced! Other machines can run 'git pull' to get latest learnings."
