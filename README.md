@@ -30,21 +30,25 @@ memory/                  # Dynamic learning data (updated by /reflect)
 ## Install on a New Machine
 
 ```bash
-# Prerequisites: Claude Code CLI installed (claude), git configured
-
-git clone git@gitlab.com:drayanaindra/claude-config.git ~/claude-config
-cd ~/claude-config
-chmod +x install.sh sync.sh uninstall.sh
-./install.sh
+curl -fsSL https://gitlab.com/drayanaindra/claude-config/-/raw/main/get.sh | bash
 ```
 
-This creates symlinks from `~/.claude/` into `~/claude-config/`. Your existing
-`~/.claude/` files are backed up automatically before being replaced.
+That's it. The script will:
+1. Clone this repo to `~/claude-config/`
+2. Back up any existing `~/.claude/` files
+3. Symlink `~/.claude/` dirs into the repo
+4. Print next steps
 
 After install, restart Claude Code:
 ```bash
 claude
 ```
+
+> **Manual install** (if you prefer):
+> ```bash
+> git clone git@gitlab.com:drayanaindra/claude-config.git ~/claude-config
+> chmod +x ~/claude-config/*.sh && ~/claude-config/install.sh
+> ```
 
 ## Keep Learnings in Sync
 
