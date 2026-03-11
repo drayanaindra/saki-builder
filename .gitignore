@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Never sync secrets or machine-specific state
+settings.local.json
+*.bak
+
+# Claude Code ephemeral data (stays local per machine)
+projects/
+debug/
+file-history/
+telemetry/
+plugins/
+tasks/
+todos/
+plans/
+backups/
+cache/
+paste-cache/
+shell-snapshots/
+session-env/
+history.jsonl
+stats-cache.json
+mcp-needs-auth-cache.json
