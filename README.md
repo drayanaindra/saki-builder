@@ -12,17 +12,21 @@ config/                  # Shared config (safe for all users)
 ├── settings.json        # Global hooks (notifications, context restore)
 ├── docs/
 │   ├── execution-protocol.md   # RESEARCH > PLAN > EXECUTE > VERIFY workflow
-│   └── plan-template.md        # Structured plan format with confidence scoring
+│   └── plan-template.md        # Plan template with 4-gate review sections
 ├── skills/
-│   ├── engineer.md, architect.md, product.md, ...  (17 role skills)
-│   ├── plan/SKILL.md    # /plan command — structured planning
-│   ├── retro/SKILL.md   # /retro command — session retrospective
-│   ├── reflect/SKILL.md # /reflect command — cross-project pattern promotion
-│   └── init-env/SKILL.md# /init-env command — scaffold new project
-└── hooks/               # (add your shared hooks here)
+│   ├── rplan/           # /rplan      — structured planning (confidence + completeness)
+│   ├── rplan-review/    # /rplan-review — 3-phase structural + adversarial review
+│   ├── rplan-trust/     # /rplan-trust  — fully autonomous plan→review→implement
+│   ├── approved/        # /approved   — approve plan, switch to Sonnet
+│   ├── retro/           # /retro      — session retrospective
+│   ├── reflect/         # /reflect    — promote patterns to memory/patterns.md
+│   ├── sync/            # /sync       — commit & push memory/ to remote
+│   ├── init-env/        # /init-env   — scaffold new project config
+│   └── [17 role skills] # engineer, architect, product, qa, devops, security, ...
+└── hooks/               # Shared hooks
 
 memory/                  # Learning data — updated by /reflect, synced via git
-├── patterns.md          # Confirmed cross-project patterns
+├── patterns.md          # Confirmed cross-project patterns (promoted by /reflect)
 ├── rag-research.md      # RAG best practices
 └── agent-architecture-research.md
 
@@ -81,13 +85,29 @@ immediately makes new patterns available to Claude Code.
 
 ## Workflow
 
-| Tool | What it does |
-|------|-------------|
-| `/plan` | Create structured execution plan with confidence scoring |
-| `/retro` | Session retrospective — captures corrections, discoveries, patterns |
-| `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly) |
-| `/init-env` | Scaffold `.claude/` config for a new project |
-| `/sync` | Commit and push `memory/` changes to remote (run after `/reflect`) |
+| Command | What it does |
+|---------|-------------|
+| `/rplan` | Create structured execution plan. Confidence must reach ≥96% with all 4 gates passing before presenting. |
+| `/rplan-review` | 3-phase review: (1) structural completeness scan, (2) adversarial confidence probing, (3) per-step implementation readiness check. |
+| `/rplan-trust` | Fully autonomous pipeline: plan → structural scan → probing → implement → QA. No user confirmation for CLI commands. |
+| `/approved` | Approve the active plan and switch model to Sonnet for implementation. |
+| `/retro` | Session retrospective — captures corrections, discoveries, patterns. |
+| `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly). |
+| `/sync` | Commit and push `memory/` changes to remote (run after `/reflect`). |
+| `/init-env` | Scaffold `.claude/` config for a new project. |
+
+## Plan Quality Gates (4-gate system)
+
+Every plan must pass all 4 gates before confidence can reach 96%:
+
+| Gate | What it checks |
+|------|---------------|
+| **Confidence score** | ≥96%, weighted by risk (HIGH steps 2×, MED 1.5×). Deductions for unchecked checklist items. |
+| **User Role Coverage** | Every affected role (customer/admin/merchant/warehouse) listed with full call chain + auth guard. |
+| **Plan Wiring** | Each major flow written end-to-end: `Component → api.ts fn → HTTP METHOD /path → service.fn() → Model.field` |
+| **Migration Checklist** | Every schema change has named migration file + explicit `alembic` command. |
+
+`/rplan-review` enforces these as structural blockers — missing sections stop the review entirely, they cannot be "answered away" with verbal confirmation.
 
 ## Execution Protocol
 
@@ -101,9 +121,34 @@ Full protocol: `config/docs/execution-protocol.md`
 
 Key rules:
 - Never implement without a plan for 2+ file changes
-- Confidence ≥ 90% before executing
+- Confidence ≥ 96% with all 4 gates passing before executing
+- Max 2 unknowns before presenting a plan
 - `/retro` after long sessions, `/reflect` weekly
 - HIGH risk (DB, auth, delete, push) always requires human gate
+
+## Roles
+
+17 specialized roles available via skill files:
+
+| Role | Use when |
+|------|---------|
+| `product.md` | Scoping features, defining user stories |
+| `architect.md` | System design, API contracts, data models |
+| `engineer.md` | Implementation, bug fixes |
+| `reviewer.md` | Code review after implementation |
+| `qa.md` | Test automation, acceptance criteria |
+| `devops.md` | CI/CD, infrastructure, deployment |
+| `security-expert.md` | Security review, hardening |
+| `pentester.md` | Attack simulation, vulnerability testing |
+| `nlp-engineer.md` | Prompt engineering, AI agent behavior |
+| `ai-architect.md` | AI/ML system design |
+| `mobile-engineer.md` | iOS/Android, React Native |
+| `design.md` | UI/UX, design systems |
+| `go-engineer.md` | Go-specific patterns |
+| `ddd-engineer.md` | Domain-driven design |
+| `service-designer.md` | Customer journey, conversation design |
+| `gpu-engineer.md` | Metal, CUDA, compute shaders |
+| `image-processing-engineer.md` | CIFilter pipelines, LUTs, color science |
 
 ## Uninstall
 
