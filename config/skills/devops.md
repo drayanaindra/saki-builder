@@ -18,9 +18,3 @@
 - [ ] Resource limits set (CPU, memory)
 - [ ] Base images pinned to specific versions
 
-## Saketek Deployment
-GitLab webhook → auto-deploy pipeline:
-1. Webhook received → Pull code → Wait for CI
-2. Pull Docker images → Deploy containers → Run migrations → Verify
-
-Monitoring: https://monit.saketek.id/
