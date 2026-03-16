@@ -2,11 +2,11 @@
 # get.sh — One-line installer for claude-config
 #
 # Usage (after forking this repo):
-#   curl -fsSL https://raw.githubusercontent.com/YOUR_USER/claude-config/main/get.sh | bash
+#   curl -fsSL https://gitlab.com/YOUR_USER/claude-config/-/raw/main/get.sh | bash
 #
 # Or pass your repo URL directly:
-#   curl -fsSL .../get.sh | REPO_URL=git@github.com:you/claude-config.git bash
-#   curl -fsSL .../get.sh | bash -s -- git@github.com:you/claude-config.git
+#   curl -fsSL .../get.sh | REPO_URL=git@gitlab.com:you/claude-config.git bash
+#   curl -fsSL .../get.sh | bash -s -- git@gitlab.com:you/claude-config.git
 
 set -e
 
@@ -34,10 +34,10 @@ if [ -z "$REPO_URL" ]; then
   echo -e "  ${RED}No repo URL provided.${NC}"
   echo ""
   echo "  Fork this repo, then run:"
-  echo "    curl -fsSL <raw-url-to-get.sh> | REPO_URL=git@github.com:YOU/claude-config.git bash"
+  echo "    curl -fsSL <raw-url-to-get.sh> | REPO_URL=git@gitlab.com:YOU/claude-config.git bash"
   echo ""
   echo "  Or clone manually and run install.sh:"
-  echo "    git clone git@github.com:YOU/claude-config.git ~/claude-config"
+  echo "    git clone git@gitlab.com:YOU/claude-config.git ~/claude-config"
   echo "    ~/claude-config/install.sh"
   exit 1
 fi
