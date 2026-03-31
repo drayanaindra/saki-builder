@@ -1,6 +1,6 @@
 ---
 name: rplan-trust
-description: Fully autonomous plan-review-implement pipeline. Runs /rplan -> /rplan-review -> /approved automatically if confidence >96%. Structural completeness scan before probing. Auto-creates feature branch if on main. QA check after implementation. No user confirmation needed for CLI commands. Hard blocks on DB destructive ops.
+description: Fully autonomous plan-review-implement pipeline. Runs /rplan -> /rplan-review (4-phase: structural + criteria hardening + domain expert checks + readiness) -> /approved -> /qa (criteria-driven). Auto-creates feature branch. No user confirmation for CLI commands. Hard blocks on DB destructive ops.
 ---
 
 # Autonomous Plan-Review-Implement Pipeline
@@ -88,62 +88,125 @@ Print the plan summary in chat, then immediately continue.
 
 ---
 
-## Phase 2: REVIEW (/rplan-review behavior — structural scan + confidence-driven probing)
+## Phase 2: REVIEW (/rplan-review behavior — 4 sub-phases, all autonomous)
 
-Execute adversarial review autonomously in two sub-phases.
+Execute all review sub-phases without asking the user. Resolve every gap by reading code.
 
 ### Phase 2a: Structural Completeness Scan (AUTO-FILL mode)
 
-**Do NOT ask the user. Resolve gaps by reading code.**
+Check the plan for missing sections. For each ❌ missing: read the relevant code files and write the section directly into `[task]-plan.md`.
 
-Check the plan for missing sections:
+| Required Section | Auto-fill action if missing |
+|-----------------|-----------------------------|
+| Steps table (exact file paths + function names) | Read code, add exact names |
+| User Role Coverage matrix | Read routes/middleware, derive affected roles |
+| Plan Wiring (end-to-end call chains) | Read frontend + service + model files, write chains |
+| Migration Checklist | Read models for schema changes, list migration commands |
+| Implementation Completeness Checklist | Fill from plan content + code research |
+| Success Criteria | Derive from plan steps if missing (mark as `🔧 NEEDS HARDENING`) |
 
-| Required Section | Present? | Auto-fill action if missing |
-|-----------------|----------|-----------------------------|
-| Steps table (exact file paths + function names) | | If vague, read code and add exact names |
-| User Role Coverage matrix | | Read routes/deps and derive which roles are affected |
-| Plan Wiring (end-to-end call chains) | | Read frontend + service + model files and write chains |
-| Migration Checklist | | Read models for schema changes, list alembic commands |
-| Implementation Completeness Checklist | | Fill in from plan content + code research |
-| Success Criteria (testable) | | Derive from plan steps if missing |
+Print: `AUTO-FILLED: [section] — derived from [file:line]`
 
-For each ❌ missing section:
-1. Read the relevant code files to gather the missing information
-2. Write the section directly into `[task]-plan.md`
-3. Print: `AUTO-FILLED: [section] — derived from [file:line]`
-
-If a section **cannot be auto-filled** (e.g., user intent is unclear, feature scope is ambiguous):
+If a section **cannot be auto-filled** (user intent unclear, scope ambiguous):
 ```
 STRUCTURAL BLOCKER — cannot auto-fill
 Section: [name]
 Problem: [why it cannot be derived from code]
-Resolution: Re-run /rplan with clearer task description, or use /rplan manually.
+Resolution: Re-run /rplan with clearer task description.
 ```
-Stop. Do NOT proceed to Phase 2b.
+Stop. Do NOT proceed.
 
-### Phase 2b: Content Depth Probing
+---
 
-After all structural sections are present, run the adversarial probe loop.
+### Phase 2a.5: Acceptance Criteria Hardening (AUTO-REWRITE mode)
 
-- Identify all unknowns, risky assumptions, suspicious confidence scores, HIGH-risk steps
-- For each probe: **read the actual code/files to verify** — do NOT guess
-- Annotate `[task]-plan.md` under "Annotation Space" with each finding
-- Recalculate confidence after each probe
+Read the Success Criteria section. For each criterion, check if it has ALL THREE:
+1. Actor + Action (`User calls POST /v1/endpoint`, `Kasir clicks X`)
+2. Test command (exact `curl`, `go test -run Name`, or Playwright step)
+3. Expected outcome (exact HTTP status, JSON shape, UI element)
 
-**Do NOT ask the user questions.** Resolve each question by reading code.
+**For every criterion missing any of these — rewrite it in-place** using the plan wiring. Do NOT ask the user.
 
-Print each probe:
+Rewrite format:
 ```
---- REVIEW PROBE [N] ---
-Probing: [assumption or unknown]
-Verified by: [file:line or command run]
-Finding: [what was found]
+Given [precondition from plan context]
+When [actor] [action] ([exact test command derived from plan wiring])
+Then [expected outcome] ([verification: HTTP status / JSON field / UI element])
+```
+
+Derive test commands from the Plan Wiring section:
+- HTTP endpoint listed in wiring → generate `curl -X [METHOD] http://localhost:[port]/[path]`
+- Service function listed → generate `go test -run Test[FunctionName]`
+- Frontend page listed → generate Playwright step or manual browser steps
+
+**For UI criteria without Playwright configured** — write explicit manual steps:
+```
+Manual: 1. Navigate to [url]  2. [action]  3. Verify [outcome]
+```
+
+Edit `[task]-plan.md` with all hardened criteria. Print:
+```
+CRITERIA HARDENED: [N] rewritten, [N] already complete, [N] manual
+```
+
+---
+
+### Phase 2b: Inlined Domain Expert Checks
+
+> **Trust mode constraint**: `Agent` tool is prohibited (triggers permission prompts). Run all domain expert checks inline — sequentially, not via spawned agents.
+
+For each domain touched by the plan, run the checks by reading the relevant files:
+
+**Backend check** (if any `*.go` or service/API files in steps):
+- Read each modified Go file and verify: `ctx context.Context` as first arg, `db.WithTenant` before any tenant DB query, `(T, error)` return signatures, business logic in service not handler
+- Check for missing error paths (404/403/422/500) in each handler
+- Flag any atomic operation (financial, inventory) missing `pgx.Tx`
+
+**Frontend check** (if any `frontend/src/` files in steps):
+- Read each modified component/page and verify: loading state, error state, empty state present, API calls go through `client.ts`, auth guard present on protected pages
+- Verify TypeScript types added for any new API response shapes
+
+**DB/Security check** (if any migrations or auth in steps):
+- Read each `.up.sql` and verify a `.down.sql` exists with the same prefix
+- Check for any query missing tenant context
+- Verify no raw string interpolation in SQL
+
+**Product check** (always):
+- Re-read User Role Coverage matrix — are all roles that interact with this feature listed?
+- Re-read criteria — any still vague after hardening? Any missing empty state?
+
+For each finding, annotate `[task]-plan.md` under "Annotation Space":
+```
+--- EXPERT CHECK [domain] ---
+Probed: [what was checked]
+Verified by: [file:line]
+Finding: [CLEAR / BLOCKER: description]
 Confidence: [X]% → [Y]%
 ```
 
-**Keep probing until confidence > 96%.** No fixed round limit. Stop only when:
-- Confidence > 96% AND no remaining HIGH-risk unprobed items → proceed to Phase 3
-- A BLOCKER is found that cannot be resolved by reading code → stop, report blocker
+**If a BLOCKER is found that cannot be resolved by reading code:**
+```
+AUTO-REVIEW BLOCKER
+Domain: [Backend/Frontend/DB/Product]
+Issue: [description]
+Cannot resolve without user input.
+Use /rplan + /rplan-review for manual resolution.
+```
+Stop. Do NOT proceed.
+
+---
+
+### Phase 2c: Implementation Readiness Check
+
+Walk every step in the plan. For each step verify:
+- Can a developer implement this without asking any questions?
+- Is the exact file path named?
+- Is the exact function name named?
+
+If any step fails: auto-fill the missing detail by reading the codebase.
+If it cannot be derived: BLOCKER — stop and report.
+
+Print: `READINESS: [N]/[N] steps ready`
 
 ---
 
@@ -222,31 +285,38 @@ After all implementation steps complete, run automated QA. This has two parts: a
 
 ---
 
-### 5b: Acceptance criteria test
+### 5b: Acceptance criteria test (criteria-driven)
 
-Read the `Success Criteria` section from the active `[task]-plan.md`. For each criterion, classify it:
+Read the `Success Criteria` section from `[task]-plan.md`. By this point, Phase 2a.5 has hardened every criterion to include a test command and expected outcome.
 
-**Automatable** — can be verified by curl, CLI command, file existence check, or grep:
-- HTTP status checks (e.g. "page loads without error" → `curl -w "%{http_code}"`)
-- API response shape (e.g. "returns JSON with `data` field" → `curl | jq`)
-- File exists (e.g. "migration file created" → `ls`)
-- Build output (e.g. "no TypeScript errors" → already covered by 5a)
-- Config presence (e.g. "env var added to .env.example" → `grep`)
+Classify each criterion by type and run it:
 
-**Manual-only** — requires human eyes, browser interaction, or live data:
-- UI rendering/visual correctness
-- Form interactions (type, click, submit)
-- Auth flows (OAuth redirects)
-- AI output quality (e.g. "skill names are properly normalized")
-- End-to-end flows requiring login
+| Type | Signal | Test to run |
+|------|--------|-------------|
+| `API` | Has curl command or mentions endpoint + HTTP status | Run the exact curl from the criterion |
+| `GO_TEST` | Has `go test -run` command or mentions Go function | Run the exact go test command |
+| `FILE` | Mentions file existence or migration | `ls -la [path]` |
+| `DB` | Mentions table/column/row | `psql $DATABASE_URL -c "[query]"` |
+| `BUILD` | "no TypeScript errors", "compiles" | Already covered by 5a — mark PASS if 5a passed |
+| `UI` | Has Playwright step or manual steps | Run Playwright if configured; else MANUAL with steps |
 
-Run all automatable criteria. For each:
+**Result states — no criterion is ever silently omitted:**
+- `✅ PASS` — actual matches expected outcome from criterion
+- `❌ FAIL` — actual differs (show exact error)
+- `🔲 MANUAL` — UI criterion, list exact browser steps from criterion
+- `⚠️ BLOCKED` — dependency missing (server not running) — state exact unblock command
+
+For each criterion:
 ```
-[AUTO] "[criterion text]"
-  Test: [command run]
-  Result: PASS / FAIL
-  Detail: [output or error if FAIL]
+[CRITERION N] "[criterion text]"
+  Type: [API/GO_TEST/FILE/DB/BUILD/UI]
+  Test: [exact command run]
+  Expected: [from criterion]
+  Actual: [output]
+  Result: ✅ PASS / ❌ FAIL / 🔲 MANUAL / ⚠️ BLOCKED
 ```
+
+After all criteria, update plan file checkboxes: `[ ]` → `[x]` for PASS, `[!]` for FAIL.
 
 ---
 
@@ -288,31 +358,34 @@ Run all automatable criteria. For each:
 
 ### 5e: Write manual test summary to file
 
-Write a file `[task]-qa.md` in the project root with all manual-only criteria, formatted as a checklist for the human to verify:
+Write `[task]-qa.md` in the project root. Include all MANUAL and BLOCKED criteria from 5b as a human-executable checklist. Automated PASSes go in the summary header.
 
 ```markdown
-# QA Manual Test Checklist — [task name]
+# QA Checklist — [task name]
 
 Generated: [date]
 Branch: [branch-name]
 
-## Automated Results (already verified)
-- [x] [criterion] — PASS
-- [x] [criterion] — PASS
+## Automated Results
+- [x] [criterion text] — ✅ PASS ([test command])
+- [!] [criterion text] — ❌ FAIL ([error summary])
 
 ## Manual Tests Required
 
-### [criterion 1]
-**What to test:** [specific steps to reproduce]
-**Expected:** [what success looks like]
-**Result:** [ ] Pass  [ ] Fail
-**Notes:** ___
+### [criterion text]
+Steps:
+1. [exact step from hardened criterion]
+2. [exact step]
+3. [exact step]
+Expected: [expected outcome from criterion]
+Result: [ ] Pass  [ ] Fail
+Notes: ___
 
-### [criterion 2]
-...
+## Blocked (resolve before testing)
+- ⚠️ [criterion text]: [unblock instruction]
 
 ## Environment
-- Frontend: http://localhost:4000
+- Frontend: http://localhost:3000
 - Backend: http://localhost:8080
 - Branch: [branch-name]
 ```
