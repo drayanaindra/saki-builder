@@ -96,6 +96,7 @@ immediately makes new patterns available to Claude Code.
 | `/retro` | Session retrospective — captures corrections, discoveries, patterns. |
 | `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly). |
 | `/sync` | Commit and push `memory/` changes to remote (run after `/reflect`). |
+| `/rupdate` | Pull latest skills and patterns from remote (run on other machines after `/sync`). |
 | `/init-env` | Scaffold `.claude/` config for a new project including project-specific skill overrides. |
 
 ### Standard session flow

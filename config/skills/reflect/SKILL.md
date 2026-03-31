@@ -31,8 +31,12 @@ Review accumulated learnings and promote confirmed patterns.
 4. **Write structured output to `~/.claude/memory/patterns.md`**:
    ```
    ## [Category]
-   - [Pattern]: [description] (confidence: HIGH/MED, source: [projects], date: [first seen])
+   - [Pattern]: [description] (confidence: HIGH/MED, source: confirmed across N projects, date: [first seen])
    ```
+   **IMPORTANT:** `patterns.md` is a public file. Never write specific project names in the `source` field. Use generic descriptions:
+   - 1 project, 1 session → `source: 1 project`
+   - 1 project, multiple sessions → `source: confirmed 2× on same project`
+   - Multiple projects → `source: confirmed across N projects`
 
 5. **Clean up**:
    - Remove duplicates from lessons-learned files
