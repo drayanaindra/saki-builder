@@ -93,6 +93,7 @@ immediately makes new patterns available to Claude Code.
 | `/rplan-trust` | Fully autonomous pipeline: plan → review → implement → QA. No user confirmation for CLI commands. |
 | `/approved` | Approve the active plan and switch model to Sonnet for implementation. |
 | `/qa` | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Never ends with "set up X". |
+| `/reviewer` | Fresh-context code review — reads git diff, uses project-specific checklist if available, reports issues with severity. Run before committing. |
 | `/retro` | Session retrospective — captures corrections, discoveries, patterns. |
 | `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly). |
 | `/sync` | Commit and push `memory/` changes to remote (run after `/reflect`). |
