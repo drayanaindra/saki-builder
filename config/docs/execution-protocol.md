@@ -100,7 +100,7 @@ Default if no response: Option A
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `/plan` | Structured planning with confidence scoring | Before any non-trivial task (2+ files, new feature, API change, architecture decision) |
+| `/rplan` | Structured planning with confidence scoring | Before any non-trivial task (2+ files, new feature, API change, architecture decision) |
 | `/retro` | Session retrospective, capture learnings | End of substantial sessions. Auto-reminded by Stop hook. Run when: corrections happened, non-obvious discovery, or session > 30min coding |
 | `/reflect` | Cross-project pattern promotion | Weekly (Friday), or when lessons-learned.md has 5+ unreviewed entries |
 | `/init-env` | Scaffold environment for new project | First time in a project with no `.claude/agents/` or `.claude/settings.json` |
@@ -132,19 +132,19 @@ START SESSION
 
 | Situation | Command | Skip? |
 |-----------|---------|-------|
-| Multi-file feature | `/plan` | Never skip |
+| Multi-file feature | `/rplan` | Never skip |
 | Single typo/color fix | none | Always skip |
-| Add model field (model + migration + API + frontend) | `/plan` | No — 4 files |
+| Add model field (model + migration + API + frontend) | `/rplan` | No — 4 files |
 | Question about code | none | No implementation |
-| Refactor cross-cutting concern | `/plan` | Never skip |
+| Refactor cross-cutting concern | `/rplan` | Never skip |
 | Session had corrections | `/retro` | Never skip — corrections = high-value learnings |
 | Quick 5-min Q&A session | skip `/retro` | No implementation happened |
-| Any HIGH risk (DB, auth, delete, push) | `/plan` + human gate | Never skip |
+| Any HIGH risk (DB, auth, delete, push) | `/rplan` + human gate | Never skip |
 
 ## Quick Rules
 
-- 2+ files touched = `/plan`
-- Any HIGH risk = `/plan` + human gate ALWAYS
+- 2+ files touched = `/rplan`
+- Any HIGH risk = `/rplan` + human gate ALWAYS
 - Got corrected = `/retro` before ending
 - New project = `/init-env` once
 - Weekly = `/reflect` once

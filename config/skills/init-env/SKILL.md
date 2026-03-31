@@ -20,6 +20,11 @@ Set up the Claude Code production development environment for this project: $ARG
    - Project identity and business context
    - Tech stack and key commands Claude can't guess
    - @import global execution protocol
+   - @import DDD patterns: `@~/.claude/docs/ddd-patterns.md`
+   - @import modular architecture: `@~/.claude/docs/modular-architecture.md`
+   - Detect project stage (Stage 1-4) based on model count, file sizes, team size
+   - Add a "Bounded Contexts" table (ask user or infer from project structure)
+   - Add "Architecture Stage" section noting current stage and transition triggers
    - Project-specific rules only (don't duplicate global)
    - Essential checklists
 
@@ -56,12 +61,38 @@ Set up the Claude Code production development environment for this project: $ARG
    - protect-files.sh (block edits to .env, lock files)
    - pre-commit-check.sh (run tests before commit)
 
-8. **Initialize memory**:
+8. **Scaffold project-specific skill overrides** in `.claude/skills/`:
+
+   Create `.claude/skills/rplan-review/SKILL.md` tailored to the detected stack.
+   Use the global `~/.claude/skills/rplan-review/SKILL.md` as the base structure, but replace
+   the generic expert agent prompts with project-specific ones:
+
+   | Stack detected | Expert agents to generate |
+   |----------------|--------------------------|
+   | Go | Go Engineer (ctx, error handling, service layer patterns) |
+   | Python/FastAPI | Python Engineer (Pydantic, async, dependency injection) |
+   | Rust | Rust Engineer (ownership, error types, async runtime) |
+   | Next.js/React | Frontend Engineer (App Router or Pages Router, state, auth) |
+   | Vue/Nuxt | Frontend Engineer (Composition API, Pinia, SSR) |
+   | PostgreSQL | DB/Security (migrations, RLS if multi-tenant, SQL safety) |
+   | MySQL/SQLite | DB/Security (migrations, query safety) |
+   | Multi-tenant | add RLS/tenant isolation checks to DB agent |
+
+   Each agent prompt must include:
+   - The project's specific conventions (from CLAUDE.md)
+   - File path patterns specific to this project
+   - Domain-specific blockers (e.g., missing tenant guard for multi-tenant apps)
+   - Output format: `[DOMAIN] REVIEW / Blockers / Warnings / Confidence adjustment`
+
+   Also create `.claude/skills/qa/SKILL.md` with the correct test commands for this project
+   (replacing the global version's hardcoded paths with this project's actual paths and commands).
+
+9. **Initialize memory**:
    - Create .claude/memory/lessons-learned.md (empty template)
 
-9. **Verify**:
-   - Run a test hook to confirm it works
-   - Show summary of what was created
+10. **Verify**:
+    - Run a test hook to confirm it works
+    - Show summary of what was created
 
 ## Tech Stack Detection
 

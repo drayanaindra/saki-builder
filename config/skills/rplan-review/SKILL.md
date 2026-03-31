@@ -1,13 +1,13 @@
 ---
 name: rplan-review
-description: Adversarial plan review — structural completeness scan, then confidence probing until >96%. Blocks on missing sections. Annotates the active plan. Run after /rplan before /approved.
+description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Blocks on missing sections. Run after /rplan before /approved.
 ---
 
-# Plan Review — Structured Completeness + Adversarial Probing
+# Plan Review — Structural Scan + Parallel Expert Review
 
-You are a skeptical senior engineer reviewing a plan before implementation. Your job is to ensure the plan is **complete enough to execute without ambiguity** — not just confident, but WIRED.
+You are the review coordinator. Your job: verify the plan is complete and safe to implement, using domain expert agents in parallel.
 
-There are 3 phases. They run in order. A failure in Phase 1 stops the review entirely.
+There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely.
 
 ---
 
@@ -26,159 +26,286 @@ Initial confidence: [X]%
 
 ## Phase 1: Structural Completeness Scan
 
-**This is NOT probing. This is a pass/fail scan.**
+**Pass/fail only. Not probing.**
 
-For each required section below, mark it as ✅ PRESENT or ❌ MISSING.
-
-A section is PRESENT only if it contains **actual content** — not just the heading, not "N/A", not a template placeholder.
+For each required section, mark ✅ PRESENT or ❌ MISSING.
+A section is PRESENT only if it has real content — not headings, not "N/A", not template placeholders.
 
 | # | Required Section | Present? | Notes |
 |---|-----------------|----------|-------|
-| 1 | Steps table (with exact file paths + function names in every row) | | |
+| 1 | Steps table (exact file paths + function names in every row) | | |
 | 2 | User Role Coverage matrix (all affected roles listed) | | |
-| 3 | Plan Wiring (at least one end-to-end call chain per major flow) | | |
-| 4 | Migration Checklist (required if any model/schema change; OK to mark N/A if no schema changes) | | |
-| 5 | Implementation Completeness Checklist (all items checked [x]) | | |
+| 3 | Plan Wiring (end-to-end call chain per major flow) | | |
+| 4 | Migration Checklist (N/A only if zero schema changes) | | |
+| 5 | Implementation Completeness Checklist (all items `[x]`) | | |
 | 6 | Branch Points (or explicit "none") | | |
 | 7 | Success Criteria (testable, not vague) | | |
 
-### Scan rules
+**Scan rules:**
+- Steps row saying "update frontend" or "add endpoint" without exact file+function = MISSING
+- Role Coverage with only one role when feature affects multiple = INCOMPLETE
+- Plan Wiring with "Component → API" but no service name and no DB model = INCOMPLETE
+- Checklist with any `[ ]` = INCOMPLETE
 
-- A steps table row that says "update frontend" or "add endpoint" without naming the exact file and function is MISSING content for that row.
-- A User Role Coverage matrix that only lists one role when the feature affects multiple roles is INCOMPLETE.
-- A Plan Wiring section with "Component → API" but no service name and no DB model name is INCOMPLETE.
-- An Implementation Completeness Checklist with any `[ ]` (unchecked) item is INCOMPLETE.
-
-### Scan output
-
-Print the table above with ✅/❌ filled in.
-
-Then:
-
-**If ALL rows are ✅:**
+**If ALL ✅:**
 ```
-PHASE 1 PASSED — structural scan complete, proceeding to Phase 2
+PHASE 1 PASSED — proceeding to Phase 2
 ```
 
-**If ANY row is ❌:**
+**If ANY ❌:**
 ```
 PHASE 1 FAILED — STRUCTURAL BLOCKERS FOUND
 
-These gaps CANNOT be resolved by answering questions.
-The plan author must rewrite the plan to add the missing sections.
+The plan author must rewrite the plan. These gaps cannot be resolved by answering questions.
 
 Missing/incomplete:
-  ❌ [section name]: [specific gap — what is missing or incomplete]
-  ❌ [section name]: [specific gap]
+  ❌ [section]: [specific gap]
 
-Action required:
-  1. Open [plan-file].md
-  2. Fill in the missing sections following the plan template
-  3. Re-run /rplan-review
+Action: Fill missing sections → re-run /rplan-review
 
-REVIEW STOPPED — do NOT proceed to Phase 2 until all structural blockers are resolved.
+REVIEW STOPPED.
 ```
 
 Do NOT proceed to Phase 2 if Phase 1 failed.
 
 ---
 
-## Phase 2: Content Depth Probing
+## Phase 1.5: Acceptance Criteria Hardening
 
-**This is the adversarial probe loop. Run only if Phase 1 passed.**
+**Run after Phase 1 passes. Rewrites criteria in-place — not just flagging.**
 
-Goal: raise confidence to > 96% by resolving unknowns, confirming assumptions, and stress-testing HIGH-risk steps.
+Read the Success Criteria section. For each criterion, it PASSES hardening only if it has ALL THREE:
+1. **Actor + Action** — who does what (`User calls POST /v1/endpoint`, `User clicks Submit button`)
+2. **Test command** — exact command to verify (`curl -X POST ...`, `go test -run TestFoo`, Playwright step)
+3. **Expected outcome** — exact result (`HTTP 201`, `{"status":"ok"}`, `"Success" toast visible`)
 
-### Build probe queue (priority order)
+**Classify each:**
+- `✅ HARDENED` — has all three, ready for `/qa`
+- `🔧 REWRITE` — missing test command or expected outcome
+- `🔲 MANUAL` — requires browser interaction, needs Playwright scenario or explicit manual steps
 
-1. Any step where the Assumption column has an untested assumption
-2. Any step marked HIGH risk
-3. Any Unknown listed (MED or HIGH rated)
-4. Integration points: where two systems touch (DB, auth, external API, payment)
-5. Steps touching prod data, auth, or shared state
-6. Any step where confidence score seems inflated ("LOW" risk but touches external state)
-7. Migration steps: is `alembic upgrade head` reversible without data loss?
-
-### Probe loop
-
-**Keep probing until confidence > 96%.** No fixed round count.
-
-For each probe, pick the **most dangerous unresolved item** and ask ONE sharp question.
-
+**For every `🔧 REWRITE`** — rewrite it using the plan wiring:
 ```
---- REVIEW PROBE [N] ---
-Current confidence: [X]%
-Target: >96%
-Gap type: ASSUMPTION / UNKNOWN / HIGH-RISK-STEP / INTEGRATION-POINT
-
-Probing: [specific item from plan]
-
-Question: [one sharp question — not a list — that reveals whether this will actually work]
+Given [precondition]
+When [actor] [action] ([test command])
+Then [expected outcome] ([verification method])
 ```
 
-### After each answer
-
-**If satisfactory:**
-- Write the answer as an annotation in the plan file under "Annotation Space"
-- Recalculate confidence:
-  - Confirmed HIGH assumption → +5–8%
-  - Confirmed MED assumption → +2–4%
-  - Resolved HIGH unknown → +5–10%
-  - Resolved MED unknown → +3–5%
-- Print: `Confidence: [old]% → [new]%`
-- If confidence > 96% AND no remaining HIGH-risk unprobed items: proceed to Phase 3
-- Otherwise: pick next item from queue
-
-**If answer reveals a gap or "I don't know":**
+**For every `🔲 MANUAL`** — add numbered browser steps AND a Playwright stub:
 ```
-PHASE 2 BLOCKER FOUND
-Issue: [description]
-Probe: [what was asked]
-Answer: [what the user said]
-Impact: plan cannot proceed — this step will fail or produce ambiguous behavior
-Resolution: [what must be verified or decided before continuing]
+Manual: 1. Navigate to [url] 2. Click [element] 3. Verify [outcome]
+Playwright: test('[name]', async ({ page }) => { ... })
+```
 
-REVIEW PAUSED — resolve this blocker then re-run /rplan-review
+**Edit the plan file** to replace the Success Criteria section with hardened versions. All criteria must be `✅ HARDENED` or `🔲 MANUAL` before Phase 2.
+
+Print:
+```
+PHASE 1.5: ACCEPTANCE CRITERIA HARDENING
+  Total: [N] | Already hardened: [N] | Rewritten: [N] | Manual: [N]
+  Plan file updated.
 ```
 
 ---
 
-## Phase 3: Implementation Readiness Check
+## Phase 2: Parallel Domain Expert Review
 
-**Run only after confidence > 96% with no Phase 2 blockers.**
+**Run only if Phase 1 passed.**
 
-Go through each step in the plan and answer these questions:
+Detect which domains are touched by the plan, then launch the relevant expert agents in parallel using the Agent tool.
 
-| Step # | Can a developer implement this without asking any questions? | Every file path named? | Every function named? | Pass? |
-|--------|-------------------------------------------------------------|----------------------|----------------------|-------|
+### Domain detection rules
+
+| Domain | Launch if... |
+|--------|-------------|
+| Backend | any `*.go`, `*.py`, `*.ts` service/API file in steps |
+| Frontend | any frontend component, page, or UI file in steps |
+| Database/Security | any migration, schema, auth, or permission change in steps |
+| Product | always (role coverage and acceptance criteria always apply) |
+
+### Expert agent prompts
+
+Launch each applicable agent with this prompt pattern. Pass the full plan text in the prompt.
+
+**Backend Expert Agent:**
+```
+You are a senior backend engineer doing adversarial plan review.
+
+Review the following plan and identify:
+1. Missing error handling paths (404, 403, 422, 500)
+2. API contract issues (request/response schema mismatches)
+3. Service layer violations (business logic in wrong layer)
+4. Missing context propagation or dependency injection
+5. Race conditions or atomicity issues
+6. Any step that says "add endpoint" without naming HTTP method, path, and handler file
+
+Plan:
+[paste full plan text]
+
+Output format:
+BACKEND REVIEW
+Blockers: (list — each one prevents safe implementation)
+Warnings: (list — non-blocking but should be addressed)
+Confidence adjustment: [+N% if no blockers, -N% per blocker found]
+```
+
+**Frontend Expert Agent:**
+```
+You are a senior frontend engineer doing adversarial plan review.
+
+Review the following plan and identify:
+1. Missing loading, error, and empty states for every new UI flow
+2. API call wiring gaps (is the correct endpoint called? correct method?)
+3. Auth state not checked before rendering protected content
+4. Missing TypeScript type definitions for new data shapes
+5. Component responsibilities that are too broad (god components)
+6. Any step that says "update UI" without naming the exact file and component
+
+Plan:
+[paste full plan text]
+
+Output format:
+FRONTEND REVIEW
+Blockers: (list)
+Warnings: (list)
+Confidence adjustment: [+N% or -N% per issue]
+```
+
+**Database/Security Expert Agent:**
+```
+You are a senior database and security engineer doing adversarial plan review.
+
+Review the following plan and identify:
+1. Migration missing a corresponding down/rollback file
+2. Destructive schema changes without backup or migration strategy
+3. Missing auth/permission check before sensitive operations
+4. Data isolation gaps (multi-tenant: could one tenant access another's data?)
+5. SQL injection or unsafe query construction risks
+6. Missing transaction boundaries for atomic operations
+
+Plan:
+[paste full plan text]
+
+Output format:
+DB/SECURITY REVIEW
+Blockers: (list)
+Warnings: (list)
+Confidence adjustment: [+N% or -N% per issue]
+```
+
+**Product Expert Agent:**
+```
+You are a senior product manager doing adversarial plan review.
+
+Review the following plan and identify:
+1. User roles that interact with this feature but are missing from the Role Coverage matrix
+2. Acceptance criteria that are vague or untestable ("works correctly" is not testable)
+3. Flows where the user can get stuck (no error message, no empty state, no fallback)
+4. Edge cases not covered: what happens if the user is unauthenticated? unauthorized? has no data?
+5. UI copy that is inconsistent with the product's tone or language
+
+Plan:
+[paste full plan text]
+
+Output format:
+PRODUCT REVIEW
+Blockers: (list)
+Warnings: (list)
+Confidence adjustment: [+N% or -N% per issue]
+```
+
+### Collect all results
+
+Wait for all agents to return. Print each review result in full.
+
+---
+
+## Phase 3: Synthesis
+
+Merge all expert findings:
+
+1. **Deduplicate** — same issue flagged by multiple experts counts once
+2. **Classify** — Blocker (must fix before /approved) vs Warning (should fix, not blocking)
+3. **Recalculate confidence:**
+   - Start from plan's stated confidence
+   - Apply each expert's confidence adjustment
+   - Additional deductions: -5% per blocker, -2% per warning
+
+Print synthesis:
+
+```
+--- SYNTHESIS ---
+
+Domains reviewed: [Backend / Frontend / DB+Security / Product]
+
+Blockers (must fix before /approved):
+  ❌ [B1] [domain]: [description]
+  ❌ [B2] [domain]: [description]
+
+Warnings (non-blocking):
+  ⚠️ [W1] [domain]: [description]
+
+Confidence: [initial]% → [final]%
+```
+
+**If blockers exist:**
+```
+PHASE 3 FAILED — blockers found
+Fix all ❌ blockers in the plan file, then re-run /rplan-review.
+```
+
+**If no blockers, confidence > 96%:**
+```
+PHASE 3 PASSED — no blockers, confidence [X]% > 96%
+Proceeding to Phase 4.
+```
+
+**If no blockers but confidence ≤ 96%:**
+```
+PHASE 3 PARTIAL — no blockers but confidence [X]% ≤ 96%
+Resolve warnings or add more detail to reach 96%.
+Re-run /rplan-review after updating the plan.
+```
+
+---
+
+## Phase 4: Implementation Readiness Check
+
+**Run only if Phase 3 passed.**
+
+Walk every step in the plan:
+
+| Step # | Implementable without questions? | All file paths named? | All functions named? | Pass? |
+|--------|----------------------------------|-----------------------|----------------------|-------|
 | 1 | | | | |
 | 2 | | | | |
 
-If any step fails: add a note to the plan's Annotation Space specifying what's missing. **Do NOT approve** until all steps pass.
+If any step fails: note what's missing. Do NOT approve.
 
 If all steps pass:
 ```
-PHASE 3 PASSED — implementation readiness confirmed
+PHASE 4 PASSED — implementation ready
 ```
 
 ---
 
-## Step N: Final Verdict
+## Final Verdict
 
 ```
 --- REVIEW COMPLETE ---
 
-Phase 1 (Structural scan): PASSED / FAILED
-Phase 2 (Content probing): PASSED / FAILED / BLOCKED
-Phase 3 (Readiness check): PASSED / FAILED
+Phase 1 (Structural):   PASSED / FAILED
+Phase 2 (Expert review): PASSED / FAILED
+Phase 3 (Synthesis):    PASSED / FAILED / PARTIAL
+Phase 4 (Readiness):    PASSED / FAILED
 
-Probes run: [N]
 Confidence: [start]% → [final]%
 Blockers found: [N]
+Warnings found: [N]
 
 Verdict:
   ✅ APPROVED FOR IMPLEMENTATION
-     All 3 phases passed. Confidence [X]% > 96%. No blockers.
+     All phases passed. Confidence [X]% > 96%.
      Next: /approved
 
   OR
@@ -194,10 +321,20 @@ Verdict:
 
 ## Rules
 
-- NEVER skip Phase 1. NEVER treat a structural gap as a probe question.
-- A missing section = STOP. The plan author must rewrite, not answer verbally.
-- Ask ONE question per probe — sharp and specific, not a list.
-- Annotate the plan file with every resolved answer — the record must be permanent.
-- Do NOT recommend /approved unless all 3 phases pass AND confidence > 96%.
-- If a step says "LOW risk" but touches external state (DB, auth, API, payment), probe it.
-- "I'll handle it during implementation" is NOT a satisfactory probe answer — it's a BLOCKER.
+- NEVER skip Phase 1. A structural gap is never a probe question.
+- Launch expert agents in parallel — never sequentially.
+- Only launch agents for domains that are actually touched by the plan.
+- A blocker from any agent = plan is NOT ready, regardless of confidence score.
+- "I'll handle it during implementation" = BLOCKER.
+- Annotate the plan file with all resolved findings under "Annotation Space".
+
+---
+
+## Project Override
+
+This is the **general version**. For project-specific domain experts (language, framework, design system), create:
+```
+.claude/skills/rplan-review/SKILL.md
+```
+That file overrides this one and should contain agents tuned to the project's stack and conventions.
+Run `/init-env` to scaffold the project-specific override automatically.
