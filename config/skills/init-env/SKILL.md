@@ -57,11 +57,18 @@ Set up the Claude Code production development environment for this project: $ARG
    - Tools: Read, Grep, Glob, Bash
    - Model: opus (thorough review needs best model)
 
-7. **Create .claude/hooks/ scripts** (if needed):
+7. **Create .claude/agents/qa.md**:
+   - Copy from global template: `~/.claude/agents/qa.md`
+   - The global template auto-detects the stack at runtime (Python/Go/TS/Rust)
+   - No customization needed — it reads `pyproject.toml`, `package.json`, etc. to pick the right commands
+   - This agent is invoked by Claude programmatically (not by user via /qa)
+   - Usage by orchestrator Claude: `Agent(subagent_type="qa", prompt="Verify criteria for: [task]. Plan: [path]")`
+
+8. **Create .claude/hooks/ scripts** (if needed):
    - protect-files.sh (block edits to .env, lock files)
    - pre-commit-check.sh (run tests before commit)
 
-8. **Scaffold project-specific skill overrides** in `.claude/skills/`:
+9. **Scaffold project-specific skill overrides** in `.claude/skills/`:
 
    Create `.claude/skills/rplan-review/SKILL.md` tailored to the detected stack.
    Use the global `~/.claude/skills/rplan-review/SKILL.md` as the base structure, but replace
@@ -87,7 +94,7 @@ Set up the Claude Code production development environment for this project: $ARG
    Also create `.claude/skills/qa/SKILL.md` with the correct test commands for this project
    (replacing the global version's hardcoded paths with this project's actual paths and commands).
 
-9. **Initialize memory**:
+10. **Initialize memory**:
    - Create .claude/memory/lessons-learned.md (empty template)
 
 10. **Verify**:
