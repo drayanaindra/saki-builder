@@ -120,6 +120,7 @@ Detect which domains are touched by the plan, then launch the relevant expert ag
 |--------|-------------|
 | Backend | any `*.go`, `*.py`, `*.ts` service/API file in steps |
 | Frontend | any frontend component, page, or UI file in steps |
+| UI/UX | any new page, new component, new user flow, or design system change in steps |
 | Database/Security | any migration, schema, auth, or permission change in steps |
 | Product | always (role coverage and acceptance criteria always apply) |
 
@@ -191,6 +192,29 @@ DB/SECURITY REVIEW
 Blockers: (list)
 Warnings: (list)
 Confidence adjustment: [+N% or -N% per issue]
+```
+
+**UI/UX Expert Agent:**
+```
+You are a senior UI/UX designer doing adversarial plan review.
+
+Review the following plan and identify:
+1. Visual design gaps — missing spacing, typography, color, or layout decisions for new UI
+2. User flow friction — steps where the user must guess, wait without feedback, or can get confused
+3. Design system violations — components or patterns inconsistent with the existing design system
+4. Accessibility gaps — missing ARIA roles, keyboard navigation, focus management, color contrast
+5. Mobile/responsive gaps — new UI described without specifying mobile behavior
+6. Interaction design gaps — missing hover, active, disabled, or transition states for interactive elements
+7. Any step that says "add UI" without specifying visual behavior or referencing design system components
+
+Plan:
+[paste full plan text]
+
+Output format:
+UI/UX REVIEW
+Blockers: (list — each one creates a broken or inaccessible user experience)
+Warnings: (list — non-blocking but degrades UX quality)
+Confidence adjustment: [+N% if no blockers, -N% per blocker found]
 ```
 
 **Product Expert Agent:**
