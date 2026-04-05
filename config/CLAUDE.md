@@ -4,6 +4,8 @@
 
 Follow @~/.claude/docs/execution-protocol.md for ALL non-trivial tasks.
 
+@~/.claude/docs/playwright-qa-patterns.md
+
 1. NEVER implement without presenting a structured plan first
 2. ALWAYS state Model/Task/Role/Status at response start
 3. NEVER assume - read code, verify, test assumptions

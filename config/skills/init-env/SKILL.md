@@ -65,8 +65,11 @@ Set up the Claude Code production development environment for this project: $ARG
    - Usage by orchestrator Claude: `Agent(subagent_type="qa", prompt="Verify criteria for: [task]. Plan: [path]")`
 
 8. **Create .claude/hooks/ scripts** (if needed):
-   - protect-files.sh (block edits to .env, lock files)
+   - protect-files.sh (block edits to .env, lock files — project-specific patterns)
    - pre-commit-check.sh (run tests before commit)
+   - NOTE: `dangerous-command-guard.sh` is already active globally via `~/.claude/hooks/` (from claude-config).
+     It blocks DROP DB/TABLE, destructive rm, git push --force main, migrate down/force/drop, curl|sh, etc.
+     Do NOT recreate it per-project — it applies automatically to all projects.
 
 9. **Scaffold project-specific skill overrides** in `.claude/skills/`:
 
@@ -91,13 +94,62 @@ Set up the Claude Code production development environment for this project: $ARG
    - Domain-specific blockers (e.g., missing tenant guard for multi-tenant apps)
    - Output format: `[DOMAIN] REVIEW / Blockers / Warnings / Confidence adjustment`
 
-   Also create `.claude/skills/qa/SKILL.md` with the correct test commands for this project
-   (replacing the global version's hardcoded paths with this project's actual paths and commands).
+   Also create `.claude/skills/qa/SKILL.md` as a project override that extends the global
+   qa skill's Playwright logic. The override should:
+   - Document the project's API base URL and dev server start command
+   - Note any project-specific auth strategy (JWT keys, cookie name, OAuth vs token)
+   - Leave Playwright generation logic (Step 1.5 template) unchanged — it is project-agnostic
 
-10. **Initialize memory**:
+10. **Scaffold Playwright test infrastructure** (if frontend detected):
+
+   a. Install dotenv if not present: `npm install dotenv --save-dev`
+   
+   b. Create `e2e/fixtures/auth.ts` using the `base.extend<>` fixture pattern:
+   ```typescript
+   // Fill in the auth strategy for this project (replace the comment below)
+   import { test as base } from '@playwright/test';
+   type AuthFixtures = { loginWithToken: (token: string) => Promise<void> };
+   export const test = base.extend<AuthFixtures>({
+     loginWithToken: async ({ page }, use) => {
+       await use(async (token: string) => {
+         test.skip(!process.env.TEST_JWT, 'TEST_JWT not set');
+         // TODO: replace with this project's auth strategy
+         // e.g. localStorage keys, cookie name, session storage key
+         await page.addInitScript(
+           ({ accessToken, refreshToken }: { accessToken: string; refreshToken: string }) => {
+             localStorage.setItem('access_token', accessToken);
+             localStorage.setItem('refresh_token', refreshToken);
+           },
+           { accessToken: token, refreshToken: 'placeholder-refresh' },
+         );
+       });
+       await page.evaluate(() => localStorage.clear());
+     },
+   });
+   export { expect } from '@playwright/test';
+   ```
+   
+   c. Add `dotenv.config({ path: '.env.test' })` to top of `playwright.config.ts`
+      (Playwright does NOT auto-load `.env.test` — Next.js does, Playwright doesn't)
+   
+   d. Create `e2e/qa-generated/.gitkeep`
+   
+   e. Add to `.gitignore`:
+   ```
+   .env.test
+   e2e/qa-generated/*.spec.ts
+   ```
+   
+   f. Create `.env.test` with placeholder:
+   ```
+   TEST_JWT=
+   ```
+   Note to user: "Fill in TEST_JWT with a long-lived (≥24h) dev token for Playwright auth tests"
+
+11. **Initialize memory**:
    - Create .claude/memory/lessons-learned.md (empty template)
 
-10. **Verify**:
+12. **Verify**:
     - Run a test hook to confirm it works
     - Show summary of what was created
 
