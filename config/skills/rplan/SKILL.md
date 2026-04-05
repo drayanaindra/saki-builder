@@ -24,6 +24,35 @@ Then confirm with: `Model: OPUS | Status: Planning`
 
 ---
 
+## Step 0.5: Scope Clarification (Prompt Expander)
+
+Before researching, check if the user's prompt has clear scope. If ANY of these are ambiguous or missing, ask:
+
+```
+Sebelum mulai, quick scope check:
+
+Siapa?    [who uses this feature — which user roles?]
+Kapan?    [what triggers it — when/how does it start?]
+Hasilnya? [one concrete example of expected behavior]
+Batasnya? [what to skip / not include in this scope]
+```
+
+**Rules:**
+- If the user already provided enough context (all 4 are inferable), skip — do NOT ask
+- Accept terse answers (1-2 words per question is fine)
+- If user says "kamu yang tentukan" or similar, make reasonable defaults and state them explicitly so user can correct
+- Once answered, summarize scope in one sentence before proceeding to research
+
+**Examples of when to skip:**
+- User: "add batch tracking to inventory. warehouse staff only, saat terima barang, FEFO otomatis, skip manufacturing" — all 4 answered, proceed
+- User: "fix the login bug on /masuk page" — trivial/bug fix, no scope questions needed
+
+**Examples of when to ask:**
+- User: "add reporting feature" — who sees it? what data? which reports?
+- User: "add payment integration" — which roles? which payment provider? what flows?
+
+---
+
 Create an execution plan following the template at ~/.claude/docs/plan-template.md.
 
 ## Process
@@ -64,15 +93,14 @@ Before scoring confidence, verify EVERY item below. A single `[ ]` (unchecked) i
 
 **Database & Migrations**
 - [ ] Every model field change has a corresponding migration step in the plan
-- [ ] Migration file name and `alembic revision` command written out explicitly
-- [ ] `alembic upgrade head` step listed in success criteria
+- [ ] Migration file name and `migrate` command written out explicitly
+- [ ] `migrate up` step listed in success criteria
 - [ ] No breaking schema changes without a rollback strategy
 
 **API Layer**
-- [ ] Request schema (Pydantic) named and located
-- [ ] Response schema named and located
+- [ ] Request/response structs named and located (Go structs or TS types)
 - [ ] HTTP method, path, and router file written out
-- [ ] Dependency injections listed (`CurrentUser`, `CurrentAdmin`, `DB`)
+- [ ] Middleware/auth dependencies listed
 
 **Service / Business Logic**
 - [ ] Every service function modified or created is named with its file path
@@ -117,29 +145,119 @@ Before showing the plan to the user, answer all of these:
 
 1. Can a developer implement Step N without asking any clarifying question? (Yes for every step)
 2. Are all user roles represented in the User Role Coverage matrix?
-3. Is every migration change explicitly listed with the `alembic` command?
+3. Is every migration change explicitly listed with the `migrate` command?
 4. Is every call chain wired end-to-end in the Plan Wiring section?
 5. Are success criteria testable without ambiguity?
 
 If any answer is "No" → fix the plan before presenting.
 
-### 6. Output
+### 6. Self-Review (built-in domain checks)
+
+**Run BEFORE presenting the plan. This replaces /rplan-review for LOW/MED risk plans.**
+
+Walk through the plan and check each item below. For each violation found, fix it in the plan immediately — do not just flag it.
+
+#### 6a. Deterministic Checklist (always run)
+
+| # | Check | What to look for |
+|---|-------|-----------------|
+| 1 | Vague steps | Any step saying "update", "add", "modify" without exact file path + function name → rewrite |
+| 2 | Missing file paths | Any reference to a file without full path from project root → add path |
+| 3 | Schema completeness | Any API endpoint without request/response struct named → add it |
+| 4 | Auth guards | Any endpoint missing permission/middleware specification → add it |
+| 5 | Error paths | Any service function without error cases listed → add 404/403/422 |
+| 6 | Empty states | Any new UI page without empty state behavior → add it |
+| 7 | Wiring gaps | Any flow that stops at "API endpoint" without tracing to service + DB → complete the chain |
+
+#### 6b. Project-Aware Checks (detect from project context)
+
+If the project uses multi-tenancy (RLS, tenant isolation):
+- Every DB-touching step must mention tenant context/guard
+
+If the project has atomic operations (POS, checkout, payment):
+- Every multi-table write must mention transaction boundary
+
+If the project has a design system:
+- Every new UI component must reference design tokens/system
+
+If the project has localization:
+- Every UI copy must be in the correct language
+
+#### 6c. Lightweight Domain Spot-Check (HIGH-risk plans only)
+
+**Only run this sub-step if the plan's overall Risk Score is HIGH** (contains DB migration, auth change, payment logic, or multi-tenant security change).
+
+Spawn a single combined reviewer agent with this prompt:
+
+```
+You are reviewing a plan for [project name]. Check for:
+1. [Backend language] patterns: missing error handling, wrong function signatures, missing context propagation
+2. Security: missing auth checks, data isolation gaps, SQL injection risks
+3. Frontend: missing states (loading/error/empty), type safety gaps
+4. Product: missing user roles, untestable criteria, missing edge cases
+
+Report ONLY blockers (things that would cause bugs or security issues).
+Keep it under 200 words. No warnings, no style nits.
+
+Plan:
+[paste full plan text]
+```
+
+If the spot-check finds blockers, fix them in the plan before presenting.
+
+#### 6d. Re-score After Self-Review
+
+Recalculate confidence after all fixes. The self-review should have resolved most checklist gaps.
+
+### 7. Output with Next Action Recommendation
 
 - Write full plan to `[task]-plan.md` in project root
 - Present plan summary in chat with:
   - Confidence score
-  - Checklist pass/fail summary
-  - Any remaining unknowns
-- Wait for human annotation and explicit approval
+  - Risk level
+  - Self-review results (what was caught and fixed)
+  - **Next action recommendation** (see below)
+
+#### Next Action Decision Tree
+
+```
+If confidence >= 96% AND risk is LOW/MED AND self-review found 0 blockers:
+  → "Plan ready. /approved to start implementation."
+
+If confidence >= 96% AND risk is HIGH:
+  → "Plan ready but HIGH risk. Recommend /rplan-review for expert validation, or /approved if you're confident."
+
+If confidence 90-95%:
+  → "Confidence at [X]%. Gaps: [list]. Recommend /rplan-review to identify remaining issues."
+
+If confidence < 90%:
+  → "Confidence too low ([X]%). Need your input on: [specific questions]"
+```
+
+**Print the recommendation clearly:**
+
+```
+--- PLAN COMPLETE ---
+Confidence: [X]%
+Risk: LOW / MED / HIGH
+Self-review: [N] issues found and fixed, [N] blockers remaining
+
+Recommendation: [one of the above]
+> /approved    — start implementation
+> /rplan-review — expert validation (recommended for HIGH risk)
+> [specific questions if confidence < 90%]
+```
 
 ---
 
 ## Rules
 
 - NEVER skip research phase
+- NEVER skip Step 0.5 scope check (but DO skip asking if scope is already clear)
+- NEVER skip Step 6 self-review
 - NEVER present a plan with > 2 unknowns
 - NEVER proceed to implementation without explicit approval
 - NEVER write "update X" in a step — always name the exact file, function, and change
 - NEVER omit a user role that interacts with the feature
 - NEVER omit a migration step if schema changes
-- If confidence < 96% after checklist, fix gaps — do NOT lower the bar
+- If confidence < 96% after self-review, fix gaps — do NOT lower the bar
