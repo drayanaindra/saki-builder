@@ -29,12 +29,12 @@ Then confirm with: `Model: OPUS | Status: Planning`
 Before researching, check if the user's prompt has clear scope. If ANY of these are ambiguous or missing, ask:
 
 ```
-Sebelum mulai, quick scope check:
+Before we start, quick scope check:
 
-Siapa?    [who uses this feature — which user roles?]
-Kapan?    [what triggers it — when/how does it start?]
-Hasilnya? [one concrete example of expected behavior]
-Batasnya? [what to skip / not include in this scope]
+Who?      [who uses this feature — which user roles?]
+When?     [what triggers it — when/how does it start?]
+Output?   [one concrete example of expected behavior]
+Boundary? [what to skip / not include in this scope]
 ```
 
 **Rules:**
