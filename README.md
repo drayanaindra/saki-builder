@@ -12,19 +12,29 @@ config/                  # Shared config (safe for all users)
 ├── settings.json        # Global hooks (notifications, context restore)
 ├── docs/
 │   ├── execution-protocol.md   # RESEARCH > PLAN > EXECUTE > VERIFY workflow
-│   └── plan-template.md        # Plan template with 4-gate review sections
+│   ├── plan-template.md        # Plan template with 4-gate review sections
+│   ├── ddd-patterns.md         # Domain-Driven Design code patterns
+│   ├── modular-architecture.md # Growth-driven architecture ladder (flat → modular → DDD → microservices)
+│   └── playwright-qa-patterns.md # Playwright test patterns for /qa-generated specs
 ├── skills/
 │   ├── rplan/           # /rplan        — structured planning (confidence + completeness)
 │   ├── rplan-review/    # /rplan-review — 4-phase review: structural + criteria hardening + parallel experts + readiness
-│   ├── rplan-trust/     # /rplan-trust  — fully autonomous plan→review→implement
+│   ├── rplan-trust/     # /rplan-trust  — fully autonomous plan→review→implement→QA
 │   ├── approved/        # /approved     — approve plan, switch to Sonnet
 │   ├── qa/              # /qa           — run acceptance criteria from plan, report pass/fail per criterion
+│   ├── prompt/          # /prompt       — expand one-line idea into structured 6-section prompt
+│   ├── reviewer/        # /reviewer     — fresh-context code review from git diff
+│   ├── review/          # /review       — alternative review skill
 │   ├── retro/           # /retro        — session retrospective
 │   ├── reflect/         # /reflect      — promote patterns to memory/patterns.md
 │   ├── sync/            # /sync         — commit & push memory/ to remote
+│   ├── rupdate/         # /rupdate      — pull latest skills and patterns from remote
 │   ├── init-env/        # /init-env     — scaffold new project config + skill overrides
-│   └── [17 role skills] # engineer, architect, product, qa, devops, security, ...
-└── hooks/               # Shared hooks
+│   └── [role skills]    # 20 role personas (see Roles section below)
+├── hooks/
+│   ├── dangerous-command-guard.sh  # Block destructive commands (rm -rf, DROP, force push)
+│   └── rtk-rewrite.sh             # RTK token-optimizer hook
+└── ...
 
 memory/                  # Learning data — updated by /reflect, synced via git
 ├── patterns.md          # Confirmed cross-project patterns (promoted by /reflect)
@@ -88,11 +98,12 @@ immediately makes new patterns available to Claude Code.
 
 | Command | What it does |
 |---------|-------------|
-| `/rplan` | Create structured execution plan. Confidence must reach ≥96% with all 4 gates passing before presenting. |
+| `/rplan` | Create structured execution plan. Confidence must reach >=96% with all 4 gates passing before presenting. |
 | `/rplan-review` | 4-phase review: (1) structural completeness scan, (1.5) acceptance criteria hardening, (2) parallel domain expert agents, (3) synthesis + confidence scoring, (4) per-step readiness check. |
-| `/rplan-trust` | Fully autonomous pipeline: plan → review → implement → QA. No user confirmation for CLI commands. |
+| `/rplan-trust` | Fully autonomous pipeline: plan -> review -> implement -> QA. No user confirmation for CLI commands. |
 | `/approved` | Approve the active plan and switch model to Sonnet for implementation. |
-| `/qa` | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Never ends with "set up X". |
+| `/qa` | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Auto-generates Playwright specs for UI criteria. |
+| `/prompt` | Expand a one-line idea into a structured 6-section prompt (Role, Task, Context, Reasoning, Stop, Output). |
 | `/reviewer` | Fresh-context code review — reads git diff, uses project-specific checklist if available, reports issues with severity. Run before committing. |
 | `/retro` | Session retrospective — captures corrections, discoveries, patterns. |
 | `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly). |
@@ -103,13 +114,14 @@ immediately makes new patterns available to Claude Code.
 ### Standard session flow
 
 ```
-/rplan          → write plan (rough acceptance criteria OK)
-/rplan-review   → Phase 1.5 hardens criteria into curl/test commands
-                  → parallel domain experts review
-/approved       → implement
-/qa             → run each criterion, report pass/fail, update plan checkboxes
-/retro          → capture learnings
-/sync           → push patterns to remote
+/rplan          -> write plan (rough acceptance criteria OK)
+/rplan-review   -> Phase 1.5 hardens criteria into curl/test commands
+                   -> parallel domain experts review
+/approved       -> implement
+/qa             -> run each criterion, report pass/fail, update plan checkboxes
+/retro          -> capture learnings
+/reflect        -> promote patterns (weekly)
+/sync           -> push patterns to remote
 ```
 
 ## Plan Quality Gates (4-gate system)
@@ -118,9 +130,9 @@ Every plan must pass all 4 gates before confidence can reach 96%:
 
 | Gate | What it checks |
 |------|---------------|
-| **Confidence score** | ≥96%, weighted by risk (HIGH steps 2×, MED 1.5×). Deductions for unchecked checklist items. |
+| **Confidence score** | >=96%, weighted by risk (HIGH steps 2x, MED 1.5x). Deductions for unchecked checklist items. |
 | **User Role Coverage** | Every affected role listed with full call chain + auth guard. |
-| **Plan Wiring** | Each major flow written end-to-end: `Component → api.ts fn → HTTP METHOD /path → service.fn() → Model.field` |
+| **Plan Wiring** | Each major flow written end-to-end: `Component -> api.ts fn -> HTTP METHOD /path -> service.fn() -> Model.field` |
 | **Migration Checklist** | Every schema change has named migration file + explicit command. |
 
 `/rplan-review` enforces these as structural blockers — missing sections stop the review entirely.
@@ -148,25 +160,44 @@ Every plan must pass all 4 gates before confidence can reach 96%:
 | `FILE` | Mentions file existence, migration | `ls -la [path]` |
 | `DB` | Mentions table, column, row | `psql $DATABASE_URL -c "[query]"` |
 | `BUILD` | Always run | `go build ./...`, `tsc --noEmit` |
-| `UI` | Mentions page, button, browser | Playwright (if configured) or MANUAL with browser steps |
+| `UI` | Mentions page, button, browser | Playwright (auto-generated specs) or MANUAL with browser steps |
 
 **Result states — no criterion is ever silently omitted:**
-- `✅ PASS` — actual matches expected
-- `❌ FAIL` — actual differs from expected (shows exact error)
-- `🔲 MANUAL` — UI interaction required, browser steps listed
-- `⚠️ BLOCKED` — dependency missing (server down), exact unblock instruction given
-- `⚠️ NO_EXPECTED_OUTCOME` — ran successfully but plan had no expected outcome to compare
+- `PASS` — actual matches expected
+- `FAIL` — actual differs from expected (shows exact error)
+- `MANUAL` — UI interaction required, browser steps listed
+- `BLOCKED` — dependency missing (server down), exact unblock instruction given
+- `NO_EXPECTED_OUTCOME` — ran successfully but plan had no expected outcome to compare
 
-After running, `/qa` updates plan checkboxes: `[ ]` → `[x]` for PASS, `[!]` for FAIL.
+After running, `/qa` updates plan checkboxes: `[ ]` -> `[x]` for PASS, `[!]` for FAIL.
+
+## Docs
+
+Reference documents imported by CLAUDE.md via `@` directives:
+
+| Doc | Purpose |
+|-----|---------|
+| `execution-protocol.md` | Full RESEARCH > PLAN > ANNOTATE > EXECUTE > VERIFY > LEARN protocol |
+| `plan-template.md` | Plan template with 4-gate review sections, wiring, migration checklist |
+| `ddd-patterns.md` | Domain-Driven Design layer rules, directory structure, cross-context communication |
+| `modular-architecture.md` | 4-stage architecture ladder with transition triggers and migration recipes |
+| `playwright-qa-patterns.md` | Auth fixture, addInitScript safety, teardown patterns for /qa Playwright specs |
+
+## Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `dangerous-command-guard.sh` | Blocks destructive commands (`rm -rf`, `DROP TABLE`, `git push --force`, `git checkout .`) before execution. Regex-based pattern matching on `CLAUDE_TOOL_INPUT_COMMAND`. |
+| `rtk-rewrite.sh` | Rewrites CLI commands through RTK (Rust Token Killer) for 60-90% token savings on dev operations. |
 
 ## Project-Specific Skill Overrides
 
 Skills follow a two-level override pattern:
 
 ```
-~/.claude/skills/<name>/SKILL.md     ← global (language-agnostic, this repo)
-    ↓ overridden by
-.claude/skills/<name>/SKILL.md       ← project-specific (scaffolded by /init-env)
+~/.claude/skills/<name>/SKILL.md     <- global (language-agnostic, this repo)
+    overridden by
+.claude/skills/<name>/SKILL.md       <- project-specific (scaffolded by /init-env)
 ```
 
 The global `/rplan-review` uses generic domain experts (Backend, Frontend, DB/Security, Product).
@@ -184,21 +215,21 @@ Run `/init-env "your stack description"` in a new project to scaffold the overri
 Every non-trivial task follows:
 
 ```
-RESEARCH → PLAN → ANNOTATE → EXECUTE → VERIFY → LEARN
+RESEARCH -> PLAN -> ANNOTATE -> EXECUTE -> VERIFY -> LEARN
 ```
 
 Full protocol: `config/docs/execution-protocol.md`
 
 Key rules:
 - Never implement without a plan for 2+ file changes
-- Confidence ≥ 96% with all 4 gates passing before executing
+- Confidence >= 96% with all 4 gates passing before executing
 - Max 2 unknowns before presenting a plan
 - `/retro` after long sessions, `/reflect` weekly
 - HIGH risk (DB, auth, delete, push) always requires human gate
 
 ## Roles
 
-17 specialized role personas available as skill files (loaded as instructions, not slash commands):
+20 specialized role personas available as skill files (loaded as instructions, not slash commands):
 
 | Role | Use when |
 |------|---------|
@@ -219,8 +250,34 @@ Key rules:
 | `service-designer.md` | Customer journey, conversation design |
 | `gpu-engineer.md` | Metal, CUDA, compute shaders |
 | `image-processing-engineer.md` | CIFilter pipelines, LUTs, color science |
+| `color-scientist.md` | Color theory, color spaces, calibration |
+| `seo-expert.md` | SEO optimization, structured data, indexing |
+| `vibe-code.md` | Rapid prototyping, creative coding |
 
 > Note: `qa.md` is a role persona for thinking about testing. `/qa` (in `skills/qa/`) is the executable slash command that actually runs tests against the plan's acceptance criteria.
+
+## Memory System
+
+`memory/patterns.md` contains confirmed cross-project patterns organized by category:
+
+- **Workflow** — planning, review, research patterns
+- **Code Quality** — Tailwind, CSS anti-patterns
+- **Tools & Commands** — CLI, env, git patterns
+- **Debugging** — diagnostic patterns, common traps
+- **React Patterns** — hooks, closures, null safety
+- **Next.js App Router** — routing, remounting, Suspense
+- **Go** — interfaces, pgx, JSON tags, routing
+- **Architecture** — constraints, undo/redo, multi-layer enforcement
+- **iOS / SwiftUI** — gestures, ViewBuilder, Metal views
+- **iOS / Core Image** — CIFilter, tone mapping, color science
+- **AI / LLM Integration** — prompt calibration, structured output
+- **Audio / Voice / AI** — Whisper anti-hallucination
+- **Python / API** — Pydantic, Alembic, SQLAlchemy
+- **Python Async** — asyncio, CancelledError, anyio
+- **MCP Servers** — transport, startup, tool schemas
+- **Claude Code Skills** — skill architecture, QA design
+
+Patterns are promoted by `/reflect` when confirmed across 3+ sessions or 2+ projects.
 
 ## Uninstall
 
