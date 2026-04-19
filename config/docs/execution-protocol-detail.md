@@ -17,7 +17,7 @@ Trivial tasks (typo fix, single-line change) can skip to EXECUTE with inline con
 
 ## Phase 2: PLAN (structured)
 
-- Use plan template (@~/.claude/docs/plan-template.md)
+- Use plan template at `~/.claude/skills/rplan/template.md`
 - Score confidence, count unknowns, declare branch points
 - Write to `[task]-plan.md` in project root
 - Output: plan file ready for human annotation
@@ -29,11 +29,11 @@ Score = (steps_with_no_unknowns / total_steps) * 100
 Weighted: HIGH-risk steps count 2x, MED-risk steps count 1.5x
 ```
 
-| Score | Action |
-|-------|--------|
-| >= 90% | Present plan, proceed after approval |
-| 70-89% | Resolve unknowns first, then re-score |
-| < 70% | More research needed, do NOT present plan yet |
+| Score  | Action                                        |
+| ------ | --------------------------------------------- |
+| >= 90% | Present plan, proceed after approval          |
+| 70-89% | Resolve unknowns first, then re-score         |
+| < 70%  | More research needed, do NOT present plan yet |
 
 ### Unknown Threshold
 
@@ -74,11 +74,11 @@ Default if no response: Option A
 
 ### Risk Tiers
 
-| Risk | Examples | Behavior |
-|------|----------|----------|
-| LOW | Read file, run lint, run test, edit known file | Auto-approve |
-| MED | New file, API change, multi-file edit | Plan gate required |
-| HIGH | DB migration, auth/security change, delete, push, CI/CD | Human gate ALWAYS |
+| Risk | Examples                                                | Behavior           |
+| ---- | ------------------------------------------------------- | ------------------ |
+| LOW  | Read file, run lint, run test, edit known file          | Auto-approve       |
+| MED  | New file, API change, multi-file edit                   | Plan gate required |
+| HIGH | DB migration, auth/security change, delete, push, CI/CD | Human gate ALWAYS  |
 
 ## Phase 5: VERIFY (deterministic + human)
 
@@ -98,12 +98,12 @@ Default if no response: Option A
 
 ## Command Reference
 
-| Command | Purpose | When to Use |
-|---------|---------|-------------|
-| `/rplan` | Structured planning with confidence scoring | Before any non-trivial task (2+ files, new feature, API change, architecture decision) |
-| `/retro` | Session retrospective, capture learnings | End of substantial sessions. Auto-reminded by Stop hook. Run when: corrections happened, non-obvious discovery, or session > 30min coding |
-| `/reflect` | Cross-project pattern promotion | Weekly (Friday), or when lessons-learned.md has 5+ unreviewed entries |
-| `/init-env` | Scaffold environment for new project | First time in a project with no `.claude/agents/` or `.claude/settings.json` |
+| Command     | Purpose                                     | When to Use                                                                                                                               |
+| ----------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `/rplan`    | Structured planning with confidence scoring | Before any non-trivial task (2+ files, new feature, API change, architecture decision)                                                    |
+| `/retro`    | Session retrospective, capture learnings    | End of substantial sessions. Auto-reminded by Stop hook. Run when: corrections happened, non-obvious discovery, or session > 30min coding |
+| `/reflect`  | Cross-project pattern promotion             | Weekly (Friday), or when lessons-learned.md has 5+ unreviewed entries                                                                     |
+| `/init-env` | Scaffold environment for new project        | First time in a project with no `.claude/agents/` or `.claude/settings.json`                                                              |
 
 ## Session Flow
 
@@ -130,16 +130,98 @@ START SESSION
 
 ## Decision Matrix
 
-| Situation | Command | Skip? |
-|-----------|---------|-------|
-| Multi-file feature | `/rplan` | Never skip |
-| Single typo/color fix | none | Always skip |
-| Add model field (model + migration + API + frontend) | `/rplan` | No — 4 files |
-| Question about code | none | No implementation |
-| Refactor cross-cutting concern | `/rplan` | Never skip |
-| Session had corrections | `/retro` | Never skip — corrections = high-value learnings |
-| Quick 5-min Q&A session | skip `/retro` | No implementation happened |
-| Any HIGH risk (DB, auth, delete, push) | `/rplan` + human gate | Never skip |
+| Situation                                            | Command               | Skip?                                           |
+| ---------------------------------------------------- | --------------------- | ----------------------------------------------- |
+| Multi-file feature                                   | `/rplan`              | Never skip                                      |
+| Single typo/color fix                                | none                  | Always skip                                     |
+| Add model field (model + migration + API + frontend) | `/rplan`              | No — 4 files                                    |
+| Question about code                                  | none                  | No implementation                               |
+| Refactor cross-cutting concern                       | `/rplan`              | Never skip                                      |
+| Session had corrections                              | `/retro`              | Never skip — corrections = high-value learnings |
+| Quick 5-min Q&A session                              | skip `/retro`         | No implementation happened                      |
+| Any HIGH risk (DB, auth, delete, push)               | `/rplan` + human gate | Never skip                                      |
+
+## XP Session Lifecycle
+
+XP practices are embedded into the workflow skills. This section describes how they flow through a session.
+
+### XP-Enhanced Session Flow
+
+```
+START SESSION
+|
++-- Trivial task ---------- Just do it. No /rplan, no TDD needed.
+|   (typo, 1-line fix)
+|
++-- Non-trivial task ------ /rplan (XP-enhanced)
+|   |
+|   |-- Research (read-only, spike subagents for unknowns)
+|   |-- Plan (each step: Test field, Committable flag, YAGNI check)
+|   |-- Annotate (human reviews, 1-6 cycles)
+|   |-- /approved (XP implementation mode):
+|   |   |
+|   |   FOR EACH STEP:
+|   |   |-- SPEC   → Read step + determine TDD mode
+|   |   |-- RED    → Write failing test (Test-First only)
+|   |   |-- GREEN  → Minimum code to pass (YAGNI enforced)
+|   |   |-- REFACTOR → Metrics-triggered cleanup
+|   |   |-- COMMIT → Run full suite + commit step
+|   |   +-- NEXT
+|   |
+|   |-- /qa (acceptance criteria verification — mandatory)
+|   |-- /reviewer (fresh-context code review)
+|   +-- Verify (human final review)
+|
++-- End of session -------- /retro (captures XP metrics: tests first, YAGNI catches, refactors)
+|
++-- Weekly ---------------- /reflect
+```
+
+### TDD Mode Decision Matrix
+
+| Step touches... | TDD Mode | Who writes test? |
+|----------------|----------|-----------------|
+| Domain rules, calculations, business logic | Test-First | AI from spec (human reviews) |
+| CRUD, handlers, wiring, infrastructure | Test-Along | AI interleaves test + code |
+| Config, migration, rename, trivial | Test-After | Run existing suite |
+| Auth, payment, multi-tenant security | Human-Test-First | Human writes/approves test |
+
+### YAGNI Decision Framework
+
+Ask these in order for every new function/struct/file:
+1. Is this in the current plan step? No → CUT
+2. Will code break without it right now? No → CUT
+3. Same effort to add later vs now? Yes → DEFER
+4. Will deferring create a breaking change? Yes → KEEP
+
+### Pair Programming Protocol
+
+| Situation | AI behavior |
+|-----------|------------|
+| Implementation violates YAGNI | Push back: "This adds X which isn't in the plan step" |
+| No tests for changed code | Push back: "This needs a test before implementation" |
+| HIGH risk tier change | Push back: "This is HIGH risk — let's review" |
+| Simpler approach exists | Suggest alternative before implementing |
+| Human made deliberate decision | Just implement — repeated pushback = friction |
+
+### Refactoring Triggers (metrics-based, not arbitrary)
+
+| Metric | Threshold | Action |
+|--------|-----------|--------|
+| Go file LOC | > 300 | Split into focused files |
+| Go function LOC | > 40 | Extract helper functions |
+| TSX file LOC | > 500 | Split component |
+| Duplication | 3+ same pattern | Extract shared helper |
+| Cyclomatic complexity | > 10 | Simplify conditionals |
+
+Rule: Never refactor untested code. Write characterization tests first.
+
+### Sustainable Pace
+
+- Context window = cognitive energy
+- Session sweet spot: 60-90 minutes focused, then `/clear` or break
+- After 2 failed attempts at same problem → `/clear` and reframe
+- Plan files survive context clearing — they are your "memory" between clears
 
 ## Quick Rules
 
@@ -177,6 +259,7 @@ Next actions:
 ### Examples
 
 After a bug fix:
+
 ```
 --- DONE ---
 Completed: Fixed null check in api/users.py:45
@@ -187,6 +270,7 @@ Next actions:
 ```
 
 After implementing a plan step:
+
 ```
 --- DONE ---
 Completed: Step 3/5 — Added migration for user groups table
@@ -197,6 +281,7 @@ Next actions:
 ```
 
 After a research/discussion session:
+
 ```
 --- DONE ---
 Completed: Researched auth architecture options
@@ -207,6 +292,7 @@ Next actions:
 ```
 
 After final task in a session:
+
 ```
 --- DONE ---
 Completed: All 5 plan steps implemented and tested

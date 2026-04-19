@@ -38,22 +38,25 @@ Boundary? [what to skip / not include in this scope]
 ```
 
 **Rules:**
+
 - If the user already provided enough context (all 4 are inferable), skip — do NOT ask
 - Accept terse answers (1-2 words per question is fine)
 - If user says "kamu yang tentukan" or similar, make reasonable defaults and state them explicitly so user can correct
 - Once answered, summarize scope in one sentence before proceeding to research
 
 **Examples of when to skip:**
+
 - User: "add batch tracking to inventory. warehouse staff only, saat terima barang, FEFO otomatis, skip manufacturing" — all 4 answered, proceed
 - User: "fix the login bug on /masuk page" — trivial/bug fix, no scope questions needed
 
 **Examples of when to ask:**
+
 - User: "add reporting feature" — who sees it? what data? which reports?
 - User: "add payment integration" — which roles? which payment provider? what flows?
 
 ---
 
-Create an execution plan following the template at ~/.claude/docs/plan-template.md.
+Create an execution plan following the template at `~/.claude/skills/rplan/template.md` (sibling file in this skill directory).
 
 ## Process
 
@@ -68,9 +71,16 @@ Create an execution plan following the template at ~/.claude/docs/plan-template.
   - What DB state changes
 - Document findings in `[task]-context.md` in project root
 
+**Spike Protocol (XP):** If during research you encounter an unknown that cannot be resolved by reading code (e.g., third-party API behavior, performance characteristics, library compatibility), run a timeboxed spike:
+1. Spawn a subagent with a 15-minute timebox question
+2. Spike output must include: question answered, approach tried, key findings, recommendation, remaining unknowns
+3. Spike results feed into the plan as resolved unknowns (with evidence, not assumptions)
+4. If spike fails to resolve → mark as UNKNOWN in plan with resolution strategy
+
 ### 2. Plan Construction
 
 Fill in the plan template with:
+
 - **Concrete steps** — each step names exact file paths and function names, not vague descriptions
 - **Risk score per step** (LOW/MED/HIGH)
 - **Assumptions** — explicit, testable
@@ -86,34 +96,40 @@ Fill in the plan template with:
 Before scoring confidence, verify EVERY item below. A single `[ ]` (unchecked) item blocks the plan.
 
 **User Coverage**
+
 - [ ] Every user role that touches this feature is listed (customer / admin / merchant / warehouse)
 - [ ] Each role has full path traced: UI → endpoint → service → DB
 - [ ] Permission/auth check present for each role
 - [ ] Edge cases per role documented (e.g., unauthenticated, wrong role, empty state)
 
 **Database & Migrations**
+
 - [ ] Every model field change has a corresponding migration step in the plan
 - [ ] Migration file name and `migrate` command written out explicitly
 - [ ] `migrate up` step listed in success criteria
 - [ ] No breaking schema changes without a rollback strategy
 
 **API Layer**
+
 - [ ] Request/response structs named and located (Go structs or TS types)
 - [ ] HTTP method, path, and router file written out
 - [ ] Middleware/auth dependencies listed
 
 **Service / Business Logic**
+
 - [ ] Every service function modified or created is named with its file path
 - [ ] Side effects listed (email, webhook, background task, cache invalidation)
 - [ ] Error cases handled (404, 422, 403, 500 paths documented)
 
 **Frontend**
+
 - [ ] Every page/component that changes is named with file path
 - [ ] API service call written out (function name in `api.ts` or service file)
 - [ ] Loading, error, and empty states handled
 - [ ] Mobile/responsive behavior noted if UI changes
 
 **Plan Wiring**
+
 - [ ] Each major flow has a written call chain: `ComponentX → apiService.methodY → POST /v1/endpoint → service.function → Model.field`
 - [ ] No step that says "update frontend" without naming the exact file and function
 - [ ] No step that says "add API endpoint" without naming the method, path, and schema
@@ -130,11 +146,11 @@ Deductions (applied after base score):
   -2 per missing user role coverage
 ```
 
-| Score | Action |
-|-------|--------|
-| >= 96% | Present plan, wait for approval |
-| 90–95% | Resolve remaining checklist gaps, re-score |
-| 70–89% | More research needed — do NOT present yet |
+| Score  | Action                                           |
+| ------ | ------------------------------------------------ |
+| >= 96% | Present plan, wait for approval                  |
+| 90–95% | Resolve remaining checklist gaps, re-score       |
+| 70–89% | More research needed — do NOT present yet        |
 | < 70%  | Stop, write context file, ask user for direction |
 
 **Max unknowns before presenting:** 2 (down from 3)
@@ -159,28 +175,35 @@ Walk through the plan and check each item below. For each violation found, fix i
 
 #### 6a. Deterministic Checklist (always run)
 
-| # | Check | What to look for |
-|---|-------|-----------------|
-| 1 | Vague steps | Any step saying "update", "add", "modify" without exact file path + function name → rewrite |
-| 2 | Missing file paths | Any reference to a file without full path from project root → add path |
-| 3 | Schema completeness | Any API endpoint without request/response struct named → add it |
-| 4 | Auth guards | Any endpoint missing permission/middleware specification → add it |
-| 5 | Error paths | Any service function without error cases listed → add 404/403/422 |
-| 6 | Empty states | Any new UI page without empty state behavior → add it |
-| 7 | Wiring gaps | Any flow that stops at "API endpoint" without tracing to service + DB → complete the chain |
+| #   | Check               | What to look for                                                                            |
+| --- | ------------------- | ------------------------------------------------------------------------------------------- |
+| 1   | Vague steps         | Any step saying "update", "add", "modify" without exact file path + function name → rewrite |
+| 2   | Missing file paths  | Any reference to a file without full path from project root → add path                      |
+| 3   | Schema completeness | Any API endpoint without request/response struct named → add it                             |
+| 4   | Auth guards         | Any endpoint missing permission/middleware specification → add it                           |
+| 5   | Error paths         | Any service function without error cases listed → add 404/403/422                           |
+| 6   | Empty states        | Any new UI page without empty state behavior → add it                                       |
+| 7   | Wiring gaps         | Any flow that stops at "API endpoint" without tracing to service + DB → complete the chain  |
+| 8   | YAGNI violations    | For each new function/struct/file: (Q1) Is it in the current plan step? (Q2) Will code break without it now? (Q3) Same effort to add later? (Q4) Deferring creates breaking change? → If Q1=No or (Q2=No and Q4=No) → CUT IT. Common violations: premature interfaces with one impl, unused config options, pagination before data exists, factory patterns for single-use |
+| 9   | Missing TDD spec    | Any step with business logic that has no Test column entry → add test function name. Steps must specify: test name, what it asserts, TDD mode (Test-First / Test-Along / Test-After) |
+| 10  | Uncommittable steps | Any step marked Committable=No without naming which step completes it → fix. Adjacent uncommittable steps must be grouped as atomic commit |
 
 #### 6b. Project-Aware Checks (detect from project context)
 
 If the project uses multi-tenancy (RLS, tenant isolation):
+
 - Every DB-touching step must mention tenant context/guard
 
 If the project has atomic operations (POS, checkout, payment):
+
 - Every multi-table write must mention transaction boundary
 
 If the project has a design system:
+
 - Every new UI component must reference design tokens/system
 
 If the project has localization:
+
 - Every UI copy must be in the correct language
 
 #### 6c. Lightweight Domain Spot-Check (HIGH-risk plans only)

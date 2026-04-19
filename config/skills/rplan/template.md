@@ -20,13 +20,15 @@ When [situation], I want to [action], so I can [outcome].
 
 ## Steps
 
-| # | Action | Files (exact paths) | Risk | Assumption |
-|---|--------|---------------------|------|------------|
-| 1 | | | LOW/MED/HIGH | |
-| 2 | | | | |
+| # | Action | Files (exact paths) | Risk | Test | Committable? |
+|---|--------|---------------------|------|------|-------------|
+| 1 | | | LOW/MED/HIGH | [test name or "existing suite"] | Yes/No (if No, which step completes it?) |
+| 2 | | | | | |
 
 > Rule: Each "Action" cell must name the exact function/method being added or changed.
 > No vague steps like "update frontend" or "add endpoint".
+> **XP Rule:** Every step with business logic MUST have a Test field naming the test function to write FIRST (Red→Green→Refactor).
+> **XP Rule:** Every step must be Committable=Yes, or state which subsequent step makes it committable (group as atomic commit).
 
 ---
 
