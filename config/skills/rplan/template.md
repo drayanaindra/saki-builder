@@ -11,6 +11,7 @@ Use this format for all non-trivial execution plans.
 **Confidence:** [X]%
 **Risk Score:** LOW / MED / HIGH
 **Unknown Count:** [N] / 2 max
+**Behavior Spec:** `[task]-flow.md` (user-facing) | N/A (backend-only)
 
 ## Problem Statement
 

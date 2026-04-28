@@ -31,6 +31,28 @@ Criteria found: [N]
 
 Extract the **Success Criteria** section.
 
+### Step 0.5: Prefer flow doc for UI scenarios
+
+Also look for a matching `*-flow.md` (Gherkin behavior spec):
+```bash
+FLOW_FILE="${PLAN_FILE%-plan.md}-flow.md"
+[ -f "$FLOW_FILE" ] && echo "FLOW_FOUND=$FLOW_FILE" || echo "FLOW_NONE"
+```
+
+If a flow doc exists:
+- **It is the source of truth for UI behavior.** Each `Scenario:` becomes one generated Playwright spec in Step 1.5.
+- Non-UI criteria (API, GO_TEST, DB, BUILD, FILE) still come from the plan's Success Criteria.
+- Map each `Scenario:` to a `criterion-id` of the form `FLOW-{role}-{n}` (e.g. `FLOW-kasir-1` for the first scenario under `Feature: Kasir`).
+- Use `Given/Background` for setup, `When` for actions, `Then/And` as assertions.
+
+If no flow doc exists, fall back to deriving UI specs from the plan's Success Criteria as before.
+
+Log:
+```
+Flow doc: [filename or "none — using plan criteria"]
+Scenarios found: [N]
+```
+
 ---
 
 ## Step 1: Pre-flight checks

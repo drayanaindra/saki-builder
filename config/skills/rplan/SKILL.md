@@ -91,6 +91,66 @@ Fill in the plan template with:
 - **Plan Wiring section** — full call chain from UI → API → Service → DB for each role
 - **Migration Checklist** — every schema change listed with its migration file
 
+### 2.5. User Flow Spec (user-facing tasks only)
+
+**Skip** if the task is backend-only (no UI change, no endpoint a user/role directly hits through the app). Otherwise, write `[task]-flow.md` alongside the plan.
+
+Purpose: behavior checkpoint the user reads before approval to verify the plan will behave as expected. Also consumable by `/qa` to lift Playwright scenarios.
+
+Format: **Gherkin**, one `Feature:` block per role (Customer / Admin / Kasir / Warehouse / etc. — only roles that touch this feature). Do not merge roles.
+
+Required scenarios per role:
+- **Happy path** — exactly one, mandatory
+- **Validation error** — one distinct UX case
+- **Permission denied** — if multiple roles exist
+- **Network / server error** — one case covering the common toast/retry UX
+- **Stale data** — ONLY if two roles or two sessions can mutate the same row (orders, stock, table status, bill, reservations). Skip for single-owner resources.
+
+Skip unhappy paths that would produce duplicate UX (e.g. two 4xx paths showing the same toast).
+
+Template per role:
+
+```gherkin
+Feature: [Role] — [capability]
+
+  Background:
+    Given [role] is authenticated
+    And [preconditions: data, state, feature flag]
+
+  Scenario: [role] successfully [action]   # HAPPY PATH
+    Given [starting state]
+    When [role] does [action] on [page route, e.g. /pos/kasir]
+    Then [observable UI response: exact text / URL / testid]
+    And [DB side effect, e.g. "stock for SKU X decreases by exactly 2"]
+    And [UI feedback: toast / redirect / state]
+
+  Scenario: Validation error — [specific invalid input]
+    When [role] submits [invalid data]
+    Then UI shows inline validation "[exact message]" on [field testid]
+    And no DB write occurs
+
+  Scenario: Permission denied
+    When [role without permission] attempts [action]
+    Then system returns 403
+    And UI shows "[exact message]" / redirects to [route]
+
+  Scenario: Network error
+    When backend returns 500 / times out
+    Then UI shows [toast text or retry affordance]
+    And local form state is preserved
+
+  Scenario: Stale data — [other actor changed state]   # conditional
+    Given [resource] was modified by [other role] after [role] loaded the page
+    When [role] submits [action]
+    Then system detects conflict and shows [resolution UI]
+```
+
+**Rules:**
+- Every `Then` must be observable (UI text, URL, toast, disabled state, testid, DB row) — no "system handles it correctly"
+- Reference exact routes and `data-testid` hooks where known
+- If the flow touches money, stock, or tenant data, add an explicit invariant `And` line
+- Cross-reference from `[task]-plan.md` via the `Behavior Spec:` header line
+
 ### 3. Implementation Completeness Checklist
 
 Before scoring confidence, verify EVERY item below. A single `[ ]` (unchecked) item blocks the plan.
@@ -127,6 +187,7 @@ Before scoring confidence, verify EVERY item below. A single `[ ]` (unchecked) i
 - [ ] API service call written out (function name in `api.ts` or service file)
 - [ ] Loading, error, and empty states handled
 - [ ] Mobile/responsive behavior noted if UI changes
+- [ ] `[task]-flow.md` exists with Gherkin scenarios per user-facing role (or task is backend-only and this is explicitly noted in the plan header)
 
 **Plan Wiring**
 
@@ -361,6 +422,7 @@ Recommendation: [one of the above]
 
 - NEVER skip research phase
 - NEVER skip Step 0.5 scope check (but DO skip asking if scope is already clear)
+- NEVER skip Step 2.5 for user-facing tasks — the flow doc is the behavior checkpoint
 - NEVER skip Step 6 self-review
 - NEVER present a plan with > 2 unknowns
 - NEVER proceed to implementation without explicit approval
