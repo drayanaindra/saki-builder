@@ -18,6 +18,25 @@ When [situation], I want to [action], so I can [outcome].
 
 ---
 
+## Concrete Example Output
+
+A real, specific example of what "done" looks like — not a description.
+Required before this plan can reach 96% confidence.
+
+**Format depends on work type:**
+- Feature/Enhancement → user-visible behavior: input → output (paste a JSON response, screenshot caption, or exact UI text)
+- Bug fix → reproduction steps + the exact wrong output today + the exact right output after fix
+- Debugging → the failing case to investigate + the signal that proves the hypothesis is right or wrong
+
+**Rejected values:** "TBD", "to be defined", "see ticket", "as discussed", anything vague.
+If you cannot fill this in, run `/shaping-requirements` first — the problem isn't ready to plan.
+
+```
+[paste concrete example here]
+```
+
+---
+
 ## Steps
 
 | # | Action | Files (exact paths) | Risk | Test | Committable? |
@@ -141,6 +160,29 @@ All items must be checked before confidence can reach 96%.
 
 ---
 
+## Confidence Ledger
+
+The score in the header is `100 − sum(Δ)` from the rows below. A plan without a ledger is **unscored** (treated as <70%).
+
+**Format:**
+
+| Δ | Step | Reason | Evidence |
+|---|------|--------|----------|
+| -5 | 7 | Anchor `OrderService.split_batch` does not grep (HIGH-risk, ×2 of -2.5 base) | `grep -r split_batch backend/app/services` → no match |
+| -3 | — | Checklist item "Mobile/responsive noted" unchecked | this plan, Implementation Checklist § Frontend |
+| -8 | 9 | Migration file `xxxx_add_batch_id.py` named but not created (HIGH-risk, ×2 of -4 base) | no creating step in plan |
+
+**Rules:**
+- Every entry MUST cite evidence (`path:line`, grep result, or step number). Uncited deductions are invalid.
+- `Step` column: write `—` for ledger-wide issues (missing role, vague global criteria).
+- Apply the risk multiplier in your head; the `Δ` column is the final value subtracted (LOW=×1, MED=×1.5, HIGH=×2).
+- Score of 100 requires a single explicit row: `| 0 | — | All anchors verified, all targets have parents and creating steps, no unchecked items, no unknowns above LOW | self-audit |`.
+- Replace the example rows above with your own. Empty or missing ledger → return to research.
+
+**Score: 100 − [sum of Δ] = [X]%** *(matches the header)*
+
+---
+
 ## Success Criteria
 
 - [ ] [testable outcome — include exact command or behavior to verify]
@@ -157,5 +199,5 @@ All items must be checked before confidence can reach 96%.
 
 ---
 Status: [ ] Draft  [ ] Annotated  [ ] Approved  [ ] In Progress  [ ] Complete
-Confidence Gate: [ ] All checklist items checked  [ ] Confidence >= 96%  [ ] Unknowns <= 2
+Confidence Gate: [ ] Confidence Ledger present and every entry cited  [ ] All checklist items checked  [ ] Confidence >= 96%  [ ] Unknowns <= 2
 ```
