@@ -65,14 +65,15 @@ If unclear: ask 1–3 sharp questions before producing anything.
 
 1. TL;DR (3 sentences max)
 2. Problem & user
-3. Goals & **non-goals** (non-goals are critical)
-4. Success metrics (target numbers + measurement method)
-5. User flows (happy path + 2–3 edge cases)
-6. Functional requirements (numbered, testable, P0/P1/P2)
-7. Non-functional reqs (perf, security, multi-tenancy, i18n)
-8. Dependencies
-9. Open questions (owner + decision deadline)
-10. Rollout (alpha → beta → GA, kill criteria)
+3. **Jobs to be Done** — one primary JTBD, 1–3 related. Format: `When [situation], I want to [motivation], so I can [expected outcome].` Do NOT use user-story format ("As a X, I want Y, so Z") — JTBD focuses on the situation and outcome, which is what we design for.
+4. Goals & **non-goals** (non-goals are critical)
+5. Success metrics (target numbers + measurement method) — tie each metric back to a JTBD outcome
+6. User flows (happy path + 2–3 edge cases) — each flow should fulfill a stated JTBD
+7. Functional requirements (numbered, testable, P0/P1/P2)
+8. Non-functional reqs (perf, security, multi-tenancy, i18n)
+9. Dependencies
+10. Open questions (owner + decision deadline)
+11. Rollout (alpha → beta → GA, kill criteria)
 
 ## Trade-off Matrix
 
