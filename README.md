@@ -11,11 +11,9 @@ config/                  # Shared config (safe for all users)
 ├── CLAUDE.md            # Global instructions & execution protocol
 ├── settings.json        # Global hooks (notifications, context restore)
 ├── docs/
-│   ├── execution-protocol.md   # RESEARCH > PLAN > EXECUTE > VERIFY workflow
-│   ├── plan-template.md        # Plan template with 4-gate review sections
+│   ├── execution-protocol-detail.md # Full RESEARCH > PLAN > EXECUTE > VERIFY reference (on-demand, not auto-loaded)
 │   ├── ddd-patterns.md         # Domain-Driven Design code patterns
-│   ├── modular-architecture.md # Growth-driven architecture ladder (flat → modular → DDD → microservices)
-│   └── playwright-qa-patterns.md # Playwright test patterns for /qa-generated specs
+│   └── modular-architecture.md # Growth-driven architecture ladder (flat → modular → DDD → microservices)
 ├── skills/
 │   ├── rplan/           # /rplan        — structured planning (confidence + completeness)
 │   ├── rplan-review/    # /rplan-review — 4-phase review: structural + criteria hardening + parallel experts + readiness
@@ -59,6 +57,7 @@ curl -fsSL https://gitlab.com/drayanaindra/claude-config/-/raw/main/get.sh | \
 ```
 
 Or clone manually:
+
 ```bash
 git clone git@gitlab.com:drayanaindra/claude-config.git ~/claude-config
 chmod +x ~/claude-config/*.sh && ~/claude-config/install.sh
@@ -68,6 +67,7 @@ This creates symlinks from `~/.claude/` into `~/claude-config/`. Your existing
 `~/.claude/` files are backed up automatically before being replaced.
 
 After install, restart Claude Code:
+
 ```bash
 claude
 ```
@@ -87,6 +87,7 @@ cd ~/claude-config && ./sync.sh   # commits memory/ changes and pushes
 ```
 
 On other machines, pull the latest learnings:
+
 ```bash
 cd ~/claude-config && git pull
 ```
@@ -96,20 +97,20 @@ immediately makes new patterns available to Claude Code.
 
 ## Workflow
 
-| Command | What it does |
-|---------|-------------|
-| `/rplan` | Create structured execution plan. Confidence must reach >=96% with all 4 gates passing before presenting. |
-| `/rplan-review` | 4-phase review: (1) structural completeness scan, (1.5) acceptance criteria hardening, (2) parallel domain expert agents, (3) synthesis + confidence scoring, (4) per-step readiness check. |
-| `/rplan-trust` | Fully autonomous pipeline: plan -> review -> implement -> QA. No user confirmation for CLI commands. |
-| `/approved` | Approve the active plan and switch model to Sonnet for implementation. |
-| `/qa` | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Auto-generates Playwright specs for UI criteria. |
-| `/prompt` | Expand a one-line idea into a structured 6-section prompt (Role, Task, Context, Reasoning, Stop, Output). |
-| `/reviewer` | Fresh-context code review — reads git diff, uses project-specific checklist if available, reports issues with severity. Run before committing. |
-| `/retro` | Session retrospective — captures corrections, discoveries, patterns. |
-| `/reflect` | Promotes confirmed patterns to `memory/patterns.md` (run weekly). |
-| `/sync` | Commit and push `memory/` changes to remote (run after `/reflect`). |
-| `/rupdate` | Pull latest skills and patterns from remote (run on other machines after `/sync`). |
-| `/init-env` | Scaffold `.claude/` config for a new project including project-specific skill overrides. |
+| Command         | What it does                                                                                                                                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/rplan`        | Create structured execution plan. Confidence must reach >=96% with all 4 gates passing before presenting.                                                                                                       |
+| `/rplan-review` | 4-phase review: (1) structural completeness scan, (1.5) acceptance criteria hardening, (2) parallel domain expert agents, (3) synthesis + confidence scoring, (4) per-step readiness check.                     |
+| `/rplan-trust`  | Fully autonomous pipeline: plan -> review -> implement -> QA. No user confirmation for CLI commands.                                                                                                            |
+| `/approved`     | Approve the active plan and switch model to Sonnet for implementation.                                                                                                                                          |
+| `/qa`           | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Uses `@playwright/mcp` for UI criteria when available; falls back to auto-generated Playwright specs otherwise. |
+| `/prompt`       | Expand a one-line idea into a structured 6-section prompt (Role, Task, Context, Reasoning, Stop, Output).                                                                                                       |
+| `/reviewer`     | Fresh-context code review — reads git diff, uses project-specific checklist if available, reports issues with severity. Run before committing.                                                                  |
+| `/retro`        | Session retrospective — captures corrections, discoveries, patterns.                                                                                                                                            |
+| `/reflect`      | Promotes confirmed patterns to `memory/patterns.md` (run weekly).                                                                                                                                               |
+| `/sync`         | Commit and push `memory/` changes to remote (run after `/reflect`).                                                                                                                                             |
+| `/rupdate`      | Pull latest skills and patterns from remote (run on other machines after `/sync`).                                                                                                                              |
+| `/init-env`     | Scaffold `.claude/` config for a new project including project-specific skill overrides.                                                                                                                        |
 
 ### Standard session flow
 
@@ -128,24 +129,24 @@ immediately makes new patterns available to Claude Code.
 
 Every plan must pass all 4 gates before confidence can reach 96%:
 
-| Gate | What it checks |
-|------|---------------|
-| **Confidence score** | >=96%, weighted by risk (HIGH steps 2x, MED 1.5x). Deductions for unchecked checklist items. |
-| **User Role Coverage** | Every affected role listed with full call chain + auth guard. |
-| **Plan Wiring** | Each major flow written end-to-end: `Component -> api.ts fn -> HTTP METHOD /path -> service.fn() -> Model.field` |
-| **Migration Checklist** | Every schema change has named migration file + explicit command. |
+| Gate                    | What it checks                                                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Confidence score**    | >=96%, weighted by risk (HIGH steps 2x, MED 1.5x). Deductions for unchecked checklist items.                     |
+| **User Role Coverage**  | Every affected role listed with full call chain + auth guard.                                                    |
+| **Plan Wiring**         | Each major flow written end-to-end: `Component -> api.ts fn -> HTTP METHOD /path -> service.fn() -> Model.field` |
+| **Migration Checklist** | Every schema change has named migration file + explicit command.                                                 |
 
 `/rplan-review` enforces these as structural blockers — missing sections stop the review entirely.
 
 ## `/rplan-review` Phases
 
-| Phase | Name | What happens |
-|-------|------|-------------|
-| 1 | Structural scan | Pass/fail check for all 7 required sections. Hard gate — missing section stops review. |
-| 1.5 | Acceptance criteria hardening | Every vague criterion is rewritten in-place: Given/When/Then + exact test command + expected outcome. Plan file is edited before experts run. |
-| 2 | Parallel domain expert review | Specialized agents (Backend, Frontend, DB/Security, Product) run in parallel. Each agent has domain-specific blockers. Results collected and merged. |
-| 3 | Synthesis | All expert findings deduplicated, confidence recalculated, blockers vs warnings classified. |
-| 4 | Readiness check | Every implementation step verified: can a developer execute it without asking any questions? |
+| Phase | Name                          | What happens                                                                                                                                         |
+| ----- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Structural scan               | Pass/fail check for all 7 required sections. Hard gate — missing section stops review.                                                               |
+| 1.5   | Acceptance criteria hardening | Every vague criterion is rewritten in-place: Given/When/Then + exact test command + expected outcome. Plan file is edited before experts run.        |
+| 2     | Parallel domain expert review | Specialized agents (Backend, Frontend, DB/Security, Product) run in parallel. Each agent has domain-specific blockers. Results collected and merged. |
+| 3     | Synthesis                     | All expert findings deduplicated, confidence recalculated, blockers vs warnings classified.                                                          |
+| 4     | Readiness check               | Every implementation step verified: can a developer execute it without asking any questions?                                                         |
 
 ## `/qa` — Criteria-Driven Testing
 
@@ -153,16 +154,17 @@ Every plan must pass all 4 gates before confidence can reach 96%:
 
 **Criterion types and how they're tested:**
 
-| Type | Signal | Test method |
-|------|--------|-------------|
-| `API` | Mentions endpoint, HTTP, status code | `curl -s -o /dev/null -w "%{http_code}"` |
-| `GO_TEST` | Mentions Go function, service, repo | `go test ./internal/[pkg]/... -run [Name] -v` |
-| `FILE` | Mentions file existence, migration | `ls -la [path]` |
-| `DB` | Mentions table, column, row | `psql $DATABASE_URL -c "[query]"` |
-| `BUILD` | Always run | `go build ./...`, `tsc --noEmit` |
-| `UI` | Mentions page, button, browser | Playwright (auto-generated specs) or MANUAL with browser steps |
+| Type      | Signal                               | Test method                                                    |
+| --------- | ------------------------------------ | -------------------------------------------------------------- |
+| `API`     | Mentions endpoint, HTTP, status code | `curl -s -o /dev/null -w "%{http_code}"`                       |
+| `GO_TEST` | Mentions Go function, service, repo  | `go test ./internal/[pkg]/... -run [Name] -v`                  |
+| `FILE`    | Mentions file existence, migration   | `ls -la [path]`                                                |
+| `DB`      | Mentions table, column, row          | `psql $DATABASE_URL -c "[query]"`                              |
+| `BUILD`   | Always run                           | `go build ./...`, `tsc --noEmit`                               |
+| `UI`      | Mentions page, button, browser       | Playwright (auto-generated specs) or MANUAL with browser steps |
 
 **Result states — no criterion is ever silently omitted:**
+
 - `PASS` — actual matches expected
 - `FAIL` — actual differs from expected (shows exact error)
 - `MANUAL` — UI interaction required, browser steps listed
@@ -173,22 +175,37 @@ After running, `/qa` updates plan checkboxes: `[ ]` -> `[x]` for PASS, `[!]` for
 
 ## Docs
 
-Reference documents imported by CLAUDE.md via `@` directives:
+Reference documents. These are **not** auto-loaded — skills pull them in when needed (lazy-loaded to keep the base prompt small).
 
-| Doc | Purpose |
-|-----|---------|
-| `execution-protocol.md` | Full RESEARCH > PLAN > ANNOTATE > EXECUTE > VERIFY > LEARN protocol |
-| `plan-template.md` | Plan template with 4-gate review sections, wiring, migration checklist |
-| `ddd-patterns.md` | Domain-Driven Design layer rules, directory structure, cross-context communication |
-| `modular-architecture.md` | 4-stage architecture ladder with transition triggers and migration recipes |
-| `playwright-qa-patterns.md` | Auth fixture, addInitScript safety, teardown patterns for /qa Playwright specs |
+| Doc                                 | Purpose                                                                              | Loaded by                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------ |
+| `docs/execution-protocol-detail.md` | Full RESEARCH > PLAN > ANNOTATE > EXECUTE > VERIFY > LEARN protocol (phases, matrix) | `/rplan`, `/retro`, `/reflect` |
+| `docs/ddd-patterns.md`              | Domain-Driven Design layer rules, directory structure, cross-context communication   | `/init-env` when stack matches |
+| `docs/modular-architecture.md`      | 4-stage architecture ladder with transition triggers and migration recipes           | `/init-env` when stack matches |
+| `skills/rplan/template.md`          | Plan template with 4-gate review sections, wiring, migration checklist               | `/rplan`                       |
+| `skills/qa/playwright-patterns.md`  | Auth fixture, addInitScript safety, teardown patterns for /qa Playwright specs       | `/qa`                          |
 
 ## Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `dangerous-command-guard.sh` | Blocks destructive commands (`rm -rf`, `DROP TABLE`, `git push --force`, `git checkout .`) before execution. Regex-based pattern matching on `CLAUDE_TOOL_INPUT_COMMAND`. |
-| `rtk-rewrite.sh` | Rewrites CLI commands through RTK (Rust Token Killer) for 60-90% token savings on dev operations. |
+| Hook                         | Purpose                                                                                                                                                                                                                                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dangerous-command-guard.sh` | Blocks destructive commands (`rm -rf`, `DROP TABLE`, `git push --force`, `git checkout .`) before execution. Regex-based pattern matching on `CLAUDE_TOOL_INPUT_COMMAND`.                                                                                                               |
+| `rtk-rewrite.sh`             | Rewrites CLI commands through RTK (Rust Token Killer) for 60-90% token savings on dev operations.                                                                                                                                                                                       |
+| `repo-context.sh`            | SessionStart hook (matchers `startup\|resume\|clear`) — emits a tight `<repo-context>` block with top-level tree, branch ahead/behind, stash count, and active `*-plan.md` files. Deduplicated against the harness env-block (no cwd/branch/status/commits repeat). ~50 tokens, <100ms. |
+
+## MCP Servers
+
+| Server            | Scope | Purpose                                                                                                                                           |
+| ----------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@playwright/mcp` | User  | Browser automation for `/qa` UI criteria and ad-hoc debug sessions. Installed by `install.sh` via `claude mcp add --scope user`. See `/qa` skill. |
+
+`install.sh` registers MCP servers at user scope via `claude mcp add`. The config lives in `~/.claude.json` (machine-local, not in this repo — it holds OAuth state and other Claude-managed data). On a new machine, `./install.sh` re-registers anything missing. To remove: `claude mcp remove playwright`.
+
+Usage policy:
+
+- `/qa` skill auto-detects `mcp__playwright__*` tools and uses them for UI criteria.
+- Outside `/qa` or explicit debug requests, Claude should not invoke `mcp__playwright__*` tools (per skill rule).
+- If the MCP server is unavailable on a given machine, `/qa` falls back to its existing Playwright-spec generation path under `e2e/qa-generated/`.
 
 ## Project-Specific Skill Overrides
 
@@ -218,9 +235,10 @@ Every non-trivial task follows:
 RESEARCH -> PLAN -> ANNOTATE -> EXECUTE -> VERIFY -> LEARN
 ```
 
-Full protocol: `config/docs/execution-protocol.md`
+Full protocol: `config/docs/execution-protocol-detail.md` (loaded on demand by the relevant skill)
 
 Key rules:
+
 - Never implement without a plan for 2+ file changes
 - Confidence >= 96% with all 4 gates passing before executing
 - Max 2 unknowns before presenting a plan
@@ -231,28 +249,28 @@ Key rules:
 
 20 specialized role personas available as skill files (loaded as instructions, not slash commands):
 
-| Role | Use when |
-|------|---------|
-| `product.md` | Scoping features, defining user stories |
-| `architect.md` | System design, API contracts, data models |
-| `engineer.md` | Implementation, bug fixes |
-| `reviewer.md` | Code review after implementation |
-| `qa.md` | Manual QA thinking, test case design (not the same as `/qa` command) |
-| `devops.md` | CI/CD, infrastructure, deployment |
-| `security-expert.md` | Security review, hardening |
-| `pentester.md` | Attack simulation, vulnerability testing |
-| `nlp-engineer.md` | Prompt engineering, AI agent behavior |
-| `ai-architect.md` | AI/ML system design |
-| `mobile-engineer.md` | iOS/Android, React Native |
-| `design.md` | UI/UX, design systems |
-| `go-engineer.md` | Go-specific patterns |
-| `ddd-engineer.md` | Domain-driven design |
-| `service-designer.md` | Customer journey, conversation design |
-| `gpu-engineer.md` | Metal, CUDA, compute shaders |
-| `image-processing-engineer.md` | CIFilter pipelines, LUTs, color science |
-| `color-scientist.md` | Color theory, color spaces, calibration |
-| `seo-expert.md` | SEO optimization, structured data, indexing |
-| `vibe-code.md` | Rapid prototyping, creative coding |
+| Role                           | Use when                                                             |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `product.md`                   | Scoping features, defining user stories                              |
+| `architect.md`                 | System design, API contracts, data models                            |
+| `engineer.md`                  | Implementation, bug fixes                                            |
+| `reviewer.md`                  | Code review after implementation                                     |
+| `qa.md`                        | Manual QA thinking, test case design (not the same as `/qa` command) |
+| `devops.md`                    | CI/CD, infrastructure, deployment                                    |
+| `security-expert.md`           | Security review, hardening                                           |
+| `pentester.md`                 | Attack simulation, vulnerability testing                             |
+| `nlp-engineer.md`              | Prompt engineering, AI agent behavior                                |
+| `ai-architect.md`              | AI/ML system design                                                  |
+| `mobile-engineer.md`           | iOS/Android, React Native                                            |
+| `design.md`                    | UI/UX, design systems                                                |
+| `go-engineer.md`               | Go-specific patterns                                                 |
+| `ddd-engineer.md`              | Domain-driven design                                                 |
+| `service-designer.md`          | Customer journey, conversation design                                |
+| `gpu-engineer.md`              | Metal, CUDA, compute shaders                                         |
+| `image-processing-engineer.md` | CIFilter pipelines, LUTs, color science                              |
+| `color-scientist.md`           | Color theory, color spaces, calibration                              |
+| `seo-expert.md`                | SEO optimization, structured data, indexing                          |
+| `vibe-code.md`                 | Rapid prototyping, creative coding                                   |
 
 > Note: `qa.md` is a role persona for thinking about testing. `/qa` (in `skills/qa/`) is the executable slash command that actually runs tests against the plan's acceptance criteria.
 
