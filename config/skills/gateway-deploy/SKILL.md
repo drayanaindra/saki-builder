@@ -5,6 +5,7 @@ type: gateway
 tier: core
 domains: [deploy, ops, infrastructure, devops]
 trigger: "deploy, release, publish, ship to production, setup hosting, hosting provider"
+user-invocable: false
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: persisting-progress-across-sessions
 description: Resume an interrupted orchestration run across Claude Code sessions using MANIFEST.yaml
 trigger: "resume|continue|restart|session.*reset|context.*compact|pick up where"
 category: core
+user-invocable: false
 ---
 
 # Persisting Progress Across Sessions

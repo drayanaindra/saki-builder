@@ -4,6 +4,7 @@ description: 16-phase feature orchestration workflow. Runs in the main thread as
 type: orchestrate
 tier: core
 trigger: "orchestrate feature, implement feature end-to-end, full development cycle, saki orchestrate"
+user-invocable: false
 ---
 
 ## Role

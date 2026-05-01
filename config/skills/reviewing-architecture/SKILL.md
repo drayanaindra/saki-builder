@@ -3,6 +3,7 @@ name: reviewing-architecture
 description: Eng manager-mode plan review. Lock in the execution plan, data flow, diagrams, edge cases.
 phase: 7 (Architect)
 role: Lead
+user-invocable: false
 ---
 
 # Reviewing Architecture (Eng Review)

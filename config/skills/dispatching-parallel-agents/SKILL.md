@@ -4,6 +4,7 @@ description: Identify independent failures and spawn concurrent agents. Turns se
 type: orchestrate
 tier: core
 trigger: "run in parallel, multiple independent tasks, concurrent agents, parallel execution"
+user-invocable: false
 ---
 
 ## Purpose

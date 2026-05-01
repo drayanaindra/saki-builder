@@ -3,6 +3,7 @@ name: shaping-requirements
 description: Iteratively define problem and solution shapes.
 phase: 3 (Discovery)
 role: Lead
+user-invocable: false
 ---
 
 # Shaping Requirements

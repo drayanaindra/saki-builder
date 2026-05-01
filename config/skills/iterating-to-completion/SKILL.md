@@ -4,6 +4,7 @@ description: Prevents premature exit and infinite loops. Three mechanisms: Compl
 type: orchestrate
 tier: core
 trigger: "keep iterating, don't exit early, loop until done, completion signal, stuck detection"
+user-invocable: false
 ---
 
 ## Purpose

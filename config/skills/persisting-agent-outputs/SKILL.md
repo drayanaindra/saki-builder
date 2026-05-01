@@ -4,6 +4,7 @@ description: Protocol for agents to write structured outputs that survive sessio
 type: orchestrate
 tier: core
 trigger: "save output, persist results, write report, store findings, agent output location"
+user-invocable: false
 ---
 
 ## Purpose

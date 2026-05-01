@@ -5,6 +5,7 @@ type: gateway
 tier: core
 domains: [testing, qa, verification]
 trigger: "test, spec, jest, vitest, pytest, coverage, mock, stub, fixture, e2e, integration test, flaky"
+user-invocable: false
 ---
 
 ## Purpose

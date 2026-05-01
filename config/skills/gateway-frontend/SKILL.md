@@ -5,6 +5,7 @@ type: gateway
 tier: core
 domains: [frontend, ui, components]
 trigger: "React, Vue, Angular, component, JSX, TSX, CSS, Tailwind, frontend, UI, browser, DOM, Next.js"
+user-invocable: false
 ---
 
 ## Purpose

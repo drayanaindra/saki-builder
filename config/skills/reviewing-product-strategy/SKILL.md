@@ -3,6 +3,7 @@ name: reviewing-product-strategy
 description: CEO/founder-mode plan review. Rethink the problem, find the 10-star product, challenge premises.
 phase: 6 (Brainstorm)
 role: Lead
+user-invocable: false
 ---
 
 # Reviewing Product Strategy (CEO Review)

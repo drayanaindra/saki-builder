@@ -3,6 +3,7 @@ name: breadboarding-workflow
 description: Map UI elements and code relationships (affordances).
 phase: 5 (Complexity)
 role: Lead
+user-invocable: false
 ---
 
 # Breadboarding Workflow

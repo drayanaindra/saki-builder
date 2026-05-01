@@ -1,6 +1,7 @@
 ---
 name: rplan-review
 description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Blocks on missing sections. Run after /rplan before /approved.
+user-invocable: false
 ---
 
 # Plan Review — Structural Scan + Parallel Expert Review

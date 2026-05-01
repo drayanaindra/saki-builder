@@ -5,6 +5,7 @@ type: gateway
 tier: core
 domains: [api, rest, graphql]
 trigger: "REST API, GraphQL, endpoint, route, OpenAPI, Swagger, webhook, versioning, pagination"
+user-invocable: false
 ---
 
 ## Purpose

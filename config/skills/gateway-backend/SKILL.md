@@ -5,6 +5,7 @@ type: gateway
 tier: core
 domains: [backend, api, services]
 trigger: "backend logic, server-side code, Node.js, Go, Python, Express, FastAPI, Rust, service layer, business logic"
+user-invocable: false
 ---
 
 ## Purpose

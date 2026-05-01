@@ -5,6 +5,7 @@ type: gateway
 tier: core
 domains: [database, sql, orm]
 trigger: "SQL, PostgreSQL, MySQL, MongoDB, Redis, Prisma, Drizzle, TypeORM, migration, query, schema, transaction"
+user-invocable: false
 ---
 
 ## Purpose

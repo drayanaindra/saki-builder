@@ -1,6 +1,7 @@
 ---
 name: brainstorm-feature-options
 description: Used by the Lead agent during Phase 6 (Brainstorm) to collaboratively explore user intent, requirements, and alternative approaches before locking in the architecture. Helps turn raw ideas into fully formed specs through natural dialogue.
+user-invocable: false
 ---
 
 # Brainstorming Ideas Into Designs (Phase 6: Brainstorm)
