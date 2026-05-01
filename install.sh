@@ -19,7 +19,7 @@ mkdir -p "$CLAUDE_DIR"
 BACKUP="$CLAUDE_DIR/backup-$(date +%Y%m%d-%H%M%S)"
 backed_up=false
 
-for item in CLAUDE.md settings.json docs skills hooks memory; do
+for item in CLAUDE.md settings.json docs skills hooks memory agents; do
 	target="$CLAUDE_DIR/$item"
 	if [ -e "$target" ] && [ ! -L "$target" ]; then
 		if [ "$backed_up" = false ]; then
@@ -51,6 +51,7 @@ link "$REPO_DIR/config/settings.json" "$CLAUDE_DIR/settings.json"
 link "$REPO_DIR/config/docs" "$CLAUDE_DIR/docs"
 link "$REPO_DIR/config/skills" "$CLAUDE_DIR/skills"
 link "$REPO_DIR/config/hooks" "$CLAUDE_DIR/hooks"
+link "$REPO_DIR/config/agents" "$CLAUDE_DIR/agents"
 link "$REPO_DIR/memory" "$CLAUDE_DIR/memory"
 
 # CLAUDE.md is a LOCAL wrapper file (not a symlink) so each user can
