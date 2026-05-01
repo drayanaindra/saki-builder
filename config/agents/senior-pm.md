@@ -63,17 +63,29 @@ If unclear: ask 1–3 sharp questions before producing anything.
 
 ## PRD
 
-1. TL;DR (3 sentences max)
-2. Problem & user
-3. **Jobs to be Done** — one primary JTBD, 1–3 related. Format: `When [situation], I want to [motivation], so I can [expected outcome].` Do NOT use user-story format ("As a X, I want Y, so Z") — JTBD focuses on the situation and outcome, which is what we design for.
-4. Goals & **non-goals** (non-goals are critical)
-5. Success metrics (target numbers + measurement method) — tie each metric back to a JTBD outcome
-6. User flows (happy path + 2–3 edge cases) — each flow should fulfill a stated JTBD
-7. Functional requirements (numbered, testable, P0/P1/P2)
-8. Non-functional reqs (perf, security, multi-tenancy, i18n)
-9. Dependencies
-10. Open questions (owner + decision deadline)
-11. Rollout (alpha → beta → GA, kill criteria)
+Canonical schema lives in the `/prd` skill (`config/skills/prd/SKILL.md`) — invoke it when available. This template mirrors that schema for use when the skill isn't reachable (e.g., subagent context). Both must stay in sync.
+
+The PRD is a *bridge* from product intent to the XP planning game (`/rplan` → `/approved` → `/qa`). It owns *what* vertical slices exist; `/rplan` owns *how* to execute each. Do NOT decompose slices into file-level tasks here — that is BDUF and short-circuits `/rplan`'s confidence gate.
+
+**MUST sections** (required, in order):
+
+1. **TL;DR** — ≤3 sentences: problem, solution shape, appetite.
+2. **Problem & Evidence** — 1–2 sentence problem + evidence table. Tag each claim `assumed | observed | validated`.
+3. **Primary Job to be Done** — exactly one Klement Job Story: `When [situation], I want to [motivation], so I can [expected outcome].` Forbidden: "As a X, I want Y, so Z" persona stories. Two primary jobs = two PRDs.
+4. **Desired Outcomes / Success Metrics** — 1 primary + 2–3 secondary + 1 counter-metric, each in Ulwick form: `Minimize/Maximize [metric] of [object] when [context].` Each lists target, measurement method, JTBD link.
+5. **Appetite** — Shape Up appetite denominated in **agent-iterations** (e.g. `~6 atomic agent tasks`), with a recut/kill threshold.
+6. **Solution Shape** — prose + optional ASCII flow. Shape, not design. No wireframes, schemas, or API signatures.
+7. **Vertical Slices** — numbered, INVEST-compliant. Each slice: title, JTBD served, outcomes served, 1–2 sentence user-visible capability. Atomic-for-AI test: single capability, ≤2 modules, test-first feasible, forward dependency only, ≤5 acceptance criteria.
+8. **Acceptance Criteria per Slice** — bullet checklist or Given/When/Then. Each criterion either links a §4 outcome (`→ 4.2`) or names a guardrail (`security | validation | error-path | accessibility`). Cap: ≤5 per slice.
+9. **Non-Goals** — bullet list prefixed `✗`. ≥2 required. The single most-skipped section and the largest source of mid-cycle scope explosion.
+10. **Rabbit Holes & Open Questions** — known traps to avoid + open questions with owner + decision deadline. Section may be empty but the header stays.
+
+**MAY sections** (include only when triggered):
+
+11. **Related Jobs** — 0–3 same Klement format. Hard cap.
+12. **Technical Constraints** — stack-imposed limits.
+13. **Dependencies** — other PRDs, infra, third-party APIs.
+14. **Rollout & Kill Criteria** — alpha → beta → GA, kill criteria (user-facing features only).
 
 ## Trade-off Matrix
 
