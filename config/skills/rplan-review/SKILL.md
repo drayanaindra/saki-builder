@@ -70,41 +70,32 @@ Do NOT proceed to Phase 2 if Phase 1 failed.
 
 ---
 
-## Phase 1.5: Acceptance Criteria Hardening
+## Phase 1.5: Verify Criteria Hardening (no rewriting)
 
-**Run after Phase 1 passes. Rewrites criteria in-place — not just flagging.**
+**`/rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
 
-Read the Success Criteria section. For each criterion, it PASSES hardening only if it has ALL THREE:
-1. **Actor + Action** — who does what (`User calls POST /v1/endpoint`, `User clicks Submit button`)
-2. **Test command** — exact command to verify (`curl -X POST ...`, `go test -run TestFoo`, Playwright step)
-3. **Expected outcome** — exact result (`HTTP 201`, `{"status":"ok"}`, `"Success" toast visible`)
+Read the Success Criteria section. For each criterion, check it has ALL THREE:
+1. **Actor + Action** — who does what
+2. **Test command** — exact command to verify
+3. **Expected outcome** — exact result
 
-**Classify each:**
-- `✅ HARDENED` — has all three, ready for `/qa`
-- `🔧 REWRITE` — missing test command or expected outcome
-- `🔲 MANUAL` — requires browser interaction, needs Playwright scenario or explicit manual steps
-
-**For every `🔧 REWRITE`** — rewrite it using the plan wiring:
+**If every criterion has all three (or is explicitly `🔲 MANUAL` with numbered steps + Playwright stub):**
 ```
-Given [precondition]
-When [actor] [action] ([test command])
-Then [expected outcome] ([verification method])
+PHASE 1.5 PASSED — criteria already hardened by /rplan 6d
 ```
 
-**For every `🔲 MANUAL`** — add numbered browser steps AND a Playwright stub:
+**If any criterion is missing fields:**
 ```
-Manual: 1. Navigate to [url] 2. Click [element] 3. Verify [outcome]
-Playwright: test('[name]', async ({ page }) => { ... })
+PHASE 1.5 FAILED — criteria not hardened
+
+The plan must run /rplan Step 6d hardening before review.
+Unhardened: [list of criterion IDs and what's missing]
+
+Action: Re-run /rplan to harden criteria → re-run /rplan-review
+REVIEW STOPPED.
 ```
 
-**Edit the plan file** to replace the Success Criteria section with hardened versions. All criteria must be `✅ HARDENED` or `🔲 MANUAL` before Phase 2.
-
-Print:
-```
-PHASE 1.5: ACCEPTANCE CRITERIA HARDENING
-  Total: [N] | Already hardened: [N] | Rewritten: [N] | Manual: [N]
-  Plan file updated.
-```
+Do NOT rewrite criteria here. That is `/rplan`'s job; rewriting in two places drifts.
 
 ---
 
@@ -147,7 +138,7 @@ Output format:
 BACKEND REVIEW
 Blockers: (list — each one prevents safe implementation)
 Warnings: (list — non-blocking but should be addressed)
-Confidence adjustment: [+N% if no blockers, -N% per blocker found]
+(Phase 3 will translate blockers/warnings into Confidence Ledger entries — do NOT propose a numeric adjustment.)
 ```
 
 **Frontend Expert Agent:**
@@ -214,7 +205,7 @@ Output format:
 UI/UX REVIEW
 Blockers: (list — each one creates a broken or inaccessible user experience)
 Warnings: (list — non-blocking but degrades UX quality)
-Confidence adjustment: [+N% if no blockers, -N% per blocker found]
+(Phase 3 will translate blockers/warnings into Confidence Ledger entries — do NOT propose a numeric adjustment.)
 ```
 
 **Product Expert Agent:**
@@ -250,10 +241,18 @@ Merge all expert findings:
 
 1. **Deduplicate** — same issue flagged by multiple experts counts once
 2. **Classify** — Blocker (must fix before /approved) vs Warning (should fix, not blocking)
-3. **Recalculate confidence:**
-   - Start from plan's stated confidence
-   - Apply each expert's confidence adjustment
-   - Additional deductions: -5% per blocker, -2% per warning
+3. **Extend the Confidence Ledger — do NOT overwrite the score with a formula.**
+
+   For each blocker, append a new ledger entry to the plan file using the existing format from `/rplan` Step 4:
+   - Cite evidence (`path:line`, the expert that found it, the step number it ties to)
+   - Use the standard deduction from `/rplan` Step 4b (closest match, e.g. missing auth → "missing user role coverage" -3, vague step -5)
+   - Apply the risk multiplier of the step the issue ties to (×1, ×1.5, ×2 per Step 4c)
+
+   For each warning, append a ledger entry with `-1` (uncited warnings invalid), or skip if non-actionable.
+
+   **Recompute the score** = `100 − sum(ledger)`. The score lives entirely in the ledger; ad-hoc per-expert `+/-N%` adjustments are NOT applied separately.
+
+   If the plan has no ledger (i.e. it was scored without one), state: "PHASE 3 ABORTED — plan has no Confidence Ledger. Re-run /rplan to score with ledger first."
 
 Print synthesis:
 

@@ -1,6 +1,6 @@
 ---
 name: rplan-trust
-description: Fully autonomous plan-review-implement pipeline. Runs /rplan -> /rplan-review (4-phase: structural + criteria hardening + domain expert checks + readiness) -> /approved -> /qa (criteria-driven). Auto-creates feature branch. No user confirmation for CLI commands. Hard blocks on DB destructive ops.
+description: Fully autonomous plan-review-implement pipeline. Runs /rplan (with criteria hardening in Step 6d) -> /rplan-review (structural + verify-hardening + domain expert checks + readiness) -> /approved -> /qa (criteria-driven). Auto-creates feature branch. No user confirmation for CLI commands. Hard blocks on DB destructive ops.
 ---
 
 # Autonomous Plan-Review-Implement Pipeline

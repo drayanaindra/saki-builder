@@ -14,9 +14,9 @@ python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.claude' / 'settings.json'
 s = json.loads(p.read_text())
-s['model'] = 'claude-opus-4-6'
+s['model'] = 'claude-opus-4-7'
 p.write_text(json.dumps(s, indent=2))
-print('Model set to claude-opus-4-6')
+print('Model set to claude-opus-4-7')
 "
 ```
 
@@ -276,9 +276,43 @@ Plan:
 
 If the spot-check finds blockers, fix them in the plan before presenting.
 
-#### 6d. Update Ledger After Self-Review
+#### 6d. Acceptance Criteria Hardening
 
-Update the Confidence Ledger to reflect what was fixed: remove resolved entries, add new entries for any gaps surfaced during review. Recompute the score from the updated ledger. Do NOT delete entries you cannot cite as resolved — leave them and take the deduction.
+**Run after 6a–6c. Rewrites criteria in-place so `/qa` can run them as-is.**
+
+Read the Success Criteria section. For each criterion, it PASSES hardening only if it has ALL THREE:
+1. **Actor + Action** — who does what (`User calls POST /v1/endpoint`, `User clicks Submit button`)
+2. **Test command** — exact command to verify (`curl -X POST ...`, `go test -run TestFoo`, Playwright step)
+3. **Expected outcome** — exact result (`HTTP 201`, `{"status":"ok"}`, `"Success" toast visible`)
+
+**Classify each:**
+- `✅ HARDENED` — has all three, ready for `/qa`
+- `🔧 REWRITE` — missing test command or expected outcome
+- `🔲 MANUAL` — requires browser interaction, needs Playwright scenario or explicit manual steps
+
+**For every `🔧 REWRITE`** — rewrite it in the plan file using the wiring:
+```
+Given [precondition]
+When [actor] [action] ([test command])
+Then [expected outcome] ([verification method])
+```
+
+**For every `🔲 MANUAL`** — add numbered browser steps AND a Playwright stub:
+```
+Manual: 1. Navigate to [url] 2. Click [element] 3. Verify [outcome]
+Playwright: test('[name]', async ({ page }) => { ... })
+```
+
+Edit the plan file. All criteria must be `✅ HARDENED` or `🔲 MANUAL` before continuing.
+
+Print:
+```
+6d Criteria Hardening: total [N] | already hardened [N] | rewritten [N] | manual [N]
+```
+
+#### 6e. Update Ledger After Self-Review
+
+Update the Confidence Ledger to reflect what was fixed: remove resolved entries, add new entries for any gaps surfaced during review (including any criterion that could not be hardened). Recompute the score from the updated ledger. Do NOT delete entries you cannot cite as resolved — leave them and take the deduction.
 
 ### 7. Output with Next Action Recommendation
 
@@ -291,15 +325,17 @@ Update the Confidence Ledger to reflect what was fixed: remove resolved entries,
 
 #### Next Action Decision Tree
 
+Step 6 already performed self-review and (for HIGH risk) the combined-reviewer spot-check. `/rplan-review` is for HIGH-risk plans that benefit from parallel domain experts — it does NOT re-do Step 6's work. For LOW/MED, do not recommend `/rplan-review`; the gaps it would find are already covered by Step 6.
+
 ```
-If confidence >= 96% AND risk is LOW/MED AND self-review found 0 blockers:
+If confidence >= 96% AND risk is LOW/MED:
   → "Plan ready. /approved to start implementation."
 
 If confidence >= 96% AND risk is HIGH:
-  → "Plan ready but HIGH risk. Recommend /rplan-review for expert validation, or /approved if you're confident."
+  → "Plan ready (HIGH risk). Recommend /rplan-review for parallel domain expert review, or /approved if Step 6 spot-check is sufficient."
 
 If confidence 90-95%:
-  → "Confidence at [X]%. Gaps: [list]. Recommend /rplan-review to identify remaining issues."
+  → "Confidence at [X]%. Gaps: [list cited ledger entries]. Fix the cited gaps and re-run /rplan — do NOT round up, do NOT escalate to /rplan-review to mask the gaps."
 
 If confidence < 90%:
   → "Confidence too low ([X]%). Need your input on: [specific questions]"

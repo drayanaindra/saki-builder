@@ -24,12 +24,20 @@ print('Model set to claude-sonnet-4-6')
 
 ## Step 2: Load the plan
 
-Find the most recent `*-plan.md` in the project root. Read it. Extract all steps with their Test column and Committable flag.
+Find the most recent `*-plan.md` in the project root. Read it. Extract:
+- All steps with their Test column and Committable flag
+- The **Confidence Ledger** — index every entry by the step number it cites. Entries without a step number go in a "global" bucket.
 
 If the plan has no Test column (old-format plan), derive TDD mode per step:
 - Steps with service/domain logic → Test-First
 - Steps with CRUD/handler/wiring → Test-Along
 - Steps with config/migration/copy → Test-After
+
+If the plan has no Confidence Ledger, warn (do not block):
+```
+⚠ Plan has no Confidence Ledger — proceeding without per-step risk surfacing.
+  Recommend re-running /rplan to generate one before next implementation.
+```
 
 ## Step 3: Confirm and begin
 
@@ -68,7 +76,10 @@ Print:
   TDD: [Test-First / Test-Along / Test-After / Human-Test-First]
   Test: [test function name from plan, or "derive from spec"]
   Files: [list]
+  Ledger entries for this step: [list each entry verbatim, or "none"]
 ```
+
+If the step has any unresolved ledger entries, address them as part of GREEN — do not implement past a step whose unresolved entries describe an actual gap (missing auth, unresolved UNKNOWN, vague spec). Resolving means: doing the work, then editing the ledger to remove the entry with a citation of where it was resolved.
 
 ### Phase 2: RED — Write the failing test
 
@@ -157,17 +168,50 @@ Print progress:
 
 ## After All Steps Complete
 
+### Phase 7: Pre-QA Smoke Check
+
+Run the same env detection that `/qa` runs, so blockers surface here (with the implementer in context) instead of inside `/qa` (where they look like test failures):
+
+```bash
+# Frontend root (same logic as qa Step 1a)
+FRONTEND_ROOT=""
+for d in "$(pwd)" "$(pwd)/frontend" "$(pwd)/src"; do
+  if [ -f "$d/playwright.config.ts" ]; then FRONTEND_ROOT="$d"; break; fi
+done
+echo "FRONTEND_ROOT=${FRONTEND_ROOT:-<none>}"
+
+# Dev server ping (only if frontend project)
+if [ -n "$FRONTEND_ROOT" ]; then
+  curl -s --max-time 3 http://localhost:4000 > /dev/null 2>&1 && echo "SERVER_UP" || echo "SERVER_DOWN"
+fi
+
+# Playwright browsers (only if frontend project)
+if [ -n "$FRONTEND_ROOT" ]; then
+  ls ~/Library/Caches/ms-playwright/chromium-* 2>/dev/null || ls ~/.cache/ms-playwright/chromium-* 2>/dev/null || echo "NO_CHROMIUM"
+fi
+```
+
+Print results. For any FAIL/DOWN/missing, surface the exact remediation command in the completion summary so the user can fix it before invoking `/qa`. Do NOT fix it automatically — env setup is the user's call.
+
+### Completion summary
+
 ```
 --- IMPLEMENTATION COMPLETE ---
 Steps: N/N completed
 Commits: [N] commits made
 TDD cycles: [N] Red→Green→Refactor completed
 Refactoring: [N] metrics-triggered refactors performed
+Ledger: [N] entries resolved during implementation, [N] remaining
 
 XP Summary:
   Tests written first: [N]
   YAGNI items caught: [N] (things NOT built)
-  
+
+Pre-QA Smoke:
+  Frontend project: [yes/no]
+  Dev server: [up/down/n/a]      [if down: cd $FRONTEND_ROOT && npm run dev]
+  Playwright browsers: [ok/missing/n/a]   [if missing: cd $FRONTEND_ROOT && npx playwright install chromium]
+
 Next actions:
 > /qa — run acceptance criteria verification
 > /reviewer — fresh-context code review
