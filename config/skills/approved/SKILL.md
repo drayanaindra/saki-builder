@@ -1,6 +1,7 @@
 ---
 name: approved
 description: Approve the current plan and switch model to Sonnet. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, and metrics-triggered refactoring during implementation.
+user-invocable: true
 ---
 
 # Plan Approved — XP Implementation Mode
