@@ -15,12 +15,17 @@
       "Bash(cd *)",
       "Bash(psql *)",
       "Bash(python3 -c *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(cp *)",
       "mcp__playwright",
       "Read",
-      "Edit"
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "NotebookEdit"
     ]
   },
-  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -74,5 +79,6 @@
       }
     }
   },
-  "effortLevel": "high"
+  "effortLevel": "high",
+  "model": "claude-sonnet-4-6"
 }
