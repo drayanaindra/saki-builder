@@ -1,5 +1,26 @@
 {
-  "model": "claude-opus-4-6",
+  "permissions": {
+    "allow": [
+      "Bash(go test *)",
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(npx tsc *)",
+      "Bash(npx tsc)",
+      "Bash(npx playwright *)",
+      "Bash(curl *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(cd *)",
+      "Bash(psql *)",
+      "Bash(python3 -c *)",
+      "mcp__playwright",
+      "Read",
+      "Edit"
+    ]
+  },
+  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -30,6 +51,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/dangerous-command-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       }
@@ -38,7 +63,8 @@
   "enabledPlugins": {
     "security-guidance@claude-code-plugins": true,
     "frontend-design@claude-code-plugins": true,
-    "commit-commands@claude-code-plugins": true
+    "commit-commands@claude-code-plugins": true,
+    "frontend-design@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -47,5 +73,6 @@
         "repo": "anthropics/claude-plugins-official"
       }
     }
-  }
+  },
+  "effortLevel": "high"
 }
