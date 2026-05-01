@@ -17,7 +17,7 @@ config/                  # Shared config (safe for all users)
 ├── skills/
 │   ├── rplan/           # /rplan        — structured planning (confidence + completeness)
 │   ├── rplan-review/    # /rplan-review — 4-phase review: structural + criteria hardening + parallel experts + readiness
-│   ├── rplan-trust/     # /rplan-trust  — fully autonomous plan→review→implement→QA
+│   ├── build/           # /build        — fully autonomous plan→review→implement→QA
 │   ├── approved/        # /approved     — approve plan, switch to Sonnet
 │   ├── qa/              # /qa           — run acceptance criteria from plan, report pass/fail per criterion
 │   ├── prompt/          # /prompt       — expand one-line idea into structured 6-section prompt
@@ -101,7 +101,7 @@ immediately makes new patterns available to Claude Code.
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/rplan`        | Create structured execution plan. Confidence must reach >=96% with all 4 gates passing before presenting.                                                                                                       |
 | `/rplan-review` | 4-phase review: (1) structural completeness scan, (1.5) acceptance criteria hardening, (2) parallel domain expert agents, (3) synthesis + confidence scoring, (4) per-step readiness check.                     |
-| `/rplan-trust`  | Fully autonomous pipeline: plan -> review -> implement -> QA. No user confirmation for CLI commands.                                                                                                            |
+| `/build`        | Fully autonomous pipeline: plan -> review -> implement -> QA. No user confirmation for CLI commands.                                                                                                            |
 | `/approved`     | Approve the active plan and switch model to Sonnet for implementation.                                                                                                                                          |
 | `/qa`           | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Uses `@playwright/mcp` for UI criteria when available; falls back to auto-generated Playwright specs otherwise. |
 | `/prompt`       | Expand a one-line idea into a structured 6-section prompt (Role, Task, Context, Reasoning, Stop, Output).                                                                                                       |

@@ -1,6 +1,6 @@
 ---
-name: rplan-trust
-description: Fully autonomous plan-review-implement pipeline. Runs /rplan (with criteria hardening in Step 6d) -> /rplan-review (structural + verify-hardening + domain expert checks + readiness) -> /approved -> /qa (criteria-driven). Auto-creates feature branch. No user confirmation for CLI commands. Hard blocks on DB destructive ops.
+name: build
+description: Build a feature end-to-end without per-step approvals — plans, reviews, implements, and tests it. Use when you want results without managing the pipeline. For trivial fixes, skip. For step-by-step control, use /rplan instead. Auto-creates a feature branch and hard-blocks destructive database operations.
 ---
 
 # Autonomous Plan-Review-Implement Pipeline
@@ -55,7 +55,7 @@ If any step in the plan would require one of the above, **STOP** and output:
 ```
 HARD BLOCK — DB DESTRUCTIVE OPERATION DETECTED
 Step [N]: [description of what was blocked]
-This operation is forbidden in /rplan-trust mode.
+This operation is forbidden in /build mode.
 Resolve manually or use /rplan (manual mode) with explicit human approval.
 ```
 
@@ -240,13 +240,13 @@ OR
 - STOP. Output:
   ```
   AUTO-APPROVE BLOCKED
-  Confidence [X]% did not reach 96% threshold for /rplan-trust.
+  Confidence [X]% did not reach 96% threshold for /build.
 
   Unresolved blockers:
     - [list]
 
   Options:
-  > Resolve blockers manually, then re-run /rplan-trust
+  > Resolve blockers manually, then re-run /build
   > Use /rplan + /rplan-review + /approved for manual approval
   ```
 - Do NOT implement.
