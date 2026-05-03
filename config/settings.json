@@ -18,6 +18,20 @@
       "Bash(mkdir *)",
       "Bash(touch *)",
       "Bash(cp *)",
+      "Bash(source *)",
+      "Bash(rtk *)",
+      "Bash(pytest *)",
+      "Bash(grep *)",
+      "Bash(tail *)",
+      "Bash(head *)",
+      "Bash(awk *)",
+      "Bash(sed *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(which *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(column *)",
       "mcp__playwright",
       "Read",
       "Edit",
@@ -26,6 +40,7 @@
       "NotebookEdit"
     ]
   },
+  "model": "claude-sonnet-4-6",
   "hooks": {
     "Notification": [
       {
@@ -79,6 +94,5 @@
       }
     }
   },
-  "effortLevel": "high",
-  "model": "claude-sonnet-4-6"
+  "effortLevel": "xhigh"
 }

@@ -9,21 +9,19 @@ Launch a fresh-context review of all changes since the last commit.
 
 ## Step 1: Collect what changed
 
+**Brief the reviewer with the COMMITTED diff only — never the working tree.** Uncommitted changes on unrelated files (someone else's WIP that drifted into the working tree) can mislead the reviewer into citing constraints/fields/imports that won't exist in production. Always pin a base ref and diff against it.
+
 ```bash
-git diff HEAD --stat
-git diff HEAD
+# Pick a base. Prefer the merge-base with the integration branch when reviewing a feature branch:
+BASE="$(git merge-base HEAD main 2>/dev/null || git merge-base HEAD origin/main 2>/dev/null || echo HEAD~1)"
+echo "Base: $BASE"
+
+git diff "$BASE..HEAD" --stat
+git diff "$BASE..HEAD"
+git diff "$BASE..HEAD" --name-only
 ```
 
-If no uncommitted changes, check the last commit:
-```bash
-git diff HEAD~1 HEAD --stat
-git diff HEAD~1 HEAD
-```
-
-List changed files:
-```bash
-git diff HEAD --name-only
-```
+If reviewing uncommitted changes intentionally (e.g. pre-commit local review), use `HEAD` and warn the reviewer in the prompt: *"NOTE: this diff is uncommitted-vs-HEAD; treat working-tree state as the diff itself, not as the source of truth for unrelated files."*
 
 ## Step 2: Detect reviewer agent
 
@@ -46,8 +44,15 @@ Agent prompt:
 ```
 You are a thorough code reviewer operating in a fresh context — no implementation history.
 
-Review the following diff and changed files. Apply the checklist strictly.
+Review the COMMITTED diff and changed files between [BASE] and HEAD. Apply the checklist strictly.
 Flag every issue with severity: HIGH (blocks commit) / MED (should fix) / LOW (suggestion).
+
+IMPORTANT: Review only what's in the committed diff. If you read a file to check context,
+verify any claim against `git show <BASE>:<path>` and `git show HEAD:<path>` — do NOT cite
+declarations from the working tree (uncommitted changes on unrelated files can include
+WIP additions that mislead a review). When verifying schema-level invariants (UNIQUE constraints,
+CHECK constraints, FKs, model fields), check both the model definition AT HEAD and the most
+recent migration that creates the table — divergence between them is a reportable finding.
 
 [If project reviewer exists: paste contents of .claude/agents/reviewer.md checklist]
 [If global: use the Standard Review Checklist below]
@@ -55,7 +60,7 @@ Flag every issue with severity: HIGH (blocks commit) / MED (should fix) / LOW (s
 Changed files: [list from Step 1]
 
 Diff:
-[paste full git diff]
+[paste full git diff from BASE..HEAD]
 
 Output format:
 REVIEW COMPLETE

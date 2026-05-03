@@ -55,7 +55,8 @@ Be specific ("run `pytest tests/test_users.py`" not "test it"). Show next uncomp
 
 - `/retro` before ending long sessions
 - `/reflect` weekly
-- Cross-project patterns: `~/.claude/memory/patterns.md`
+- Cross-project patterns: `~/.claude/memory/patterns.md` (generic + stack-portable)
+- Topic-specific patterns: `~/.claude/memory/patterns-<topic>.md` (e.g. `patterns-ios.md`). **Not auto-loaded** — to activate per-project, create `<project>/.claude/CLAUDE.md` with `@~/.claude/memory/patterns-<topic>.md`. Same for project-local `.claude/memory/patterns.md`: import it via the project CLAUDE.md.
 
 ## XP Practices
 
