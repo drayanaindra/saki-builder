@@ -31,6 +31,18 @@ Do NOT execute until: Confidence ≥ 90%, Unknowns ≤ 3, human approves.
 | ---------------- | -------------------- | -------------------------------- |
 | Read, lint, test | New file, API change | DB migration, auth, delete, push |
 
+## Pre-merge Gate (BLOCKING)
+
+Before `git push` to main: **SonarQube quality gate must be PASSED**.
+
+Enforced automatically by `sonar-gate.sh` (PreToolUse:Bash hook). If blocked:
+
+1. `/sonarqube:sonar-quality-gate` — see which conditions are failing
+2. `/sonarqube:sonar-list-issues` — see blocking issues
+3. Fix, re-run analysis, verify gate is PASSED, then push
+
+To bypass (intentional, documented reason only): run `git push` manually outside Claude Code.
+
 ## Secrets (BLOCKING)
 
 NEVER route secrets/credentials (JWTs, API keys, tokens, passwords) through the chat — not even while debugging. When a step needs a token: read responses via the browser Network tab, run an in-page Console snippet that uses the token in place, or act server-side. Paste only non-secret outputs (response bodies, numeric ids/claims). If a secrets-detection hook blocks a paste, that's correct — don't disable it; use one of the local paths instead.
