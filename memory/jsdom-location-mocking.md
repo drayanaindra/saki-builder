@@ -20,4 +20,17 @@ metadata:
 - Assert `router.replace` was NOT called (confirming we hit the assign branch, not the router branch)
 - Leave `window.location.assign` verification to E2E/integration tests
 
+**Corollary (2026-05-28):** `window.location` itself also cannot be redefined via `Object.defineProperty` — it throws "Cannot redefine property: location". If your hook uses `window.location.search` internally, mock `URLSearchParams` instead:
+
+```typescript
+let mockParams: URLSearchParams;
+jest.spyOn(global, 'URLSearchParams').mockImplementation(() => mockParams);
+
+beforeEach(() => {
+  mockParams = new (jest.requireActual('url').URLSearchParams)('?ref=VALUE');
+});
+```
+
+`jest.requireActual('url').URLSearchParams` gives you a real implementation to construct instances without the global spy interfering.
+
 [[lessons-learned]]
