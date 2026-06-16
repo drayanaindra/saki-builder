@@ -74,11 +74,16 @@ If `FRONTEND_ROOT` is empty → mark all UI criteria as MANUAL; skip Steps 1b, 1
 
 ### 1b: Ping baseURL (only if FRONTEND_ROOT found)
 
+**Derive the dev-server URL from the project — never hardcode the port.** `playwright.config.ts` `baseURL` is the source of truth (a project-local qa override SKILL.md may also document it). Only fall back to `:3000` if nothing is found. (Common trap: another project's server may answer on a different port — pinging a hardcoded port can read a *different app* as "up".)
+
 ```bash
-curl -s --max-time 3 http://localhost:4000 > /dev/null 2>&1 && echo "SERVER_UP" || echo "SERVER_DOWN"
+# Source of truth: playwright.config baseURL (handles PLAYWRIGHT_BASE_URL ?? 'http://localhost:PORT')
+BASE_URL=$(grep -oE "https?://localhost:[0-9]+" "$FRONTEND_ROOT/playwright.config.ts" 2>/dev/null | head -1)
+BASE_URL=${BASE_URL:-http://localhost:3000}
+curl -s --max-time 3 "$BASE_URL" > /dev/null 2>&1 && echo "SERVER_UP ($BASE_URL)" || echo "SERVER_DOWN ($BASE_URL)"
 ```
 
-If SERVER_DOWN → emit:
+Use `$BASE_URL` (not a hardcoded host) for all subsequent navigation/MCP/Playwright steps. If SERVER_DOWN → emit:
 
 ```
 ⚠️ BLOCKED: Dev server not running.
@@ -466,7 +471,7 @@ Mode: MCP-driven  (or: Playwright-spec  (or: MANUAL — no FRONTEND_ROOT)
 |---|-----------|------|----------|--------|----------|--------|
 | 1 | [criterion text] | API | CRITICAL | ✅ PASS | HTTP 200 | HTTP 200 |
 | 2 | [criterion text] | GO_TEST | HIGH | ❌ FAIL | pass | FAIL: [error] |
-| 3 | [criterion text] | UI | NORMAL | ✅ PASS | not /masuk | http://localhost:4000/pos |
+| 3 | [criterion text] | UI | NORMAL | ✅ PASS | not /masuk | $BASE_URL/pos |
 
 ### Exploratory Testing
 
