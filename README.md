@@ -15,9 +15,10 @@ config/                  # Shared config (safe for all users)
 │   ├── ddd-patterns.md         # Domain-Driven Design code patterns
 │   └── modular-architecture.md # Growth-driven architecture ladder (flat → modular → DDD → microservices)
 ├── skills/
+│   ├── prd/             # /prd          — generate Product Requirements Document from a feature intent
 │   ├── rplan/           # /rplan        — structured planning (confidence + completeness)
 │   ├── rplan-review/    # /rplan-review — 4-phase review: structural + criteria hardening + parallel experts + readiness
-│   ├── build/           # /build        — fully autonomous plan→review→implement→QA
+│   ├── build/           # /build        — autonomously execute a finished PRD slice-by-slice (rplan→[review]→approved→qa→reviewer, +e2e)
 │   ├── approved/        # /approved     — approve plan, switch to Sonnet
 │   ├── qa/              # /qa           — run acceptance criteria from plan, report pass/fail per criterion
 │   ├── prompt/          # /prompt       — expand one-line idea into structured 6-section prompt
@@ -99,9 +100,10 @@ immediately makes new patterns available to Claude Code.
 
 | Command         | What it does                                                                                                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/prd`          | Generate a Product Requirements Document (Job Story, outcomes, vertical slices, acceptance criteria, non-goals) from a feature intent. Saved to `tasks/prd-<feature>.md`. Run and review this **before** `/build`.|
+| `/build`        | **Autonomously execute a finished PRD.** `/build <prd-file.md>` reads the PRD's vertical slices and runs `/rplan` → (`/rplan-review` if needed) → `/approved` → `/qa` → `/reviewer` on each, looping until every slice is green and reviewed. Always runs the e2e suite before declaring done. No confirmation prompts. |
 | `/rplan`        | Create structured execution plan. Confidence must reach >=96% with all 4 gates passing before presenting.                                                                                                       |
 | `/rplan-review` | 4-phase review: (1) structural completeness scan, (1.5) acceptance criteria hardening, (2) parallel domain expert agents, (3) synthesis + confidence scoring, (4) per-step readiness check.                     |
-| `/build`        | Fully autonomous pipeline: plan -> review -> implement -> QA. No user confirmation for CLI commands.                                                                                                            |
 | `/approved`     | Approve the active plan and switch model to Sonnet for implementation.                                                                                                                                          |
 | `/qa`           | Run each acceptance criterion from the plan as an actual test. Reports pass/fail per criterion. Uses `@playwright/mcp` for UI criteria when available; falls back to auto-generated Playwright specs otherwise. |
 | `/prompt`       | Expand a one-line idea into a structured 6-section prompt (Role, Task, Context, Reasoning, Stop, Output).                                                                                                       |
@@ -124,6 +126,34 @@ immediately makes new patterns available to Claude Code.
 /reflect        -> promote patterns (weekly)
 /sync           -> push patterns to remote
 ```
+
+### Autonomous PRD execution (`/build`)
+
+Once a PRD is written and reviewed (with `/prd`), hand the whole thing to `/build` and walk away:
+
+```
+/build prd-wave-2.md
+  -> reads the PRD's vertical slices (PRD order = execution order)
+  -> for EACH slice, autonomously:
+       /rplan -> (/rplan-review if needed) -> /approved -> /qa -> /reviewer
+     looping until the slice is green and review is clean
+  -> runs the e2e suite before declaring the goal done
+```
+
+`/build` asks nothing — its only hard stops are a missing PRD file, an absolute DB no-go,
+or a slice that genuinely can't be made green (reported honestly, never faked). It replaces
+the old single-feature `/build` pipeline; recover that via `git show <old-sha>:config/skills/build/SKILL.md`.
+
+**For bulletproof cross-turn autonomy, launch under `/goal`.** A skill can't switch on
+Claude Code's built-in `/goal` engine by itself, so the most persistent way to run is to
+type the wrapper yourself — `/goal` keeps Claude working across turns, `/build` does the work:
+
+```
+/goal /build tasks/prd-wave-3.md — done when every slice passes /qa and /reviewer and the e2e suite is green
+```
+
+Plain `/build tasks/prd-wave-3.md` also self-iterates (completion signal + progress
+scratchpad + loop guard), but the `/goal` wrapper is what guarantees it never stops early.
 
 ## Plan Quality Gates (4-gate system)
 
