@@ -128,16 +128,68 @@ preview that lies.
 Mount the screens using the project's **real** components + tokens (from Gate 2), with mock data
 only — **no fetching, no backend, no state logic**.
 
-- **Harness choice:** if Storybook is present, prefer `.stories.tsx` per the `component` skill
-  convention. Otherwise create throwaway routes under a clearly-marked namespace:
-  `app/__proto/<slice>/page.tsx` (Next), a `__proto` route (Vite/Remix), etc.
+### 5a. Provider/context detection (do this BEFORE mounting — the #1 render failure)
+
+Real apps wrap their UI in providers; a bare preview route that imports a component needing one
+throws on first render (works on a toy app, fails on a real one). Before mounting, read the root
+`layout.*` / `_app.*` / `main.*` provider chain and identify what the slice's components require:
+- **theme / design-system provider**, **toast/notification context**, **i18n / locale provider**,
+  **auth / session provider**, **data-layer** (React Query / SWR / Apollo).
+
+Then wrap the preview in those providers with everything external **mocked**:
+- **Never boot real auth/session or hit a DB.** Supply a mock session/user and (for i18n) a mock
+  locale + messages. Stub the data-layer with static mock data.
+- If the provider chain is **env-dependent and not cheaply mockable** (e.g. auth requires live keys
+  at module load), do NOT fight the full app shell — fall back per Harness choice below.
+
+### 5b. Harness choice (in priority order)
+
+1. **Storybook**, if present — prefer it. Stories mount components in isolation with explicit
+   decorators for the providers from 5a; no app shell, no auth, no routing. Use the `component`
+   skill's `.stories.tsx` convention.
+2. **Throwaway route**, if no Storybook and the provider chain mocks cleanly — create
+   `app/proto-preview/<slice>/page.tsx` (Next), or a `proto-preview` route (Vite/Remix), wrapped in
+   the 5a mock providers. Drive states via a query param (`?state=empty|loading|error`), or stack
+   all states in one labelled gallery page (simpler to screenshot).
+   - **Next App Router gotcha:** do NOT name the folder with a leading underscore (`_proto`,
+     `__proto`). Underscore-prefixed folders are **private** and are excluded from routing → the
+     route 404s. Use a routable name like `proto-preview/`. (Keep `__PROTO__` only as an in-file
+     banner string, never as a folder name.)
+   - **Locale apps:** if routes live under `app/[locale]/…`, place the preview there
+     (`app/[locale]/proto-preview/<slice>/`) so it inherits the locale provider — but note it then
+     also inherits that layout's full shell (see 5a). A sibling outside `[locale]` skips the shell
+     but gets locale-redirected by i18n middleware; usually the in-`[locale]` placement + a
+     middleware bypass (below) is cleanest.
+3. **Standalone mock-provider harness**, if the app shell is env-locked — render just the slice's
+   component subtree in a minimal page that supplies only the 5a mock providers, bypassing the real
+   root layout. Lower fidelity on global chrome, but it renders; note the reduction in `index.md`.
+
+### 5c. Auth gate (default-deny middleware)
+
+Many apps run **default-deny** auth middleware: any route not in a public allowlist redirects to
+`/login`. A preview route will be redirected (`307 → /login`) and never render. Add a **scoped,
+reverted-on-cleanup** bypass so ONLY the preview namespace skips auth — real routes are unaffected,
+so a running dev server / the user's session sees no behavior change:
+
+```ts
+// __PROTO__ — dev-only preview routes bypass auth (throwaway; remove on cleanup)
+if (strippedPathname.startsWith('/proto-preview')) return intlMiddleware(request);
+```
+
+Place it at the TOP of the middleware, before the auth check. Record it in the cleanup contract
+(Step 8) — it must be reverted with the route.
+
+### 5d. Mount, mark, serve
+
 - **Mark it disposable:** a visible banner/comment `// __PROTO__ — throwaway preview, do not ship`
   on every preview file.
-- **Isolation:** preview files live only under the `__proto` namespace (or Storybook) so they are
-  trivially deletable and can never reach production.
-- **Serve & verify:** start the dev server (or Storybook), then **verify it is actually serving**
-  (`lsof -i :PORT` / curl the route) before screenshotting — do not assume it came up. If a server
-  is already running, restart it after adding routes so changes are live.
+- **Isolation:** preview files live only under the `proto-preview` namespace (or Storybook) so they
+  are trivially deletable and can never reach production.
+- **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
+  :PORT` shows it, cwd matches), reuse it — hot-reload picks up the new route; no boot needed.
+  Otherwise start it. Then **verify the route actually serves** (`curl` it: expect HTTP 200, grep
+  for your banner text, and check there's no `Failed to compile` / error overlay) before
+  screenshotting — do not assume it came up, and never screenshot an error page (return to 5a/5c).
 
 ---
 
@@ -174,8 +226,11 @@ the **token references** used, and the **states** confirmed. Purpose: `/build` *
 presentational components (mock data → real data + state + tests + backend wiring) instead of
 re-picking from scratch.
 
-State the **cleanup contract** explicitly: the `__proto/*` namespace (or proto stories) is
-throwaway — `/build` either promotes it into real routes or deletes it. It must not rot in the repo.
+State the **cleanup contract** explicitly: the `proto-preview/*` namespace (or proto stories) **and
+the Step 5c middleware bypass** are throwaway — `/build` either promotes the components into real
+routes or deletes them, and reverts the bypass. Neither may rot in the repo. If the preview ran on a
+throwaway git branch, that branch is deleted after the screenshots are saved (the `index.md` + PNGs
+persist outside the branch).
 
 ---
 
@@ -208,9 +263,14 @@ Next actions:
 | Inventing components when no design system exists | Gate 2 STOP — offer scaffold / mock / skip |
 | Lorem-perfect data hiding overflow & density | Long strings + many rows + an empty case |
 | Wiring real backend / data fetching / state logic | Mock only — that work is `/build` |
-| Preview routes that can ship to prod | `__proto` namespace + banner + cleanup contract |
+| Preview routes that can ship to prod | `proto-preview` namespace + banner + cleanup contract |
+| Folder named `_proto`/`__proto` in Next App Router → 404 | Routable name (`proto-preview`); `_`-prefix = private/non-routed |
+| Preview route 307-redirects to `/login` | Default-deny middleware — add the scoped Step 5c bypass |
 | Claiming 1:1 after a Partial detection | Flag exactly which half is approximate |
 | Padding states the slice doesn't have | Render only states from §9 / §10 / the Gherkin |
+| Bare preview route that throws on a missing provider | Step 5a — detect + wrap in mock providers, or use Storybook |
+| Booting real auth/DB to render a preview | Mock the session/locale/data-layer; never hit live auth |
+| Screenshotting a compile-error / error page | Fix the provider (5a) first; never capture an error as the "preview" |
 | Declaring done without verifying the server serves | `lsof`/curl the route before screenshotting |
 
 ## Rules

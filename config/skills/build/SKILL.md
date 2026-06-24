@@ -113,8 +113,9 @@ If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/proto` first), read 
 **real design-system components + token references** chosen per screen, already validated visually.
 When implementing a user-facing slice, **promote** those presentational components (mock data →
 real data + state + tests + backend wiring) instead of re-picking from scratch — the look is
-already approved. As part of the slice that promotes a `__proto/<slice>` preview, **delete that
-throwaway preview route/story** (it must not ship). If no proto notes exist, build the UI normally.
+already approved. As part of the slice that promotes a `proto-preview/<slice>` preview, **delete
+that throwaway preview route/story and revert any `/proto-preview` middleware bypass** (neither may
+ship). If no proto notes exist, build the UI normally.
 
 ---
 
