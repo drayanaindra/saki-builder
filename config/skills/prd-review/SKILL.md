@@ -56,6 +56,7 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 | 8 | Vertical slices — **≤7**, each `Serves JTBD` + `Serves outcome` | | |
 | 9 | Acceptance criteria — **≤5/slice**, each links an outcome OR names a guardrail | | |
 | 10 | **≥2 Non-Goals**; Rabbit Holes & Open Questions present | | |
+| 11 | **Business Rules** (when domain logic present) — each rule falsifiable; each `🔒` invariant tested by a §9 criterion | | |
 
 **Hard-fail rules (any one → Phase 1 FAILED):**
 - Primary JTBD in persona form ("As a [role], I want…") → FAIL
@@ -63,6 +64,7 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 - An §5 outcome with a target but no basis tag → FAIL
 - Any slice that traces to no JTBD (orphan) → FAIL
 - Kill criteria absent or only effort-scoped (not tied to a §5 metric) → FAIL
+- A `🔒 INVARIANT` (money/stock/tenant) with no acceptance criterion testing it → FAIL
 
 **If ALL ✅:**
 ```
@@ -131,6 +133,7 @@ Unverifiable claims (facts asserted but not checkable from the document):
 3. Is Slice 1 a **vertical walking skeleton**, or plumbing that ships no user-visible value?
 4. Appetite vs slice count mismatch (a "1 afternoon" appetite with 7 fat slices).
 5. Acceptance criteria that are **not observable** ("works correctly" is not testable).
+6. Business rules (§10) that are vague/unfalsifiable, or a `🔒` invariant with no criterion testing it.
 
 **Judge 4 — Evidence & Grounding (the honesty lens).** Find:
 1. Walk EVERY factual claim in §2 and §5. For each, decide: **self-supporting from the document, or reliant on outside truth?**

@@ -60,11 +60,11 @@ Carry the surviving premise into §2 and the kill criteria into §6.
 
 ## Step 0.7 — Evidence Grounding (between the Premise Gate and generation)
 
-The `observed`/`validated` tags in §2 and the constraints in §12 are only as good as their sources. Ground them in two tiers. **Every `observed`/`validated` tag MUST cite its source — an uncited upgrade is fabrication and is penalised by the Quality Gate (step 6).**
+The `observed`/`validated` tags in §2 and the constraints in §13 are only as good as their sources. Ground them in two tiers. **Every `observed`/`validated` tag MUST cite its source — an uncited upgrade is fabrication and is penalised by the Quality Gate (step 6).**
 
 ### Tier 1 — Local grounding (ALWAYS run; free, no external calls)
 
-Before writing §2 and §12, take every claim about *this* codebase/project — technical feasibility, "uses existing X", current behaviour, stack constraints — and verify it with grep/read:
+Before writing §2 and §13, take every claim about *this* codebase/project — technical feasibility, "uses existing X", current behaviour, stack constraints — and verify it with grep/read:
 
 - Code confirms it → tag `observed`, cite `path:line`.
 - Code contradicts it → fix the claim (or drop the slice that depended on it).
@@ -91,24 +91,25 @@ If `--research` IS set, ground **only the highest-leverage claims** — the load
 2. Produce a PRD with the following sections. **MUST** = required in every PRD; **MAY** = only when its trigger applies.
 
    1. **TL;DR** (MUST) — ≤3 sentences: user problem, chosen solution shape, appetite.
-   2. **Problem & Evidence** (MUST) — 1–2 sentence problem statement that names a **measurable harm** (not a feature absence) plus an evidence table. Tag each claim `assumed | observed | validated`. **Evidence floor: ≥1 `validated` claim OR a named validation spike in §11. A 100%-`assumed` table ships the PRD with a `⚠ DISCOVERY-RISK` banner at the top.** Every `observed`/`validated` tag cites its source (`path:line`, URL, or MCP query) per Step 0.7 — an uncited upgrade is fabrication.
+   2. **Problem & Evidence** (MUST) — 1–2 sentence problem statement that names a **measurable harm** (not a feature absence) plus an evidence table. Tag each claim `assumed | observed | validated`. **Evidence floor: ≥1 `validated` claim OR a named validation spike in §12. A 100%-`assumed` table ships the PRD with a `⚠ DISCOVERY-RISK` banner at the top.** Every `observed`/`validated` tag cites its source (`path:line`, URL, or MCP query) per Step 0.7 — an uncited upgrade is fabrication.
    3. **Primary Job to be Done** (MUST) — exactly one Job Story, Klement format: `When [situation], I want to [motivation], so I can [expected outcome].` Forbidden: "As a [role], I want…" persona stories. Two primary jobs = two PRDs.
    4. **Related Jobs** (MAY, 0–3) — same format. Hard cap 3.
    5. **Desired Outcomes / Success Metrics** (MUST) — 1 primary + 2–3 secondary + ≥1 counter-metric, Ulwick form: `Minimize/Maximize [metric] of [object] when [context].` Each outcome lists `target`, `basis`, `measurement method`, and the JTBD it serves.
       - **Target basis** (required): tag each target `baseline N→M` (current value known) / `benchmark` (external comparable) / `aspirational` (no baseline — allowed but flagged). A bare number with no basis is fabricated precision — fix it.
-      - **Measurement feasibility** (required): the method must be instrumentable with what exists or is in-scope. If not, move the outcome to §11 Open Questions — never assert a metric you cannot measure.
+      - **Measurement feasibility** (required): the method must be instrumentable with what exists or is in-scope. If not, move the outcome to §12 Open Questions — never assert a metric you cannot measure.
       - **Counter-metric linkage** (required): the counter-metric must name *which* metric's failure mode it guards (e.g. "guards 5.1: faster onboarding gamed by skipping verification → fraud"). A counter-metric with no causal link to a gamed metric is theater — replace it.
    6. **Appetite & Kill Criteria** (MUST) —
       - *Appetite*: denominate in **agent-iterations** (`~6 atomic agent tasks`, `1 afternoon × 1 agent`) with an effort recut threshold.
       - *Kill criteria* (outcome-tied): the §5 metric + threshold at which you STOP building (e.g. "if eval pass-rate < 80% after slice 5, kill"). This is the product failing — distinct from the effort recut.
    7. **Solution Shape** (MUST) — prose + optional ASCII flow. *Shape*, not design. No wireframes, DB schemas, or API signatures.
    8. **Vertical Slices** (MUST) — numbered. Each: `verb-phrase title`, `Serves JTBD:`, `Serves outcome: #`, 1–2 sentence new-capability description. Apply the slice-quality test (step 3). **Cap ≤7 slices — >7 means this is an epic; split into multiple PRDs.** Slice 1 should be a vertical walking skeleton (end-to-end value), not horizontal plumbing.
-   9. **Acceptance Criteria per Slice** (MUST) — checklist or Given/When/Then. Each criterion executable (pass/fail unambiguous). Each links a §5 outcome (`→ 5.2`) OR names a guardrail. **Guardrail menu: `security | validation | error-path | accessibility | performance | privacy | observability | cost | i18n`.** Cap ≤5 criteria/slice (more = split signal).
-   10. **Non-Goals** (MUST, ≥2) — `✗`-prefixed. The most-skipped section and the biggest source of mid-cycle scope explosion.
-   11. **Rabbit Holes & Open Questions** (MUST) — *Rabbit holes:* traps to avoid. *Open questions:* each with `owner` + `decision deadline`. Headers stay even if empty.
-   12. **Technical Constraints** (MAY) — stack-imposed limits.
-   13. **Dependencies** (MAY) — other PRDs, infra, third-party APIs.
-   14. **Rollout & Staging** (MAY, user-facing) — alpha → beta → GA. (Kill criteria live in §6.)
+   9. **Acceptance Criteria per Slice** (MUST) — checklist or Given/When/Then. Each criterion executable (pass/fail unambiguous). Each links a §5 outcome (`→ 5.2`) OR names a guardrail. **Guardrail menu: `security | validation | error-path | accessibility | performance | privacy | observability | cost | i18n`.** Cap ≤5 criteria/slice (more = split signal). A criterion that enforces a §10 business rule should cite it (`enforces rule 10.x`).
+   10. **Business Rules & Invariants** (MUST when the feature has non-trivial domain logic — calculations, eligibility, state transitions, limits, money/stock/tenant; else write "none beyond CRUD"). The domain rules the §8 slices must uphold — the *what-must-be-true*, NOT the implementation. Numbered list; each rule is a **falsifiable statement** ("A batch nearest its expiry is consumed first (FEFO)"; "A withdrawal is rejected if amount > balance"; "Order total = Σ line items − discount, never < 0"); tag rules touching **money / stock / tenant isolation** `🔒 INVARIANT` (must hold under concurrency + partial failure); and **link each to ≥1 §9 acceptance criterion** that tests it. Excludes UI behavior (→ `/rplan` Step 2.5) and schemas/APIs (→ `/rplan`).
+   11. **Non-Goals** (MUST, ≥2) — `✗`-prefixed. The most-skipped section and the biggest source of mid-cycle scope explosion.
+   12. **Rabbit Holes & Open Questions** (MUST) — *Rabbit holes:* traps to avoid. *Open questions:* each with `owner` + `decision deadline`. Headers stay even if empty.
+   13. **Technical Constraints** (MAY) — stack-imposed limits.
+   14. **Dependencies** (MAY) — other PRDs, infra, third-party APIs.
+   15. **Rollout & Staging** (MAY, user-facing) — alpha → beta → GA. (Kill criteria live in §6.)
 
 3. Slice quality test (INVEST + atomic-for-AI). Every slice passes all five:
    1. **Single user-visible capability.** "User can register with email" — not "auth system exists."
@@ -153,6 +154,9 @@ If `--research` IS set, ground **only the highest-leverage claims** — the load
    | Acceptance criterion neither links an outcome nor names a guardrail | −3 each |
    | Slice fails any INVEST check | −5 each |
    | >7 slices, not split | −8 |
+   | Feature has domain logic but no §10 Business Rules (or a false "none beyond CRUD") | −8 |
+   | A `🔒 INVARIANT` (money/stock/tenant) not tested by any §9 criterion | −5 each |
+   | A business rule that isn't falsifiable (vague) | −3 each |
    | Non-Goals < 2 | −5 |
    | Self-Critique (step 5) not run | −10 |
 
@@ -190,6 +194,8 @@ mkdir -p tasks
 | Fabricated target | "<30s p50" with no current baseline | Tag `baseline N→M` or `aspirational`; never bare precision. |
 | Goodhart counter-metric | "support tickets" guarding an unrelated speed metric | Name the metric + failure mode the counter-metric actually guards. |
 | Effort kill ≠ product kill | "kill if > 8 tasks" as the only kill line | Add outcome-tied kill: the §5 metric+threshold at which the product is failing. |
+| Vague rule | "handle edge cases properly" as a business rule | State a falsifiable invariant a test can prove violated. |
+| Invisible invariant | a money/stock/tenant rule with no criterion testing it | Tag it `🔒` and link a §9 criterion that asserts it. |
 
 ## Validation (mechanical pre-flight — necessary, not sufficient; the Quality Gate is the real bar)
 
@@ -206,6 +212,8 @@ mkdir -p tasks
 - [ ] Appetite in agent-iterations + outcome-tied kill criteria
 - [ ] Solution Shape has no wireframes/schemas/API signatures
 - [ ] ≤7 slices, each passing all 5 INVEST checks + JTBD-traced
+- [ ] §10 Business Rules present when the feature has domain logic; each rule falsifiable
+- [ ] Every `🔒 INVARIANT` (money/stock/tenant) tested by ≥1 §9 acceptance criterion
 - [ ] Each slice ≤5 criteria; each criterion links an outcome OR names a guardrail
 - [ ] Every §5 outcome has ≥1 linking criterion
 - [ ] ≥2 Non-Goals; Rabbit Holes & Open Questions present
@@ -287,13 +295,18 @@ rest of the app sees a unified `User`.
 - [ ] Frontend renders "You signed up with Google — continue?" CTA (→ 5.3)
 - [ ] Acceptance test: register email → attempt Google with same email → reminder shown, no duplicate row (→ 5.4)
 
-## 10. Non-Goals
+## 10. Business Rules & Invariants
+1. An email maps to **at most one account** across all auth methods. `🔒 INVARIANT` — tested by slice 6.
+2. A session JWT expires exactly **7 days** after issue; expired tokens are rejected. — tested by slice 3.
+3. Bad credentials and unknown email return the **same** 401 (no account enumeration). — tested by slice 2.
+
+## 11. Non-Goals
 - ✗ Multi-factor authentication (separate PRD)
 - ✗ Password reset / forgot-password flow (next PRD)
 - ✗ SSO / SAML / enterprise identity providers
 - ✗ Email verification *enforcement* (we send it but don't gate access this iteration)
 
-## 11. Rabbit Holes & Open Questions
+## 12. Rabbit Holes & Open Questions
 **Rabbit holes:** do NOT generalize `OAuthProvider` until slice 5; do NOT add refresh-token rotation (7-day JWT is enough).
 **Open questions:** JWT secret rotation — owner @ops, deadline before slice 3. GitHub OAuth app in prod? — owner @indra, deadline before slice 5.
 ```
@@ -356,12 +369,16 @@ draft before it is shown.
 - [ ] Grader = deterministic PR-coverage check + LLM-judge for phrasing; emits a pass-rate (→ 5.2, observability)
 - [ ] CI fails the build if pass-rate drops below the gate on a model/prompt change (→ 5.2)
 
-## 10. Non-Goals
+## 10. Business Rules & Invariants
+1. Every generated line **cites a real merged PR number** — no hallucinated PRs. — tested by slice 2.
+2. A draft is **aborted** if its projected cost exceeds the configured ceiling. `🔒 INVARIANT` (cost) — tested by slice 2.
+
+## 11. Non-Goals
 - ✗ Auto-publishing / pushing to GitHub Releases (human edits first)
 - ✗ Multi-repo / monorepo aggregation
 - ✗ Translating notes (i18n) this iteration
 
-## 11. Rabbit Holes & Open Questions
+## 12. Rabbit Holes & Open Questions
 **Rabbit holes:** do NOT fine-tune a model — prompt + routing is the appetite; do NOT build a web UI.
 **Open questions:** which model tier hits the <$0.15 cost target? — owner @indra, deadline before slice 2 (verify current pricing via the `claude-api` skill).
 ```
