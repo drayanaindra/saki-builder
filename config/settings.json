@@ -40,7 +40,7 @@
       "NotebookEdit"
     ]
   },
-  "model": "claude-opus-4-7",
+  "model": "opus",
   "hooks": {
     "Notification": [
       {
