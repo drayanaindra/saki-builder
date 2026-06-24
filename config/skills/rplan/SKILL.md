@@ -14,13 +14,15 @@ python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.claude' / 'settings.json'
 s = json.loads(p.read_text())
-s['model'] = 'claude-opus-4-7'
+s['model'] = 'opus'  # alias — resolves to the best available Opus; never goes stale
 p.write_text(json.dumps(s, indent=2))
-print('Model set to claude-opus-4-7')
+print('Model set to opus (alias -> latest Opus)')
 "
 ```
 
 Then confirm with: `Model: OPUS | Status: Planning`
+
+> This pins the model to Opus for planning and does **not** auto-restore afterward — `/approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
 
 ---
 
@@ -62,6 +64,12 @@ Create an execution plan following the template at `~/.claude/skills/rplan/templ
 
 ### 1. Research Phase (read-only — NEVER skip)
 
+- **Ingest the source PRD slice FIRST (if this task came from `/prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
+  - the slice's **acceptance criteria** → seed the plan's Success Criteria
+  - the **§5 outcome IDs** it serves → keep each Success Criterion's `→ 5.x` link
+  - the **outcome-tied kill criterion** and **appetite** → into the plan header (Step 2 / template)
+  - any `⚠ DISCOVERY-RISK` banner → record as a plan-level UNKNOWN with a resolution strategy
+  If there is no source PRD (standalone `/rplan`), note "no source PRD" and continue.
 - Read ALL files related to the task: models, schemas, services, routes, frontend pages, migrations
 - Identify existing patterns, dependencies, constraints
 - For each user role affected (customer, admin, merchant, warehouse staff), trace the full path:
@@ -72,9 +80,9 @@ Create an execution plan following the template at `~/.claude/skills/rplan/templ
 - Document findings in `[task]-context.md` in project root
 
 **Spike Protocol (XP):** If during research you encounter an unknown that cannot be resolved by reading code (e.g., third-party API behavior, performance characteristics, library compatibility), run a timeboxed spike:
-1. Spawn a subagent with a 15-minute timebox question
+1. Spawn a subagent with a 15-minute timebox question. For genuinely **external** unknowns (third-party API/library behavior, current pricing/limits, ecosystem facts), the spike may use `WebSearch` / `/deep-research` / a connected MCP server — not only code reading.
 2. Spike output must include: question answered, approach tried, key findings, recommendation, remaining unknowns
-3. Spike results feed into the plan as resolved unknowns (with evidence, not assumptions)
+3. Spike results feed into the plan as resolved unknowns (with evidence, not assumptions) — **cite the source** (`path:line`, URL, or MCP query), consistent with §4a's evidence rule
 4. If spike fails to resolve → mark as UNKNOWN in plan with resolution strategy
 
 ### 2. Plan Construction
@@ -90,6 +98,7 @@ Fill in the plan template with:
 - **User Role Coverage matrix** — who can do what after this change
 - **Plan Wiring section** — full call chain from UI → API → Service → DB for each role
 - **Migration Checklist** — every schema change listed with its migration file
+- **Appetite & Kill-if (inherited from the source PRD slice via Step 1)** — `Appetite: ~N agent tasks`; `Kill-if: [§5 metric] crosses [threshold]`. If the plan's step count exceeds the appetite, flag a recut **before** presenting.
 
 ### 2.5. User Flow Spec (user-facing tasks only)
 
@@ -251,6 +260,8 @@ A deduction not tied to any step (e.g., missing role) uses ×1.
 | Unscored (no ledger) | Treat as <70% — return to research               |
 
 **Max unresolved unknowns before presenting:** 2.
+
+> Threshold rationale (vs `/prd`): `/rplan` presents at **≥96%** while `/prd` presents at **≥90%** — by design. A plan is one step from code and has a larger blast radius (a wrong file or migration ships a bug), so its bar sits higher than a product spec's.
 
 #### 4e. Honesty rules
 
@@ -417,6 +428,17 @@ Recommendation: [one of the above]
 ```
 
 ---
+
+## Anti-patterns (reject on sight)
+
+| Anti-pattern | Looks like | Fix |
+|--------------|-----------|-----|
+| Re-derived criteria | Success Criteria written fresh, ignoring the source PRD slice | Seed from `tasks/prd-*.md` (Step 1 ingestion) |
+| Vague step | "update the service to handle X" | Name the file + function + the exact change |
+| Phantom anchor | a step references a function/file that doesn't `grep` | Verify; if absent it's a target needing a creating step (§4a) |
+| Orphan criterion | a Success Criterion with no `→ 5.x` link and no guardrail | Link the PRD outcome or name the guardrail, else cut it |
+| Ledger inflation | 97% with one tiny deduction on a 9-step HIGH-risk plan | Re-walk §4a, classify every reference, cite every deduction |
+| Stale model pin | leaving `claude-opus-4-x` hardcoded in Step 0 | Use the `opus` alias |
 
 ## Rules
 

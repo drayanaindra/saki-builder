@@ -170,7 +170,7 @@ If `--research` IS set, ground **only the highest-leverage claims** — the load
 
 8. Present the PRD with its score, then ask: acceptable, or revise?
 
-9. After approval, hand off to `/rplan` — one invocation per slice. Do NOT produce file-by-file tasks in the PRD.
+9. After approval, recommend `/prd-review` for an independent, fresh-context adversarial check (the in-skill Quality Gate is a *self*-judge and biased toward this PRD). Then hand off to `/rplan` — one invocation per slice. Do NOT produce file-by-file tasks in the PRD.
 
 ## Script
 
