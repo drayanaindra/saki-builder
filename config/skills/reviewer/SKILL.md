@@ -33,12 +33,37 @@ ls .claude/agents/reviewer.md 2>/dev/null && echo "PROJECT" || echo "GLOBAL"
 - **PROJECT** → use `.claude/agents/reviewer.md` as the review checklist (project-specific rules)
 - **GLOBAL** → use the standard checklist below
 
+## Step 2.5: Load house review patterns (learned gotchas)
+
+`~/.claude/memory/patterns.md` accumulates bug classes **caught by past reviews** — many entries are
+literally tagged *"caught by fresh-context reviewer"* or *"only in adversarial review"*. A
+fresh-context reviewer cannot see them otherwise (it doesn't inherit the main thread's context), so
+load the relevant ones and pass them into the prompt. This is the highest-signal input available: a
+list of mistakes this team has already made.
+
+```bash
+test -f ~/.claude/memory/patterns.md && echo "PATTERNS: present" || echo "PATTERNS: none — skip"
+```
+
+If present, read it and **select only the entries that match this diff** (keep the prompt lean — do
+NOT paste the whole file):
+- Always include the stack-agnostic sections: **Code Quality**, **Debugging**.
+- Include a stack section only if the changed files use it (infer from extensions in the Step 1
+  `--name-only` list): `.go` → **Go**; `.tsx/.ts/.jsx` → **React Patterns** / **React / Frontend
+  Architecture** / **Async UI / React** / **Next.js App Router**; `.py` → **Python / API** /
+  **Python Async**; prompt/LLM files → **AI / LLM Integration**.
+- Skip the `patterns-<topic>.md` topic files and any unrelated stacks.
+
+If the file is absent (e.g. a project where claude-config isn't installed), skip silently — the
+checklist from Step 2 still applies.
+
 ## Step 3: Launch review
 
 Use the Agent tool to launch a fresh-context reviewer with:
 - The full git diff from Step 1
 - The changed file paths
 - The checklist from Step 2 (project-specific or global)
+- The selected house review patterns from Step 2.5 (if `patterns.md` exists)
 
 Agent prompt:
 ```
@@ -56,6 +81,12 @@ recent migration that creates the table — divergence between them is a reporta
 
 [If project reviewer exists: paste contents of .claude/agents/reviewer.md checklist]
 [If global: use the Standard Review Checklist below]
+
+[If patterns.md present (Step 2.5): paste the SELECTED house patterns under this header —]
+House review patterns (learned from past reviews on this team's code — check the diff against
+EACH one; these are real bug classes already hit here, not hypotheticals):
+[selected entries from Step 2.5 — verbatim, e.g. pgx rows.Err(), tx.Commit() wrapping, Go json
+tags, useMutation pre-mutation snapshot, concurrent cap-bypass, test-doubles-don't-prove-DB-behavior]
 
 Changed files: [list from Step 1]
 
@@ -116,6 +147,9 @@ Used when no `.claude/agents/reviewer.md` exists.
 ## Rules
 
 - Never skip reading the diff — review without diff context is useless
+- Load house review patterns (Step 2.5) when `patterns.md` exists — they encode bug classes already
+  caught here, and a fresh-context reviewer is blind to them otherwise. Select by stack; never paste
+  the whole file.
 - HIGH issues block the commit — do not suggest committing with unresolved HIGHs
 - Be specific: file path + line number for every issue, not "check the handler"
 - Distinguish blockers from suggestions — LOW items are never blockers

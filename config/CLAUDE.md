@@ -72,8 +72,8 @@ Be specific ("run `pytest tests/test_users.py`" not "test it"). Show next uncomp
 
 - `/retro` before ending long sessions
 - `/reflect` weekly
-- Cross-project patterns: `~/.claude/memory/patterns.md` (generic + stack-portable)
-- Topic-specific patterns: `~/.claude/memory/patterns-<topic>.md` (e.g. `patterns-ios.md`). **Not auto-loaded** — to activate per-project, create `<project>/.claude/CLAUDE.md` with `@~/.claude/memory/patterns-<topic>.md`. Same for project-local `.claude/memory/patterns.md`: import it via the project CLAUDE.md.
+- Cross-project patterns: `~/.claude/memory/patterns.md` (generic + stack-portable) — **auto-loaded** via the `@import` at the end of this file, so `/prd`, `/rplan`, `/build` and every main-thread skill recall promoted patterns with no per-skill read. (Written by `/reflect`; raw session notes live in the per-project `lessons-learned.md` inbox, which is NOT loaded.)
+- Topic-specific patterns: `~/.claude/memory/patterns-<topic>.md` (e.g. `patterns-ios.md`). **Not auto-loaded** — to activate per-project, create `<project>/.claude/CLAUDE.md` with `@~/.claude/memory/patterns-<topic>.md`. Same for project-local `.claude/memory/patterns.md`: import it via the project CLAUDE.md (scaffolded by `/init-env`).
 
 ## XP Practices
 
@@ -86,3 +86,11 @@ Embedded in `/rplan`, `/approved`, `/qa` workflows. Full reference: `~/.claude/d
 - After 2 failed corrections → `/clear` and restart with better prompt
 - Session sweet spot: 60–90 min focused, then `/clear`
 - Plan files survive context clearing — they are your "memory"
+
+## Learned Patterns (auto-loaded)
+
+Promoted cross-project patterns are imported below so they are always in context for the
+planning/build pipeline. `/reflect` maintains this file; keep niche stack-specific patterns in
+`patterns-<topic>.md` (NOT imported here) to keep always-on context lean.
+
+@~/.claude/memory/patterns.md

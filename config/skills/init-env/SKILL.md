@@ -22,6 +22,7 @@ Set up the Claude Code production development environment for this project: $ARG
    - @import global execution protocol
    - @import DDD patterns: `@~/.claude/docs/ddd-patterns.md`
    - @import modular architecture: `@~/.claude/docs/modular-architecture.md`
+   - @import project-local learned patterns: `@.claude/memory/patterns.md` — the promoted store for THIS repo (created in Step 11). Auto-loads project-specific patterns so `/prd`/`/rplan`/`/build` recall them. Do NOT import `lessons-learned.md` (raw inbox — keeps context lean).
    - Detect project stage (Stage 1-4) based on model count, file sizes, team size
    - Add a "Bounded Contexts" table (ask user or infer from project structure)
    - Add "Architecture Stage" section noting current stage and transition triggers
@@ -146,8 +147,15 @@ Set up the Claude Code production development environment for this project: $ARG
    ```
    Note to user: "Fill in TEST_JWT with a long-lived (≥24h) dev token for Playwright auth tests"
 
-11. **Initialize memory**:
-   - Create .claude/memory/lessons-learned.md (empty template)
+11. **Initialize memory** (two files, two roles — mirror the global `~/.claude/memory/` split):
+   - Create `.claude/memory/lessons-learned.md` (empty template) — the **raw inbox**. `/retro`
+     appends session learnings here. **NOT** imported into CLAUDE.md (unpromoted/noisy — keeping it
+     out keeps always-on context lean).
+   - Create `.claude/memory/patterns.md` (empty template) — the **promoted store**. `/reflect` writes
+     confirmed project-specific patterns here. This is the file the project CLAUDE.md `@import`s
+     (Step 2), so promoted patterns auto-load into `/prd` / `/rplan` / `/build`. Seed it with a
+     header comment: `# Project Learned Patterns` + `> Promoted by /reflect from lessons-learned.md.
+     Auto-loaded via CLAUDE.md. Raw notes live in lessons-learned.md.`
 
 12. **Verify**:
     - Run a test hook to confirm it works
