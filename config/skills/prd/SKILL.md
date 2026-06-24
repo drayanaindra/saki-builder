@@ -106,7 +106,9 @@ If `--research` IS set, ground **only the highest-leverage claims** — the load
    9. **Acceptance Criteria per Slice** (MUST) — checklist or Given/When/Then. Each criterion executable (pass/fail unambiguous). Each links a §5 outcome (`→ 5.2`) OR names a guardrail. **Guardrail menu: `security | validation | error-path | accessibility | performance | privacy | observability | cost | i18n`.** Cap ≤5 criteria/slice (more = split signal). A criterion that enforces a §10 business rule should cite it (`enforces rule 10.x`).
    10. **Business Rules & Invariants** (MUST when the feature has non-trivial domain logic — calculations, eligibility, state transitions, limits, money/stock/tenant; else write "none beyond CRUD"). The domain rules the §8 slices must uphold — the *what-must-be-true*, NOT the implementation. Numbered list; each rule is a **falsifiable statement** ("A batch nearest its expiry is consumed first (FEFO)"; "A withdrawal is rejected if amount > balance"; "Order total = Σ line items − discount, never < 0"); tag rules touching **money / stock / tenant isolation** `🔒 INVARIANT` (must hold under concurrency + partial failure); and **link each to ≥1 §9 acceptance criterion** that tests it. Excludes UI behavior (→ `/rplan` Step 2.5) and schemas/APIs (→ `/rplan`).
    11. **Non-Goals** (MUST, ≥2) — `✗`-prefixed. The most-skipped section and the biggest source of mid-cycle scope explosion.
-   12. **Rabbit Holes & Open Questions** (MUST) — *Rabbit holes:* traps to avoid. *Open questions:* each with `owner` + `decision deadline`. Headers stay even if empty.
+   12. **Rabbit Holes & Open Questions** (MUST) — *Rabbit holes:* traps to avoid. *Open questions:* each with `owner` + a `decision deadline`. Headers stay even if empty.
+       - **Gate form (parseable by `/build`):** write each deadline as `before slice N` when the answer is an architectural fork that blocks a specific slice, or `before launch | before beta | before GA` when it is a rollout decision. `/build` enforces only the `before slice N` gates.
+       - **Resolution marker:** once a question is decided, prefix its entry `✅ RESOLVED — <decision>`. An unresolved `before slice N` question (no `✅ RESOLVED`) is a hard stop for `/build` before that slice, so an autonomous run never *guesses* a load-bearing architectural decision. Do not add the marker until the decision is actually made.
    13. **Technical Constraints** (MAY) — stack-imposed limits.
    14. **Dependencies** (MAY) — other PRDs, infra, third-party APIs.
    15. **Rollout & Staging** (MAY, user-facing) — alpha → beta → GA. (Kill criteria live in §6.)
@@ -174,7 +176,7 @@ If `--research` IS set, ground **only the highest-leverage claims** — the load
 
 8. Present the PRD with its score, then ask: acceptable, or revise?
 
-9. After approval, recommend `/prd-review` for an independent, fresh-context adversarial check (the in-skill Quality Gate is a *self*-judge and biased toward this PRD). Then hand off to `/rplan` — one invocation per slice. Do NOT produce file-by-file tasks in the PRD.
+9. After approval, recommend `/prd-review` for an independent, fresh-context adversarial check (the in-skill Quality Gate is a *self*-judge and biased toward this PRD). For user-facing features, optionally suggest `/proto <prd-file>` to preview the end-user UI (real design-system components + mock data, screenshotted) before building — sets visual expectations without writing production code. Then hand off to `/rplan` — one invocation per slice. Do NOT produce file-by-file tasks in the PRD.
 
 ## Script
 

@@ -29,8 +29,9 @@ You are in TRUST MODE. This means:
 - Agent-based sub-skills that are part of this flow (`/rplan-review`, `/reviewer`) are
   permitted — they are how slices get reviewed. Just never pause for user confirmation
   around them.
-- The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an ABSOLUTE NO-GO
-  (below), or a slice that cannot be made green after repeated honest attempts.
+- The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an unresolved `before
+  slice N` open question (Per-Slice Loop, step 0), an ABSOLUTE NO-GO (below), or a slice that
+  cannot be made green after repeated honest attempts.
 
 ---
 
@@ -86,13 +87,34 @@ Pass a valid PRD path: /build <prd-file.md>
 ```
 Do NOT invent a PRD or ask the user to paste one — this is the one input the command requires.
 
-From the PRD, extract:
-- **Vertical Slices** (PRD §8) — the ordered, numbered list. Slices are forward-dependency-only,
-  so **PRD order is execution order**. This is your work list.
-- **Acceptance Criteria per Slice** (PRD §9) — these become each slice's `/qa` success criteria.
-- **Non-Goals** (PRD §10) — treat as hard out-of-scope. Never expand a slice past them.
+From the PRD, extract (match sections by **heading title**, not number — PRD section numbers shift
+as sections are added):
+- **Vertical Slices** — the ordered, numbered list. Slices are forward-dependency-only, so
+  **PRD order is execution order**. This is your work list.
+- **Acceptance Criteria per Slice** — these become each slice's `/qa` success criteria.
+- **Business Rules & Invariants** (the *Business Rules & Invariants* section, if present) — the
+  domain rules every slice must uphold. If it reads "none beyond CRUD", skip the rule checks in the
+  loop below. Otherwise: each rule links to an acceptance criterion, and a criterion may cite
+  `enforces rule N.x` — use that linkage to find the rules in scope for a given slice. Rules tagged
+  `🔒 INVARIANT` (money / stock / tenant isolation) must hold **under concurrency and partial
+  failure** — a stronger bar than a happy-path criterion.
+- **Non-Goals** — treat as hard out-of-scope. Never expand a slice past them.
+- **Open Questions** (the *Rabbit Holes & Open Questions* section) — each question with a
+  `before slice N` deadline, and whether it carries a `✅ RESOLVED` marker. These are architectural
+  forks that gate specific slices (see the Per-Slice Loop, step 0). Ignore `before launch | before
+  beta | before GA` deadlines — those are rollout decisions, outside `/build`'s scope.
 
-Print the extracted slice list (numbered titles) so the run is auditable, then begin.
+Print the extracted slice list (numbered titles) and any **unresolved** `before slice N` gates so
+the run is auditable, then begin.
+
+### Optional: reuse a `/proto` preview if one exists
+
+If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/proto` first), read it. It records the
+**real design-system components + token references** chosen per screen, already validated visually.
+When implementing a user-facing slice, **promote** those presentational components (mock data →
+real data + state + tests + backend wiring) instead of re-picking from scratch — the look is
+already approved. As part of the slice that promotes a `__proto/<slice>` preview, **delete that
+throwaway preview route/story** (it must not ship). If no proto notes exist, build the UI normally.
 
 ---
 
@@ -139,11 +161,27 @@ Then continue with the remaining independent slices.
 For **each slice, in PRD order**, run the full chain. Do not advance to slice N+1 until
 slice N is green and reviewed.
 
+### 0. Open-question gate — hard-stop on an unresolved architectural fork
+Before planning slice N, check the Open Questions (the PRD's *Rabbit Holes & Open Questions*
+section) extracted in Gate 1. If any question gated `before slice N` (or an earlier slice) is
+**not** marked `✅ RESOLVED`, do **not** plan or implement the slice — that decision is
+load-bearing and `/build` must never guess it (guessing is how an autonomous run bakes a wrong
+architecture into every dependent slice). Stop and output:
+```
+BLOCKED: slice N — unresolved open question: <question> (owner: <owner>)
+Resolve it in the PRD (prefix the entry `✅ RESOLVED — <decision>`), then re-run /build.
+```
+This is a legitimate hard stop, not a confirmation prompt — an unresolved architectural fork *is*
+the "honestly-blocked slice" the TRUST-MODE rules already permit. Then move on to any independent
+later slice whose own gates are resolved; report the blocked slice at the end.
+
 ### 1. `/rplan` — plan the slice
 Invoke the `rplan` skill (Skill tool, `skill: rplan`) scoped to **this slice only**: its
-description (PRD §8) plus its acceptance criteria (PRD §9). `/rplan` will research, build
-the plan, and score confidence. **Do not wait for approval** — read the resulting plan and
-its confidence score yourself.
+description plus its acceptance criteria, **and the Business Rules & Invariants in scope for it**
+(the rules its criteria link to, plus any `🔒 INVARIANT` the slice's writes could violate). The
+plan must be built to uphold them — call out each in-scope invariant so the implementation and its
+tests account for it. `/rplan` will research, build the plan, and score confidence. **Do not wait
+for approval** — read the resulting plan and its confidence score yourself.
 
 ### 2. `/rplan-review` — *only if needed*
 Run the `rplan-review` skill when any of these hold; otherwise skip straight to step 3:
@@ -158,15 +196,18 @@ re-read the plan.
 Invoke the `approved` skill to implement the slice under XP discipline (TDD Red→Green→Refactor,
 commit-per-step, YAGNI). You are the approver here — invoke it without waiting for the user.
 
-### 4. `/qa` — test against acceptance criteria
-Invoke the `qa` skill. It runs **this slice's** acceptance criteria (from PRD §9) as real
-tests. Every criterion must pass. If any fails → fix in place and re-run `/qa`. Do not
+### 4. `/qa` — test against acceptance criteria + in-scope invariants
+Invoke the `qa` skill. It runs **this slice's** acceptance criteria as real tests; every
+criterion must pass. **Also verify each in-scope Business Rule** — and for a `🔒 INVARIANT`,
+assert it holds under concurrency / partial failure where the stack allows (e.g. a race or
+double-fire test), not just the happy path, since a passing acceptance criterion does not prove an
+invariant holds. If any criterion or invariant check fails → fix in place and re-run `/qa`. Do not
 proceed while red.
 
 ### 5. `/reviewer` — fresh-context review
 Invoke the `reviewer` skill on the slice's diff. If it reports **blocking** issues
-(correctness, security, data-loss): fix them, then re-run `/qa` and `/reviewer` until the
-review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
+(correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/qa`
+and `/reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
 
 ### 6. Mark done, advance
 Log `SLICE [N] ✓ — <title>` with a one-line note (commits, files, test result), then move
@@ -218,8 +259,9 @@ Next actions:
 
 ## Rules
 
-- **No questions.** The only hard stops are: missing PRD (Gate 1), an ABSOLUTE NO-GO, or a
-  slice that genuinely cannot be made green.
+- **No questions.** The only hard stops are: missing PRD (Gate 1), an unresolved `before slice N`
+  open question (Per-Slice Loop, step 0), an ABSOLUTE NO-GO, or a slice that genuinely cannot be
+  made green.
 - **PRD is the source of truth.** Scope = its slices; success = its acceptance criteria;
   boundaries = its non-goals. Never re-elicit scope from the user.
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.
