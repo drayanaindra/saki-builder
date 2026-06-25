@@ -32,6 +32,11 @@
       "Bash(sort *)",
       "Bash(uniq *)",
       "Bash(column *)",
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(node *)",
       "mcp__playwright",
       "Read",
       "Edit",
@@ -40,7 +45,7 @@
       "NotebookEdit"
     ]
   },
-  "model": "opus",
+  "model": "claude-sonnet-4-6",
   "hooks": {
     "Notification": [
       {
