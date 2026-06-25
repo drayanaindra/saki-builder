@@ -40,3 +40,16 @@ Promoted to `~/.claude/memory/patterns.md`:
 - [React Patterns] **Destructive-action confirmation: never morph the trigger into Confirm at the same screen coords** (card delete safety probe — caught CRITICAL bypass via mouse double-click)
 
 Slate Go/embed/SQLite patterns kept project-local in the Slate repo's `.claude/memory/lessons-learned.md` per user preference.
+
+## 2026-06-25 — built an engine that already existed upstream, then stood it down
+
+- [ANTI-PATTERN] (HIGH) Ran a full cost/value analysis + built a non-trivial tool against **stale local repo state** — never pulled first. A `git pull` would have shown the canonical source was actively evolving an existing skill into the same thing, and the answer would have been "don't build it." **Pull / check the canonical remote BEFORE the build-vs-reuse call, not after.** (Direct validation of CLAUDE.md rule #6, which was itself merged in from upstream this same session — strong promotion signal.)
+- [CORRECTION] (HIGH) User had to repeat "be honest, no bias" before I gave the unbiased verdict, because I kept proposing to salvage the one piece *I* authored. **Authorship biases toward keeping; when judging your own work for redundancy, default-to-cut on high overlap.**
+- [ANTI-PATTERN] (HIGH) `git add -A <dir>` swept pre-existing unrelated untracked files into a feature commit (caught and fixed via reset). **Stage explicit paths; never `git add -A` in a repo carrying unrelated untracked files.**
+- [PATTERN] (MED) Local edits to an upstream-maintained skill/file are a **recurring merge-conflict tax on every pull** — a real maintenance cost that should weigh against "just tweak it locally." Prefer contributing upstream or keeping additions in separate, non-colliding files.
+- [DISCOVERY] (MED) To undo a whole unpushed feature: `git checkout main` + delete the branch reverts every file add/edit at once — no surgical unpick needed. Cheapest "abandon a feature" when nothing is pushed.
+
+**Promotion candidates** (flag for `/reflect`):
+- "Pull/verify canonical source before building" already exists as CLAUDE.md rule #6 — this is independent recurrence. Consider strengthening rule #6 with the concrete failure mode (stale-local cost/value analysis).
+- "Default-to-cut on own-work redundancy (authorship bias)" is global behavior guidance — promote to `patterns.md` on one more recurrence.
+- "Stage explicit paths, never `git add -A` with unrelated untracked files" — global tool practice; promote on one more recurrence.
