@@ -22,6 +22,10 @@ inputs:
 Project {{project_name}} uses {{stack}}.
 Create component "{{input.name}}" of type {{input.type}}.
 
+**Before starting:** check if `.claude/personas/*.md` exists. If it does, read the relevant
+persona(s) and use them to inform copy tone, affordances, error messages, and interaction
+patterns. Cite the persona section when a decision is persona-driven (e.g. `→ persona §5`).
+
 Read AGENTS.md for component conventions.
 Read existing components to understand patterns (styling, state, testing).
 

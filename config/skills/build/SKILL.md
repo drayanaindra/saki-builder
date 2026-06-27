@@ -29,9 +29,10 @@ You are in TRUST MODE. This means:
 - Agent-based sub-skills that are part of this flow (`/rplan-review`, `/reviewer`) are
   permitted — they are how slices get reviewed. Just never pause for user confirmation
   around them.
-- The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an unresolved `before
-  slice N` open question (Per-Slice Loop, step 0), an ABSOLUTE NO-GO (below), or a slice that
-  cannot be made green after repeated honest attempts.
+- The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an ABSOLUTE NO-GO (below),
+  or a slice that cannot be made green after repeated honest attempts. An unresolved `before slice
+  N` open question is **not** a stop — `/build` auto-resolves it (Per-Slice Loop, step 0) and
+  proceeds.
 
 ---
 
@@ -105,7 +106,8 @@ as sections are added):
   beta | before GA` deadlines — those are rollout decisions, outside `/build`'s scope.
 
 Print the extracted slice list (numbered titles) and any **unresolved** `before slice N` gates so
-the run is auditable, then begin.
+the run is auditable — these will be **auto-resolved** in the loop (step 0), not blocked on — then
+begin.
 
 ### Optional: reuse a `/proto` preview if one exists
 
@@ -162,19 +164,31 @@ Then continue with the remaining independent slices.
 For **each slice, in PRD order**, run the full chain. Do not advance to slice N+1 until
 slice N is green and reviewed.
 
-### 0. Open-question gate — hard-stop on an unresolved architectural fork
+### 0. Open-question gate — auto-resolve the fork, don't stop
 Before planning slice N, check the Open Questions (the PRD's *Rabbit Holes & Open Questions*
 section) extracted in Gate 1. If any question gated `before slice N` (or an earlier slice) is
-**not** marked `✅ RESOLVED`, do **not** plan or implement the slice — that decision is
-load-bearing and `/build` must never guess it (guessing is how an autonomous run bakes a wrong
-architecture into every dependent slice). Stop and output:
-```
-BLOCKED: slice N — unresolved open question: <question> (owner: <owner>)
-Resolve it in the PRD (prefix the entry `✅ RESOLVED — <decision>`), then re-run /build.
-```
-This is a legitimate hard stop, not a confirmation prompt — an unresolved architectural fork *is*
-the "honestly-blocked slice" the TRUST-MODE rules already permit. Then move on to any independent
-later slice whose own gates are resolved; report the blocked slice at the end.
+**not** marked `✅ RESOLVED`, **resolve it yourself and proceed** — do not stop. The goal is to
+ship the expectation, so a missing decision is something `/build` *makes*, not something it waits
+on. Resolve it with the first rule that applies:
+
+1. **Take the PRD's lean.** If the entry states a recommendation, default, or "leaning X" — use it.
+2. **Serve the slice's criteria.** Else pick the option that best satisfies *this slice's*
+   acceptance criteria + its JTBD / outcomes.
+3. **YAGNI + reversibility.** Else pick the simplest, most reversible option — the one cheapest to
+   change later if it turns out wrong. Reversibility is the safety net that replaces the old hard
+   stop: a wrong-but-reversible call costs a refactor, not a baked-in architecture.
+4. **Never cross a guardrail.** A resolution may never violate a **Non-Goal** or a `🔒 INVARIANT`,
+   and may never require an **ABSOLUTE NO-GO**. If the *only* way to satisfy the slice is one of
+   those, that — not the open question — is the genuine block: output
+   `BLOCKED: slice N — <reason>`, then move on to independent later slices.
+
+Then **record the decision** so it is auditable and a human can override it later:
+- Annotate the PRD entry in place: prefix it `✅ RESOLVED (auto) — <decision> — <one-line why>`.
+- Write it to the progress scratchpad and emit the marker line:
+  `AUTO-RESOLVED: slice N — <question> → <decision>`.
+
+Carry the decision into step 1 (`/rplan`) as a stated assumption so the plan and its tests are
+built on it.
 
 ### 1. `/rplan` — plan the slice
 Invoke the `rplan` skill (Skill tool, `skill: rplan`) scoped to **this slice only**: its
@@ -251,8 +265,13 @@ Slices: [N/N] done
   2. <title> ✓  ...
 E2E: <pass | no suite found>
 
+Auto-resolved decisions (review & override if any are wrong):
+  slice N — <question> → <decision>  (<one-line why>)
+  …  (omit this block if no open questions needed resolving)
+
 Next actions:
 > Review the branch diff and open a PR
+> [revisit any auto-resolved decision you disagree with]
 > [anything logged as a non-blocking nit]
 ```
 
@@ -260,9 +279,9 @@ Next actions:
 
 ## Rules
 
-- **No questions.** The only hard stops are: missing PRD (Gate 1), an unresolved `before slice N`
-  open question (Per-Slice Loop, step 0), an ABSOLUTE NO-GO, or a slice that genuinely cannot be
-  made green.
+- **No questions.** The only hard stops are: missing PRD (Gate 1), an ABSOLUTE NO-GO, or a slice
+  that genuinely cannot be made green. Unresolved `before slice N` open questions are auto-resolved
+  (Per-Slice Loop, step 0), never blocked on.
 - **PRD is the source of truth.** Scope = its slices; success = its acceptance criteria;
   boundaries = its non-goals. Never re-elicit scope from the user.
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.

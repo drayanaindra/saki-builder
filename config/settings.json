@@ -121,6 +121,12 @@
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
+    },
+    "solveed-harness": {
+      "source": {
+        "source": "git",
+        "url": "https://gitlab.solveeducation.org/solveed/ed-harness.git"
+      }
     }
   },
   "effortLevel": "xhigh",

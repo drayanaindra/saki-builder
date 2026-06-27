@@ -70,6 +70,13 @@ Create an execution plan following the template at `~/.claude/skills/rplan/templ
   - the **outcome-tied kill criterion** and **appetite** → into the plan header (Step 2 / template)
   - any `⚠ DISCOVERY-RISK` banner → record as a plan-level UNKNOWN with a resolution strategy
   If there is no source PRD (standalone `/rplan`), note "no source PRD" and continue.
+- **Persona check:** after PRD ingestion, check if `.claude/personas/*.md` exists. If it does,
+  read the relevant persona(s) and carry forward into the plan:
+  - §3 Pain Points & §5 UI/UX Constraints → inform which error/empty states to cover in Step 2.5
+  - §6 "Must Never Experience" → add as explicit guardrail criteria in Success Criteria
+  - §4 Mental Model → inform copy tone in Step 2.5 Gherkin `Then` lines (UI text should match persona vocabulary)
+  Cite the persona when it drives a plan decision: `→ persona/buyer.md §5`.
+  If no persona file exists, continue without one — this is a check, not a blocker.
 - Read ALL files related to the task: models, schemas, services, routes, frontend pages, migrations
 - Identify existing patterns, dependencies, constraints
 - For each user role affected (customer, admin, merchant, warehouse staff), trace the full path:
@@ -159,6 +166,7 @@ Feature: [Role] — [capability]
 - Reference exact routes and `data-testid` hooks where known
 - If the flow touches money, stock, or tenant data, add an explicit invariant `And` line
 - Cross-reference from `[task]-plan.md` via the `Behavior Spec:` header line
+- **If a persona was loaded in Step 1:** `Then` UI copy must use the persona's vocabulary (§4 Mental Model), not technical jargon. Error messages must address the persona's top pain points (§3). Scenarios must include any state listed in §6 "Must Never Experience" as a distinct unhappy-path scenario.
 
 ### 3. Implementation Completeness Checklist
 
