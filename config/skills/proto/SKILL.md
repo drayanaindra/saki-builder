@@ -52,6 +52,13 @@ Do NOT invent a PRD. From it, extract:
 Also read any `tasks/*-flow.md` (rplan Step 2.5 Gherkin) for the slice — it already enumerates the
 states the user expects. If present, it is the authoritative state list.
 
+**Persona check:** after loading the PRD, check if `.claude/personas/*.md` exists. If it does,
+read the relevant persona(s) and use them to inform:
+- Copy tone and vocabulary (§4 Mental Model — match their language, not technical jargon)
+- Which states to emphasize (§6 "Must never experience" → always render that failure state)
+- Interaction density and affordance size (§5 UI/UX Constraints — e.g. mobile context = larger tap targets)
+Cite the persona when it drives a visual decision: `→ persona/buyer.md §5`.
+
 Print the user-facing slice list so the run is auditable.
 
 ---
@@ -144,12 +151,16 @@ Then wrap the preview in those providers with everything external **mocked**:
 
 ### 5b. Harness choice (in priority order)
 
-1. **Storybook**, if present — prefer it. Stories mount components in isolation with explicit
-   decorators for the providers from 5a; no app shell, no auth, no routing. Use the `component`
-   skill's `.stories.tsx` convention.
-2. **Throwaway route**, if no Storybook and the provider chain mocks cleanly — create
+Pipeline Studio's live Preview serves a **running dev-server route**, so a routable `proto-preview`
+route is the PRIMARY target — prefer it whenever the provider chain mocks cleanly (5a). A Storybook-
+only or static-only run yields **no live Studio preview** (Studio hides the Preview button); the
+screenshot gallery is still produced as a record.
+
+1. **Throwaway route** (PREFERRED — enables the live Studio preview) — create
    `app/proto-preview/<slice>/page.tsx` (Next), or a `proto-preview` route (Vite/Remix), wrapped in
-   the 5a mock providers. Drive states via a query param (`?state=empty|loading|error`), or stack
+   the 5a mock providers. ALSO create a routable **`/proto-preview` index** page that links each
+   slice's route — this single entry URL is what the Studio opens (and what the manifest's `route`
+   points at, Step 5e). Drive states via a query param (`?state=empty|loading|error`), or stack
    all states in one labelled gallery page (simpler to screenshot).
    - **Next App Router gotcha:** do NOT name the folder with a leading underscore (`_proto`,
      `__proto`). Underscore-prefixed folders are **private** and are excluded from routing → the
@@ -160,6 +171,10 @@ Then wrap the preview in those providers with everything external **mocked**:
      also inherits that layout's full shell (see 5a). A sibling outside `[locale]` skips the shell
      but gets locale-redirected by i18n middleware; usually the in-`[locale]` placement + a
      middleware bypass (below) is cleanest.
+2. **Storybook**, only if a clean route can't mount — stories mount components in isolation with
+   explicit decorators for the providers from 5a; no app shell, no auth, no routing. Use the
+   `component` skill's `.stories.tsx` convention. (No live Studio route — screenshot gallery only;
+   do NOT write a manifest, Step 5e.)
 3. **Standalone mock-provider harness**, if the app shell is env-locked — render just the slice's
    component subtree in a minimal page that supplies only the 5a mock providers, bypassing the real
    root layout. Lower fidelity on global chrome, but it renders; note the reduction in `index.md`.
@@ -181,8 +196,13 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
 
 ### 5d. Mount, mark, serve
 
-- **Mark it disposable:** a visible banner/comment `// __PROTO__ — throwaway preview, do not ship`
-  on every preview file.
+- **Visible prototype banner (required):** render a fixed banner element in the `/proto-preview` page
+  body containing the literal token `__PROTO__` and the text
+  `⚡ Prototype preview — UI only · mock data · controls inert`. This does double duty: (1) it sets the
+  operator's expectations so a faithful-but-inert page isn't mistaken for a broken app, and (2)
+  `__PROTO__` is the **health-check sentinel** the Studio greps in the page body to confirm a real
+  render (Step 5e `readySentinel`). Also keep the disposable source comment
+  `// __PROTO__ — throwaway preview, do not ship` on every preview file.
 - **Isolation:** preview files live only under the `proto-preview` namespace (or Storybook) so they
   are trivially deletable and can never reach production.
 - **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
@@ -191,9 +211,40 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   for your banner text, and check there's no `Failed to compile` / error overlay) before
   screenshotting — do not assume it came up, and never screenshot an error page (return to 5a/5c).
 
+### 5e. Write the live-preview manifest (enables Pipeline Studio's live Preview)
+
+If — and ONLY if — a routable `proto-preview` entry serves cleanly (5b option 1), write
+`tasks/proto-<prd-slug>/preview.json` so the Studio can re-start the dev server and open the route on
+demand (a headless run can't keep its own dev server alive). Compose it from the Gate-2 detection:
+
+```json
+{
+  "devCommand": "npm run dev -- --host 127.0.0.1 --port {PORT} --strictPort",
+  "route": "/proto-preview",
+  "readySentinel": "__PROTO__",
+  "framework": "vite"
+}
+```
+
+- `devCommand` — a shell template; **leave the literal `{PORT}`** in place (the Studio substitutes a
+  free port). **Bind to `127.0.0.1`** (Vite `--host 127.0.0.1`; Next `-H 127.0.0.1`). Compose for the
+  repo's package manager: npm needs `-- ` before flags (`npm run dev -- --host …`); pnpm/yarn forward
+  directly (`pnpm dev --host …`). Add `--strictPort` for Vite (Next errors on a busy port already).
+- `route` — the `/proto-preview` index entry (5b). `readySentinel` — `__PROTO__` (the visible banner,
+  5d). `framework` — informational.
+
+Then **emit a machine-readable marker on its own line** so the Studio's stream parser finds it:
+```
+PROTO_PREVIEW_MANIFEST: tasks/proto-<prd-slug>/preview.json
+```
+Storybook-only / static-only runs (5b options 2–3) do NOT write a manifest or the marker — the Studio
+then shows no live Preview for that run (the screenshot gallery still stands as the record).
+
 ---
 
-## Step 6 — Screenshot via Playwright MCP
+## Step 6 — Screenshot + HTML gallery via Playwright MCP
+
+### 6a. Screenshots
 
 For each screen × state, navigate the preview route and capture screenshots at **two viewports**
 (design.md is mobile-first):
@@ -206,6 +257,112 @@ one-line caption each, and leads with the fidelity contract (faithful vs approxi
 
 If a screenshot fails, retry once; if it still fails, note it in `index.md` rather than silently
 dropping the state.
+
+### 6b. Single HTML gallery (iframe-isolated, opens with file://)
+
+After all screenshots are captured, produce `tasks/proto-<prd-slug>/preview.html`.
+
+#### Capture DOM (do separately for each viewport)
+
+For each screen × state, capture at both viewports using `mcp__claude-in-chrome__resize_window`
+followed by `mcp__claude-in-chrome__javascript_tool` with:
+```js
+return document.documentElement.outerHTML
+```
+Resize to **1280px** wide first → capture desktop snapshot. Then resize to **390px** → capture
+mobile snapshot. (Tailwind breakpoints are baked into the rendered DOM — capturing at the real
+viewport width is the only way to get correct responsive layout.)
+
+Assert the returned string length is > 1000 chars; if truncated, chunk via
+`document.head.innerHTML + document.body.innerHTML`.
+
+#### Patch each captured snapshot
+
+Inject `<base href="http://localhost:PORT/">` immediately after `<head>` in each snapshot. This
+makes same-origin `url()` references (fonts, images, CSS chunks) resolve against the running dev
+server — layout is faithful when the server is up; falls back to unstyled text/layout-only offline.
+
+**Do NOT** try to replace `<link>` tags with inline `<style>`: dev servers (Next.js/Vite) inject CSS
+via JS-driven `<style>` blocks at runtime, so `<link rel="stylesheet">` is usually absent — parsing
+it finds nothing. The `<base href>` approach is simpler and correct.
+
+#### HTML-escape each snapshot for `srcdoc` embedding
+
+Each captured snapshot becomes an `<iframe srcdoc="...">` attribute value. HTML-escape it first:
+```bash
+python3 -c "import html,sys; print(html.escape(sys.stdin.read(), quote=True))" < snapshot.html
+```
+This converts `"` → `&quot;`, `&` → `&amp;`, `<`/`>` → `&lt;`/`&gt;`. Required — without it,
+`srcdoc` terminates early on the first `"` inside the captured HTML.
+
+#### Assemble `preview.html`
+
+Write the gallery with pure HTML + inline `<style>` (no external JS):
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body{margin:0;font:14px/1.5 sans-serif;display:flex}
+    nav{width:200px;position:sticky;top:0;height:100vh;overflow-y:auto;padding:12px;border-right:1px solid #e5e7eb;font-size:12px}
+    nav a{display:block;padding:4px 6px;color:#374151;text-decoration:none;border-radius:4px}
+    nav a:hover{background:#f3f4f6}
+    main{flex:1;padding:24px;overflow-x:auto}
+    .state-group{margin-bottom:48px}
+    .state-label{font-weight:600;margin-bottom:12px;font-size:13px}
+    .viewport-row{display:flex;gap:24px;align-items:flex-start}
+    .frame-wrap{display:flex;flex-direction:column;gap:4px}
+    .frame-label{font-size:11px;color:#9ca3af}
+    iframe{border:1px solid #e5e7eb;border-radius:6px;display:block}
+    .fidelity{background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;padding:10px 14px;font-size:12px;margin-bottom:24px}
+  </style>
+</head>
+<body>
+  <nav>
+    <!-- one <a href="#slice-N-state"> per state, generated from the slice list -->
+  </nav>
+  <main>
+    <div class="fidelity">
+      ⚡ Faithful on: layout · components · Tailwind tokens · CSS hover/transitions.<br>
+      Not interactive: click handlers + API calls stripped — that is /build's work.<br>
+      Assets (fonts, images) load when dev server is running on PORT.
+    </div>
+    <!-- for each state: -->
+    <div class="state-group" id="slice-N-state">
+      <div class="state-label">Slice N — happy</div>
+      <div class="viewport-row">
+        <div class="frame-wrap">
+          <span class="frame-label">desktop · 1280px</span>
+          <iframe srcdoc="[HTML-ESCAPED DESKTOP SNAPSHOT]" width="1280" height="800" scrolling="yes"></iframe>
+        </div>
+        <div class="frame-wrap">
+          <span class="frame-label">mobile · 390px</span>
+          <iframe srcdoc="[HTML-ESCAPED MOBILE SNAPSHOT]" width="390" height="800" scrolling="yes"></iframe>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+```
+
+Each state gets its **own** `<iframe srcdoc>` — this provides CSS isolation so one state's
+`position:fixed` overlays, Tailwind resets, and global CSS rules cannot bleed into adjacent states
+or the gallery nav.
+
+#### Verify
+
+```bash
+grep -o 'id="slice-' tasks/proto-<slug>/preview.html | wc -l
+```
+Count should equal the total state count across all slices. If short, note missing states in `index.md`.
+
+**Note on JS interactivity:** click handlers and data fetching are intentionally absent — the gallery
+shows visual states (layout, hierarchy, CSS transitions, spacing, copy) which is all a pre-build
+preview needs. For live interaction, open the running dev-server route directly.
 
 ---
 
@@ -226,11 +383,14 @@ the **token references** used, and the **states** confirmed. Purpose: `/build` *
 presentational components (mock data → real data + state + tests + backend wiring) instead of
 re-picking from scratch.
 
-State the **cleanup contract** explicitly: the `proto-preview/*` namespace (or proto stories) **and
-the Step 5c middleware bypass** are throwaway — `/build` either promotes the components into real
-routes or deletes them, and reverts the bypass. Neither may rot in the repo. If the preview ran on a
-throwaway git branch, that branch is deleted after the screenshots are saved (the `index.md` + PNGs
-persist outside the branch).
+State the **cleanup contract** explicitly. The `proto-preview/*` route (incl. the `/proto-preview`
+index), the Step 5c middleware bypass, and the `preview.json` manifest (5e) **PERSIST after the proto
+run** — they are exactly what Pipeline Studio re-runs to serve the live Preview, so the proto run must
+NOT delete them, and must NOT run on a throwaway git branch that is then deleted (that would erase the
+live route). They remain throwaway w.r.t. **`/build`**, which is the **sole owner of teardown**: it
+either promotes the components into real routes or deletes the `proto-preview/*` namespace, reverts the
+bypass, and removes the manifest. Until `/build` runs they live in the working tree (uncommitted is
+fine). The `index.md` + PNG gallery are a separate record and persist regardless.
 
 ---
 
@@ -244,15 +404,22 @@ Slices previewed: [N user-facing]
   1. <title> — states: happy, loading, empty, error   (screens: M)
   2. ...
 Screenshots: tasks/proto-<slug>/index.md  (desktop + mobile)
+HTML gallery: tasks/proto-<slug>/preview.html  (self-contained, open with file://)
 Handoff notes: tasks/proto-<slug>-notes.md
+Live preview: <PROTO_PREVIEW_MANIFEST: tasks/proto-<slug>/preview.json | none (Storybook/static run)>
+
+PROTO_PREVIEW_MANIFEST: tasks/proto-<slug>/preview.json
 
 Fidelity: faithful on layout/components/look/responsive/per-state;
           approximate on live data density + edge cases; no backend/logic.
 
 Next actions:
+> Open the live Preview in Pipeline Studio (the running /proto-preview route)
 > Review tasks/proto-<slug>/index.md and confirm the look
 > /build tasks/<prd-file>  (promotes these components into real implementation)
 ```
+(Emit the bare `PROTO_PREVIEW_MANIFEST: …` line ONLY when 5e wrote a manifest — it is the marker the
+Studio parses to enable live Preview. Omit it entirely on Storybook-only / static-only runs.)
 
 ---
 
@@ -272,6 +439,15 @@ Next actions:
 | Booting real auth/DB to render a preview | Mock the session/locale/data-layer; never hit live auth |
 | Screenshotting a compile-error / error page | Fix the provider (5a) first; never capture an error as the "preview" |
 | Declaring done without verifying the server serves | `lsof`/curl the route before screenshotting |
+| Embedding full `<html>` docs as `<section>` children | Use `<iframe srcdoc>` per state — CSS isolation, no bleed |
+| Inlining CSS by parsing `<link>` tags on a dev server | Dev servers inject CSS via JS at runtime; use `<base href>` instead |
+| Capturing DOM at desktop viewport for the "mobile" frame | Resize to 390px first, then capture — Tailwind breakpoints are viewport-baked |
+| Embedding raw `outerHTML` in `srcdoc` without escaping | Escape first: `python3 -c "import html,sys; print(html.escape(sys.stdin.read(), quote=True))"` |
+| Calling "Playwright's javascript_tool" | The tool is `mcp__claude-in-chrome__javascript_tool` — use the exact MCP tool name |
+| Deleting the `proto-preview` route / manifest at the end of the proto run | They PERSIST — `/build` owns teardown (Step 8). Deleting them erases the live Preview |
+| Writing a `preview.json` manifest for a Storybook-only / static-only run | Manifest + marker ONLY when a real `proto-preview` route serves (5e) — else the Studio's live boot 404s |
+| Hard-coding a port (or omitting `{PORT}`) in the manifest `devCommand` | Leave the literal `{PORT}` — the Studio allocates a free port and substitutes it (5e) |
+| Reaching for Storybook when a clean route would mount | Prefer the route harness (5b #1) — Storybook yields no live Studio preview |
 
 ## Rules
 
