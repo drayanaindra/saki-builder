@@ -97,8 +97,8 @@ token file, open the root `layout.*` / `App.tsx`). Then branch:
 
 | Detection | Action |
 |-----------|--------|
-| **Found** (components + tokens) | Record import paths (components + the app shell/layout, for 5b) + token source. Proceed — preview is 1:1. |
-| **Partial** (tokens xor components) | Proceed, but state explicitly which half is approximate (e.g. "tokens are real, components are hand-rolled approximations"). |
+| **Found** (components + tokens) | Record import paths (components + the app shell/layout, for 5b) + token source. **Always run Step 2.5** — slices may need components not yet in the library. |
+| **Partial** (tokens xor components) | State which half is real vs. approximate. **Run Step 2.5** to design the missing half as proper extensions. |
 | **None** | **STOP — do not fabricate.** |
 
 On **None**, output and stop:
@@ -112,6 +112,96 @@ Options:
 Pick a/b/c.
 ```
 Never silently invent a component set — that is the exact failure this gate exists to prevent.
+
+---
+
+## Step 2.5 — Design System Gap Analysis (always runs after Gate 2)
+
+**Scope rule — library vs. custom layer (critical for MUI/Chakra/Mantine/Ant Design projects):**
+If the project uses an npm component library (MUI, Chakra, Mantine, Ant Design, Radix, Headless UI),
+treat **all of that library's primitives as ✅ by default** — do NOT list them individually (Paper,
+Button, TextField, Avatar, etc. are ✅ implied). Enumerate **only**:
+- Custom business components built on top of the library (e.g. `SaasBar`, `BuildRow`, `EmptyState`)
+- Business-semantic tokens not yet in the token file (e.g. `tokens.status.review` if missing)
+
+A table that lists 15 trivially-✅ MUI primitives before one real ❌ buries the signal. Focus only
+on the non-trivial layer.
+
+**Cross-reference scope (IMPORTANT):** check ONLY the Gate 2 library paths (`src/components/`,
+`components/ui/`, etc.). Explicitly **exclude** `src/proto/**`, `proto-preview/**`, and any
+Storybook story files — components found there are NOT in the design system. Also grep the previous
+proto harness files for any named exports NOT in `src/components/` — each is a candidate ❌ Missing
+that survived the last run un-codified.
+
+Classify each custom component:
+
+- ✅ **Exists** — found in `src/components/` (or the Gate 2 library path), use as-is
+- ⚠️ **Variant needed** — base component exists but lacks a required style variant or semantic token
+- ❌ **Missing** — no equivalent in `src/components/` or the npm library
+
+**For ⚠️ variants — library project branching rule:**
+- If the variant is **purely stylistic** (a color set, a size, a border tweak) on a single library
+  component → resolve via **theme override** (add to `theme.ts` `components.MuiChip.variants`,
+  `components.MuiButton.styleOverrides`, etc. for MUI; `extendTheme` in Chakra). Do NOT create a
+  wrapper file — theme overrides are the idiomatic path and keep MUI's `sx`/palette integration intact.
+- If the variant **combines multiple primitives** or contains interaction logic → create a local
+  wrapper component file.
+
+For every ⚠️ and ❌, produce a **component spec** that thinks like a UI/UX designer:
+
+1. **Name** — follow existing naming conventions (PascalCase; mirror library patterns like
+   `SaasBar`, `StatusBadge`, not `status_badge` or `badge_status`)
+2. **Resolution path** — for ⚠️: "theme override in `theme.ts`" or "new wrapper file"; for ❌: "new file"
+3. **Variants / props** — list prop names using the same vocabulary as existing components
+   (e.g. if library uses `variant="primary|secondary"`, new components use the same `variant` key)
+4. **Design tokens** — list any new token additions required, **in the format the project already uses**:
+   - MUI TS tokens object → `tokens.status.review: '#a371f7'` in `theme.ts`
+   - Tailwind CSS v4 → `@theme { --color-status-review: ... }` in globals
+   - Tailwind CSS v3 → `theme.extend.colors.status.review` in `tailwind.config.*`
+   - CSS custom properties → `--color-status-review: ...` in `:root` in globals
+   Prefer extending existing token scales. If a token already exists, cite it — do NOT duplicate.
+5. **States** — hover, focus, disabled, loading, error, selected — only what the component actually needs
+6. **Accessibility** — ARIA role, keyboard behavior, contrast check (4.5:1 minimum)
+7. **Consistency check** — name 2–3 closest existing components; note deviations and why
+
+Present the gap analysis as a labelled table before rendering. Example format (library-based project
+— MUI-style; replace token format with the project's actual format):
+```
+Design System Gap Analysis
+──────────────────────────────────────────────────────────────────
+MUI library           — all primitives (Button, Paper, etc.) ✅ baseline
+
+Custom layer:
+⚠️  status token set         — tokens.status.review missing from theme.ts
+❌  SaasBar                   — custom app bar (Logo + plan Chip + Avatar + Logout)
+❌  EmptyState                 — icon + title + description + optional CTA
+
+Proposed additions:
+1. tokens.status.review (⚠️ theme override — theme.ts)
+   Add: tokens.status.review: '#a371f7'  (consistent with existing status palette)
+
+2. SaasBar (❌ new component — src/components/SaasBar.tsx)
+   Props: appName, planLabel, user: { name, avatarUrl }, onLogout
+   Uses: MUI AppBar + Chip + Avatar + IconButton; tokens.brand for logo color
+   A11y: nav landmark, logout button aria-label="Sign out"
+
+3. EmptyState (❌ new component — src/components/EmptyState.tsx)
+   Props: icon, title, description, action?: { label, onClick }
+   Tokens: none new — uses existing Typography + spacing
+   A11y: presentational; action inherits Button a11y
+```
+
+**Pause here and ask for confirmation** before rendering:
+> "These component specs will be rendered as proposed designs in the prototype and, after your
+> approval in Step 7, codified into the design system before `/build` runs. Confirm to proceed,
+> or adjust any spec now."
+
+Do NOT proceed to Step 3 until the user confirms (or silently adjusts and re-presents if the
+user requests a change). This is the cheapest point to catch a wrong component direction —
+before any rendering happens.
+
+If all components exist (no ⚠️/❌ entries), state "No design system extensions needed" and
+proceed to Step 3 without a pause.
 
 ---
 
@@ -574,11 +664,80 @@ produced; surface both in the Completion Output.
 
 ## Step 7 — Present + expectation check
 
-Show `index.md`. Restate the fidelity contract. Ask:
-> "Does this match what you expected the end user to see — or adjust before `/build`?"
+Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 
-Iterate on **look only** (component choice, layout, copy, spacing, states shown). If the user wants
-behavior changes, that is a PRD/rplan concern, not proto — say so and point back.
+> 1. "Does this match what you expected the end user to see — or adjust before `/build`?"
+> 2. "After seeing the rendered result, do you want to revise any component spec approved in Step 2.5?
+>    (You confirmed names, variants, and tokens before rendering — this is your last chance to adjust
+>    before Step 7.5 writes them to real files.)"
+
+Iterate on **look and specs only** (component choice, layout, copy, spacing, states shown, token
+names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto
+— say so and point back.
+
+**Both questions must be approved before proceeding.** If the user approves look but wants a spec
+change, revise the component spec, update the approximation in the proto-preview, re-screenshot
+the affected frames, and present again. Do NOT proceed to Step 7.5 until both are green.
+
+---
+
+## Step 7.5 — Design System Update (runs after approval, BEFORE `/build`)
+
+For each ⚠️ / ❌ component approved in Step 7, apply the resolution path from the Step 2.5 spec:
+
+**⚠️ Variant needed — theme override path (library projects: MUI/Chakra/Mantine/Ant Design):**
+- Add the style variant to the theme file (`theme.ts`, `extendTheme`, etc.) via
+  `components.MuiX.variants` / `components.MuiX.styleOverrides` (MUI) or the equivalent
+- Do NOT create a wrapper file for a purely stylistic variant — theme overrides are the idiomatic
+  path and keep the library's `sx`/palette integration intact
+- Create a wrapper file ONLY when the variant combines multiple primitives or contains logic
+
+**❌ Missing — new component file:**
+- Create at the correct location per Gate 2 detection + project conventions
+  (e.g. `src/components/SaasBar.tsx`, `src/components/ui/empty-state.tsx`)
+- Consume tokens using the project's detected mechanism:
+  - MUI: import `tokens` from the theme file and reference `tokens.status.*`; or use the `sx` prop
+    with `theme.palette.*` — do NOT use `var(--token-name)` CSS vars unless the project defines them
+  - Tailwind: use utility classes matching the `@theme` / `tailwind.config.*` entries
+  - CSS custom properties: use `var(--token-name)` against properties in `globals.css`/`:root`
+- Export from the barrel index (`src/components/ui/index.ts`) if the project uses one
+- Follow the same file structure, prop interface style, and export pattern as existing components
+- Keep it presentational (no data fetching, no business logic)
+
+**All approved changes — add tokens first:**
+- Add new tokens to the token file using the project's format (see Step 2.5 token spec):
+  - MUI TS tokens object → add to the `tokens` const in `theme.ts`
+  - Tailwind CSS v4 → add to `@theme {}` in globals
+  - Tailwind CSS v3 → add to `theme.extend` in `tailwind.config.*`
+  - CSS custom properties → add to `:root` in globals
+  Only tokens from the approved spec — no speculative additions
+
+- **Update `design.md`** — add the new component(s) to the relevant section (Feedback, Layout,
+  Forms, etc.) with a one-line description matching the existing entries' style
+
+- **Write `tasks/proto-<prd-slug>/design-system-updates.md`** (use the project's actual token format):
+  ```
+  Design System Updates — <prd-slug>
+  ═══════════════════════════════════
+  New component files:
+  - SaasBar (src/components/SaasBar.tsx)
+  - EmptyState (src/components/EmptyState.tsx)
+
+  Theme overrides added (theme.ts / extendTheme / etc.):
+  - components.MuiChip.variants: status color set (success, warning, error, neutral)
+
+  Token additions (<format: theme.ts tokens object | tailwind config | globals.css>):
+  - tokens.status.review: '#a371f7'   [MUI example]
+  - (or) --color-status-review: #a371f7  [CSS var example]
+  ```
+
+**Verify** the new components render without error in the `proto-preview` route — replace the
+approximation imports with the real components and confirm `curl` still returns HTTP 200 with
+the `__PROTO__` sentinel. Do NOT re-screenshot unless something looks different.
+
+Only after this step is complete does `/build` run. Write this as a hard dependency in the
+handoff notes (Step 8): "Design system was updated per `design-system-updates.md`. `/build` MUST
+use these real components — do NOT re-invent them."
 
 ---
 
@@ -609,6 +768,17 @@ wrote one, is ignored by the current Studio and is removed with the namespace at
 --- /proto COMPLETE ---
 PRD: <prd-file>
 Design system: <Found | Partial(<which half>) | scaffolded>
+
+Design System Gap Analysis:
+  ✅ Existing (N components used as-is)
+  ⚠️ Extended (M variants added)  →  see design-system-updates.md
+  ❌ New (K components created)   →  see design-system-updates.md
+  (or: No extensions needed — all components already existed)
+
+Design system updated: tasks/proto-<slug>/design-system-updates.md
+  Added: <list of new component files>
+  Tokens: <list of new token names, or "none">
+
 Slices previewed: [N user-facing]
   1. <title> — states: happy, loading, empty, error   (screens: M)
   2. ...
@@ -620,12 +790,13 @@ Figma export: <Figma file URL — Tier A editable layers | Tier B screenshot boa
 
 Fidelity: faithful on layout/components/look/responsive/page-composition-in-real-shell/per-state;
           approximate on live data density + edge cases; no backend/logic.
+Design system: updated before /build — new components are real, not approximations.
 
 Next actions:
 > Open the Preview ↗ in Pipeline Studio (the static page-overview gallery)
 > Open the exported Figma file to review/edit the layers (if Step 6c ran)
 > Review tasks/proto-<slug>/index.md and confirm the look
-> /build tasks/<prd-file>  (promotes these components into real implementation)
+> /build tasks/<prd-file>  (promotes these components into real implementation — design system already updated)
 ```
 (The static `preview.html` is what the Studio opens — no marker line is needed. The `preview.json`
 manifest of 5e is optional/legacy and ignored by the current Studio; only mention it if you wrote one.)
@@ -636,6 +807,17 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 
 | Anti-pattern | Fix |
 |--------------|-----|
+| Skipping Step 2.5 when Gate 2 is "Found" | Gap analysis runs regardless — slices may need components not yet in the library |
+| Listing MUI/Chakra/Mantine primitives (Button, Paper, etc.) individually as ✅ | For npm-library projects, all library primitives are ✅ by default — list only the custom business component layer |
+| Cross-referencing `src/proto/**` or `proto-preview/**` when checking if a component exists | Those are throwaway harness files — a component found there is NOT in the design system; exclude them from the scan |
+| Proceeding to render without confirming component specs | Step 2.5 requires explicit user confirmation before Step 3 — cheapest correction point |
+| Naming new tokens or components outside existing conventions | Follow existing naming patterns exactly (same key names, same scale prefixes, same casing) |
+| Adding speculative tokens "we might need later" | Only add tokens explicitly required by the approved spec |
+| Creating a wrapper file for a ⚠️ purely stylistic MUI/Chakra variant | Theme overrides (`components.MuiX.variants`) are the correct path — new files only for multi-primitive composites |
+| Writing `var(--token-name)` in component files for an MUI project | MUI tokens live in `theme.ts` — consume via `tokens.status.*` or `theme.palette.*`, not CSS vars the project never defined |
+| Adding CSS custom properties to a TS tokens object (`theme.ts`) | Match the project's token format exactly (see Step 2.5 token format detection) |
+| Letting `/build` re-invent components instead of using Step 7.5 additions | Design system update (7.5) runs before /build; handoff notes must name the real component files |
+| Running Step 7.5 without verifying new components render in proto-preview | Replace approximation imports → curl → confirm __PROTO__ sentinel still present |
 | Inventing components when no design system exists | Gate 2 STOP — offer scaffold / mock / skip |
 | Lorem-perfect data hiding overflow & density | Long strings + many rows + an empty case |
 | Wiring real backend / data fetching / state logic | Mock only — that work is `/build` |
@@ -670,6 +852,10 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
   boundaries = its §11 non-goals. Never re-elicit scope.
 - **Real components or stop.** Gate 2 is blocking — a faithful preview without a real design system
   is a contradiction; say so rather than fabricate.
+- **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get
+  a spec, user confirmation, and are codified into the real design system (Step 7.5) **before**
+  `/build` runs — never during it. Be consistent: new components follow existing naming, token
+  scales, and prop conventions exactly.
 - **Throwaway but shell-faithful.** The preview **composes the real app shell** (5b#1) for page
   fidelity, yet lands only under the `proto-preview` namespace (or Storybook, the fallback), marked
   disposable, with a cleanup contract handed to `/build`.

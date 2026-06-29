@@ -219,9 +219,11 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
 
 14. **Non-interactive / PRD-driven mode only — self-commit the env** so the repo is clean before any
     downstream build branches:
-    - Stage ONLY the paths this skill created (never `git add -A` — don't sweep unrelated/concurrent
-      edits): `git add CLAUDE.md docs/project-context.md .claude` (add any other paths you created,
-      e.g. `e2e .env.test .gitignore`).
+    - Stage ONLY the paths this skill ACTUALLY created (never `git add -A` — don't sweep unrelated/
+      concurrent edits; and never name a path you didn't create — `git add` of a missing pathspec
+      exits non-zero and stages nothing, breaking the commit). For the LEAN headless scaffold that is
+      exactly: `git add CLAUDE.md .claude`. (Only add `docs/project-context.md` / `e2e` / `.env.test`
+      etc. if a fuller scaffold actually created them — they are SKIPPED in lean headless mode.)
     - Commit with the hook bypass so the just-installed pre-commit test hook can't block a project
       that has no tests yet: `git -c commit.gpgsign=false commit --no-verify -m "chore(claude-env): initialize Claude environment"`.
     - (Interactive mode: leave the changes unstaged for the human to review/commit — do NOT self-commit.)
