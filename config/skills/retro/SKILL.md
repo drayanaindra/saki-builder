@@ -32,10 +32,12 @@ Review the current session and extract learnings.
      - [PATTERN] [what works]
      - [ANTI-PATTERN] [what to avoid]
      ```
+   - **Tag the stack** on any learning that involves a specific framework, language, or tool. Add `[stack: react]`, `[stack: python]`, `[stack: go]`, `[stack: ios]`, `[stack: mcp]`, or `[stack: ai]` at the end of the line. This lets `/reflect` route it to the right topic file without re-reading the session.
 
 4. **Check for promotion candidates**:
-   - If a learning appears 3+ times across sessions -> flag for `/reflect`
-   - If a correction is about a global behavior (not project-specific) -> flag for global promotion
+   - If a learning appears 3+ times across sessions → flag for `/reflect`
+   - If a correction is about a global behavior (not project-specific) → flag for global promotion
+   - **Routing hint**: stack-tagged learnings (`[stack: X]`) promote to `patterns-X.md`, not `patterns.md`. Cross-stack learnings (git, workflow, Claude behavior) promote to `patterns.md`.
 
 ## Rules
 
