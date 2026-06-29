@@ -60,6 +60,16 @@
     ],
     "SessionStart": [
       {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/sonar-gate-init.sh",
+            "timeout": 15
+          }
+        ]
+      },
+      {
         "matcher": "compact",
         "hooks": [
           {
