@@ -8,13 +8,54 @@ disable-model-invocation: true
 
 Set up the Claude Code production development environment for this project: $ARGUMENTS
 
+## Invocation modes
+
+Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule for Step 1:
+
+- **Interactive (default)** — a human ran `/init-env`. Ask for project name, business context, key
+  constraints as normal.
+- **Non-interactive / PRD-driven** — `$ARGUMENTS` contains a path to a PRD (e.g.
+  `tasks/prd-*.md` / `docs/prd/**/prd.md`), OR no `$ARGUMENTS` were given but a `tasks/prd-*.md`
+  exists in the repo. This happens when a tool (e.g. pipeline-studio) runs `/init-env` headless in a
+  SINGLE turn before a build. In this mode you have **no human to ask** and **one turn to finish** —
+  so do NOT run the full 14-step Process below. Instead run this **LEAN, BOUNDED scaffold** and
+  complete ALL of it before stopping:
+
+  > **Headless scaffold — do every item, in order, then STOP. You are NOT done until
+  > `.claude/.env-init.json` exists AND you have committed.** Do not pause, do not ask, do not
+  > narrate alternatives — just create the files.
+  >
+  > 0. Read the PRD; DERIVE project name, business context, constraints, and **tech stack** from it
+  >    (TL;DR / problem / JTBD / any stack notes). For an empty repo with no stack files, infer the
+  >    stack from the PRD ("a Next.js app" → Node/TS). Default anything unstated; never prompt.
+  >    If an existing `.claude/` is FOREIGN, back it up first (see Step 1 backup rule).
+  > 1. `CLAUDE.md` (lean, <100 lines) — Step 2 below, but skip the interactive "ask user" parts.
+  > 2. `.claude/agents/reviewer.md` and `.claude/agents/qa.md` — Steps 6–7 below (these are what
+  >    `/build` invokes). Also `.claude/agents/planner.md` (Step 5).
+  > 3. `.claude/memory/patterns.md` and `.claude/memory/lessons-learned.md` — Step 11 below (the
+  >    `@import` target + raw inbox).
+  > 4. The marker `.claude/.env-init.json` — Step 12 below (config MUST be `$HOME`).
+  > 5. Self-commit — Step 14 below (`git add` only the created paths + `commit --no-verify`).
+  >
+  > **Deliberately SKIP in headless mode** (heavier / better done interactively later; and the hooks
+  > would interfere with the autonomous build that runs right after): `.claude/settings.json` hooks
+  > (Step 4), `docs/project-context.md` (Step 3), `.claude/hooks/` scripts (Step 8), skill overrides
+  > (Step 9), Playwright infra (Step 10). The operator can run `/init-env` interactively later to add
+  > these.
+
 ## Process
 
 1. **Detect project context**:
    - Read package.json, pyproject.toml, go.mod, Cargo.toml to detect tech stack
    - Check for existing CLAUDE.md, .claude/ directory
    - Identify test framework, linter, type checker
-   - Ask user for: project name, business context, key constraints
+   - **Interactive mode:** ask user for project name, business context, key constraints.
+     **Non-interactive / PRD-driven mode:** derive all of these from the PRD (see "Invocation modes") — do NOT ask.
+   - **If an existing `.claude/` is FOREIGN** (present but `.claude/.env-init.json` is missing or its
+     `config` ≠ this machine's `$HOME` — i.e. it came from another claude-config, so its `@import`
+     paths / hook scripts / agents won't resolve here): back it up FIRST —
+     `ts=$(date +%Y%m%d-%H%M%S); mv .claude ".claude.bak-$ts"; [ -f CLAUDE.md ] && mv CLAUDE.md "CLAUDE.md.bak-$ts"` —
+     then scaffold fresh below. Never overwrite a foreign `.claude/` in place.
 
 2. **Create project CLAUDE.md** (lean, <100 lines):
    - Project identity and business context
@@ -157,9 +198,33 @@ Set up the Claude Code production development environment for this project: $ARG
      header comment: `# Project Learned Patterns` + `> Promoted by /reflect from lessons-learned.md.
      Auto-loaded via CLAUDE.md. Raw notes live in lessons-learned.md.`
 
-12. **Verify**:
+12. **Write the init marker** `.claude/.env-init.json` — the durable "this repo's Claude env was
+    initialized by THIS config" stamp that tools use to detect env state. Write exactly:
+    ```bash
+    cat > .claude/.env-init.json <<EOF
+    {
+      "tool": "pipeline-studio-init-env",
+      "config": "$HOME",
+      "version": 1,
+      "createdAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    }
+    EOF
+    ```
+    `config` MUST be the literal value of `$HOME` so a repo carrying a marker from another machine/config
+    reads as FOREIGN (its `config` won't match this `$HOME`).
+
+13. **Verify**:
     - Run a test hook to confirm it works
     - Show summary of what was created
+
+14. **Non-interactive / PRD-driven mode only — self-commit the env** so the repo is clean before any
+    downstream build branches:
+    - Stage ONLY the paths this skill created (never `git add -A` — don't sweep unrelated/concurrent
+      edits): `git add CLAUDE.md docs/project-context.md .claude` (add any other paths you created,
+      e.g. `e2e .env.test .gitignore`).
+    - Commit with the hook bypass so the just-installed pre-commit test hook can't block a project
+      that has no tests yet: `git -c commit.gpgsign=false commit --no-verify -m "chore(claude-env): initialize Claude environment"`.
+    - (Interactive mode: leave the changes unstaged for the human to review/commit — do NOT self-commit.)
 
 ## Tech Stack Detection
 

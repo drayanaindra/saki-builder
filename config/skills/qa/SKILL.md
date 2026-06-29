@@ -126,6 +126,21 @@ UI criteria marked BLOCKED.
 
 Skip Step 1.5.
 
+### 1e: Verify the auth fixture survives app init (auth-wipe trap)
+
+**Highest-leverage QA-phase time saver — do not skip for auth-gated apps.** Specs fail *en masse* and burn the entire QA budget in 30s timeout-retries when the app CLEARS the injected session on init (the injected token is set, then wiped before the page renders → every selector times out). Real cost observed: 50+ min of retry loops on a single PRD.
+
+Run only if `MCP_MODE=unavailable`, `FRONTEND_ROOT` set, and any criterion is auth-gated:
+
+1. Grep the app for init-time logic that resets the session — cookie/version migrations, `localStorage.clear()` on mount, token-gated resets:
+   ```bash
+   grep -rnE "migrat|cookie_migration|localStorage\.(clear|removeItem)|(remove|delete).*(access_token|refresh_token)" "$FRONTEND_ROOT/src" 2>/dev/null | head
+   ```
+2. If a trap exists (e.g. `migrateCookiesIfNeeded()` clears tokens unless `localStorage.cookie_migration_v1` is set), the auth fixture **must also set that guard's precondition flag** so the migration is a no-op — not just the token.
+3. Prefer a **`globalSetup` + `storageState`** fixture (authenticate ONCE, persist full storage incl. the precondition flag, reuse across all specs) over per-test `addInitScript` injection — faster, survives init, set up once per project.
+
+See `~/.claude/skills/qa/playwright-patterns.md` → **"Auth survives app init"** and **"globalSetup + storageState"** for the templates. If a trap is found and unsatisfiable here, mark UI criteria BLOCKED with the exact fix rather than letting specs time-out-loop.
+
 ---
 
 ## Step 1.5: Generate Playwright specs for UI criteria

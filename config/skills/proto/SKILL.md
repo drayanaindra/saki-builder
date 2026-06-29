@@ -1,6 +1,6 @@
 ---
 name: proto
-description: Render a faithful, throwaway UI preview of a finished PRD's user-facing slices INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /build runs. Sits between /prd and /build. Usage — /proto <prd-file.md> [--slice=N].
+description: Render a faithful, throwaway UI preview of a finished PRD's user-facing slices INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Sits between /prd and /build. Usage — /proto <prd-file.md> [--slice=N].
 ---
 
 # UI Preview Stage (faithful, throwaway)
@@ -26,11 +26,21 @@ it removes the *look* risk, not the *behavior* work.
 
 ## Input
 
-Usage: `/proto <prd-file.md> [--slice=N]` (filler words fine).
+Usage: `/proto <prd-file.md> [--slice=N]` (filler words fine) — or `/proto --figma-only <gallery-dir>`
+to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only).
 
 Locate the PRD exactly like `/build`: take the token ending in `.md` (or matching `prd-*`), and
 check, in order: `tasks/<name>`, `./<name>`, the path as given. `--slice=N` previews one slice;
 default previews all user-facing slices.
+
+**`--figma-only <gallery-dir>` mode** — skip GATE 1 → Step 6b entirely; take an existing
+`tasks/proto-<slug>/` (its PNGs) and run **only Step 6c** against it. Purpose: run the Figma export on a
+machine where the Figma MCP **is** connected (e.g. your Mac with Figma desktop), against a gallery rendered
+elsewhere (e.g. a headless VPS / Studio run that skipped Figma — see Step 6c "headless/VPS reality"). Here
+the Figma MCP is **required** — if it's absent, STOP and say so (it's the explicit purpose, not a silent skip).
+The live route isn't running in this mode, so **Tier B** (screenshot board from the existing PNGs) is the
+path; the `<prd-slug>` for the Figma file name comes from the gallery dir (`proto-<slug>/`). For **Tier A**
+editable layers, run a full `/proto` on the Figma-connected machine instead (it re-renders the live route).
 
 ---
 
@@ -262,128 +272,303 @@ then shows no live Preview for that run (the screenshot gallery still stands as 
 
 ---
 
-## Step 6 — Screenshot + HTML gallery via Playwright MCP
+## Step 6 — Screenshot + interactive Figma-flow gallery via headless Playwright
 
-### 6a. Screenshots
+### 6a. Capture — screenshots + hotspots in one headless pass
 
-First, **order the screens by the user journey** — the sequence the user actually moves through (from
-the `*-flow.md` Gherkin happy path; if there's no flow doc, infer it from §9 acceptance criteria).
-This order drives the page overview AND the gallery nav (Step 6b).
+**Engine (VPS-critical).** Capture renders the served route (5d) to PNGs. Prefer **headless Playwright**:
+it runs with no desktop browser and no extension, so it works identically on your laptop AND on a headless
+VPS — which is the whole point of the static gallery. The **claude-in-chrome MCP** (`mcp__claude-in-chrome__*`)
+is the **local-only fallback**, used only when Playwright can't be made available.
 
-For **each screen, capture the full-page happy state first — the "page frame"**: the whole composed
-page in the real shell (5b#1), the Figma-like overview shot. Then capture the remaining **states**
-(loading / empty / validation-error / server-error). Shoot everything at **two viewports**
-(design.md is mobile-first):
-- **desktop** (e.g. 1280 wide)
-- **mobile** (e.g. 390 wide)
+- **Detect:** `node_modules/.bin/playwright --version` (already a dep in many JS repos) — if present, use it.
+- **Install (local dev):** `npm i -D playwright && npx playwright install chromium` (~150 MB, needs network).
+- **Bootstrap (headless VPS — run ONCE per image):** `npx playwright install --with-deps chromium`. The
+  `--with-deps` flag also `apt-get`s the system libraries + base fonts that headless chromium needs on a bare
+  Linux box; **without it chromium either fails to launch or renders `□` tofu** for missing glyphs. Two font
+  follow-ups for faithful text: (1) the app uses `system-ui`/`-apple-system`, which on Linux falls back to
+  whatever is installed — for parity with macOS, pin a UI font in the image (`apt-get install -y fonts-inter`,
+  or drop the `.ttf` in + `fc-cache -f`); (2) **emoji** in the UI (e.g. the 💬 badge) need
+  `fonts-noto-color-emoji` or they render as tofu. (Containers: bake all of this into the Dockerfile, not the
+  run step.)
+- **Neither works:** fall back to the MCP and **note in `index.md`** that capture was local-only
+  (not VPS-reproducible) — never silently skip.
 
-Save to `tasks/proto-<prd-slug>/<slice-n>-<state>-<viewport>.png` — use **`<state>=page`** for the
-full-page happy frame (e.g. `slice2-page-desktop.png`). Then write
-`tasks/proto-<prd-slug>/index.md` that **leads with the page overview (the journey-ordered page
-frames)**, then the per-state breakdown grouped **by slice → state**, with a one-line caption each,
-under the fidelity contract (faithful vs approximate).
+**Order the screens by the user journey** (from the `*-flow.md` Gherkin happy path; else infer from §9) —
+this order drives the gallery (6b). For **each screen capture the page frame first** (the Figma overview
+shot of the whole composed page in the real shell, 5b#1), then the other **states** (loading / empty /
+validation-error / server-error), at **two viewports** — desktop (1280) and mobile (390). Save
+`tasks/proto-<prd-slug>/<slice-n>-<state>-<viewport>.png` (use `<state>=page` for the happy frame).
 
-If a screenshot fails, retry once; if it still fails, note it in `index.md` rather than silently
-dropping the state.
+**One script does both** — screenshots every frame AND measures each journey hotspot (6a-bis) in the same
+headless pass, emitting `hotspots.json` for 6b. Write it to `tasks/proto-<prd-slug>/proto-capture.mjs` and
+run from the repo root (`PROTO_URL=http://localhost:<port>/proto-preview node tasks/proto-<slug>/proto-capture.mjs`):
 
-### 6b. Single HTML gallery (PNG-based, overview-led — opens with `file://` AND in Studio)
+```js
+// __PROTO__ throwaway — headless capture: screenshots + journey hotspots in one pass. Deleted at /build teardown.
+import { chromium } from 'playwright'          // npm i -D playwright && npx playwright install chromium
+import { writeFileSync, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'; import { fileURLToPath } from 'node:url'
 
-After all screenshots are captured, produce `tasks/proto-<prd-slug>/preview.html` — this is the
+const OUT = dirname(fileURLToPath(import.meta.url))           // = tasks/proto-<slug>/
+const BASE = process.env.PROTO_URL || 'http://localhost:5173/proto-preview'   // the served route (5d)
+const VIEWPORTS = { desktop: [1280, 832], mobile: [390, 844] }
+
+// One entry per SCREEN in journey order. `states` maps state→a suffix on BASE (a ?state= value or path).
+// `anchor` (6a-bis) = the control that advances to the next screen: CSS `sel`, or {role,name}. Omit on last.
+const SCREENS = [
+  { slug:'slice1', states:{ page:'?state=happy', empty:'?state=empty', error:'?state=error' },
+    anchor:{ to:1, label:'<affordance>', sel:'[data-testid="primary-cta"]' } },
+  // …one per screen in journey order. Last screen: anchor:{ to:0, label:'↺ Restart', sel:'…' } or no anchor
+]
+const pct = (b,W,H) => b && { x:+(b.x/W*100).toFixed(2), y:+(b.y/H*100).toFixed(2), w:+(b.width/W*100).toFixed(2), h:+(b.height/H*100).toFixed(2) }
+
+mkdirSync(OUT, { recursive:true })
+const browser = await chromium.launch()
+const hotspots = {}                                          // slug -> { to, label, desktop:{}, mobile:{} }
+for (const [vp,[W,H]] of Object.entries(VIEWPORTS)) {
+  const ctx = await browser.newContext({ viewport:{width:W,height:H}, deviceScaleFactor:2 })
+  const page = await ctx.newPage(); const errs = []
+  page.on('pageerror', e => errs.push(`[${vp}] ${e.message}`))
+  for (const s of SCREENS) {
+    for (const [state, suffix] of Object.entries(s.states)) {
+      await page.goto(BASE + suffix, { waitUntil:'networkidle' })
+      await page.waitForSelector('text=__PROTO__', { timeout:8000 }).catch(()=>{})   // render sentinel (5d)
+      await page.waitForTimeout(400)
+      await page.screenshot({ path:`${OUT}/${s.slug}-${state}-${vp}.png` })
+    }
+    if (s.anchor && (s.anchor.sel || s.anchor.name)) {        // measure hotspot on the page state
+      await page.goto(BASE + s.states.page, { waitUntil:'networkidle' }); await page.waitForTimeout(300)
+      const loc = s.anchor.sel ? page.locator(s.anchor.sel).first()
+                               : page.getByRole(s.anchor.role||'button', { name:new RegExp(s.anchor.name) }).first()
+      const box = await loc.boundingBox().catch(()=>null)
+      hotspots[s.slug] = Object.assign(hotspots[s.slug]||{ to:s.anchor.to, label:s.anchor.label }, { [vp]: pct(box,W,H) })
+    }
+  }
+  if (errs.length) console.error('PAGE ERRORS:\n'+errs.join('\n'))   // never screenshot an error page — fix 5a/5c
+  await ctx.close()
+}
+await browser.close()
+writeFileSync(`${OUT}/hotspots.json`, JSON.stringify(hotspots, null, 2))
+console.log('captured screenshots + hotspots.json')
+```
+
+Confirm the PNGs exist and `hotspots.json` is non-empty (and no `PAGE ERRORS` printed — those mean a
+provider/compile failure: fix 5a/5c, never ship an error frame). If a shot fails, retry once, else note it
+in `index.md`. Then write `index.md` leading with the journey-ordered page frames + the fidelity contract.
+
+### 6a-bis. The hotspot anchors (input to the 6a script)
+
+The flow is clickable because each screen knows the control that advances to the next. For every screen
+except the last, give the 6a script that control via `anchor` — a CSS `sel` (prefer a stable `data-testid`)
+or `{role, name}` — taken from the `*-flow.md` happy path (the primary CTA / the field filled / the row
+opened). The script resolves it, reads its rect, converts to **% of the viewport** (scales at any display
+size) for BOTH viewports, and writes `hotspots.json` as `{ slug: { to, label, desktop:{x,y,w,h},
+mobile:{x,y,w,h} } }` — paste these straight into 6b's `SCREENS[*].hot`. The last screen loops (`to:0`) or
+omits its anchor. If a selector can't resolve, the script records `null` — the rail + Prev/Next still
+navigate; never hand-fabricate coordinates.
+
+### 6b. Interactive Figma-flow gallery (PNG-based — opens with `file://` AND in Studio)
+
+After all screenshots + hotspots are captured, produce `tasks/proto-<prd-slug>/preview.html` — the
 artifact Pipeline Studio opens (it serves `preview.html` **plus its sibling PNGs** read-only). **Embed
-the 6a PNG screenshots via relative `<img src>`** — NOT `<iframe srcdoc>` with captured DOM. Why: a
-DOM snapshot needs a running dev server to resolve its CSS (via `<base href>`), but the dev server does
-**not** persist after a proto run — so a srcdoc gallery renders **unstyled** in Studio. The PNGs are
-already-rendered, faithful, viewport-correct, and need no server. (Each PNG is also naturally
-CSS-isolated — no bleed between frames.)
+the 6a PNGs via relative `<img src>`** — NOT `<iframe srcdoc>` captured DOM (which renders **unstyled**
+with no dev server). The PNGs are already-rendered, faithful, viewport-correct, and need no server.
 
-Lead with the **page overview** (the journey-ordered full-page frames = the Figma frames), then a
-secondary **state detail** section.
+It is a **Figma-style design-studio** view with two modes + two toggles:
+- **Flow** (default) — one screen on a dark canvas with **click-through hotspots** (6a-bis) overlaid on
+  the real controls; clicking advances to the next journey screen. Left **journey rail** + Prev/Next +
+  `H` to flash all hotspots. This is the Figma prototype mode.
+- **Overview** — every screen's page frame in **journey order** with arrows between them (the Figma
+  board); click a frame to jump into Flow there.
+- **State toggle** — per screen, flip between its captured states (page / loading / empty / error).
+- **Viewport toggle** — desktop (1280) ↔ mobile (390).
 
 #### Assemble `preview.html`
 
-Pure HTML + inline `<style>`, no external JS, two sections in journey order:
+Self-contained: inline `<style>` + inline `<script>`, **no external/CDN deps**. Frames are driven by a
+`SCREENS` array in journey order; each screen lists its state→viewport PNGs and its hotspot. Fill the
+`SCREENS` array from 6a (PNG names) + 6a-bis (hotspot rects); the template logic does not change.
 
 ```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    body{margin:0;font:14px/1.5 sans-serif;display:flex}
-    nav{width:210px;position:sticky;top:0;height:100vh;overflow-y:auto;padding:12px;border-right:1px solid #e5e7eb;font-size:12px}
-    nav .group{font-weight:700;color:#111;margin:12px 6px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-    nav a{display:block;padding:4px 6px;color:#374151;text-decoration:none;border-radius:4px}
-    nav a:hover{background:#f3f4f6}
-    main{flex:1;padding:24px;overflow-x:auto}
-    h2{font-size:15px;margin:0 0 16px;border-bottom:2px solid #e5e7eb;padding-bottom:6px}
-    .frame-group{margin-bottom:48px}
-    .frame-label{font-weight:600;margin-bottom:12px;font-size:13px}
-    .viewport-row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
-    .frame-wrap{display:flex;flex-direction:column;gap:4px}
-    .vp{font-size:11px;color:#9ca3af}
-    img{border:1px solid #e5e7eb;border-radius:6px;display:block;max-width:100%;height:auto}
-    .fidelity{background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;padding:10px 14px;font-size:12px;margin-bottom:24px}
-  </style>
-</head>
-<body>
-  <nav>
-    <div class="group">Overview</div>
-    <!-- one <a href="#page-<slice-n>"> per screen, in JOURNEY ORDER -->
-    <div class="group">States</div>
-    <!-- one <a href="#state-<slice-n>-<state>"> per screen × state -->
-  </nav>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proto — <prd-slug></title>
+<style>
+  :root{--bg:#1e1e1e;--panel:#2c2c2c;--line:#3d3d3d;--text:#e6e6e6;--muted:#9b9b9b;--accent:#0d99ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:10}
+  .spacer{flex:1}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg button{background:transparent;color:var(--muted);border:0;padding:5px 11px;font:inherit;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .hint{color:var(--muted);font-size:11px}.hint kbd{background:#000;border:1px solid var(--line);border-radius:4px;padding:0 5px}
+  .fidelity{margin:0;padding:8px 16px;background:#2a2410;border-bottom:1px solid #4a3d12;color:#e8c97a;font-size:12px}
+  .wrap{display:flex;min-height:calc(100vh - 92px)}
+  nav{width:210px;border-right:1px solid var(--line);padding:12px;flex-shrink:0}
+  nav .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:6px 4px}
+  nav a{display:flex;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;color:var(--text);text-decoration:none;cursor:pointer;font-size:12px}
+  nav a:hover{background:#333}nav a.on{background:#0d99ff22;color:#cde8ff}
+  nav a .n{width:18px;height:18px;border-radius:50%;background:#3d3d3d;display:grid;place-items:center;font-size:11px;flex-shrink:0}
+  nav a.on .n{background:var(--accent);color:#fff}
+  main{flex:1;display:flex;flex-direction:column;align-items:center;padding:24px;overflow:auto}
+  .caption{color:var(--muted);margin-bottom:12px;text-align:center}.caption b{color:var(--text)}
+  .states{display:flex;gap:6px;margin-bottom:14px}
+  .states button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 10px;font:inherit;cursor:pointer}
+  .states button.on{border-color:var(--accent);color:#cde8ff}
+  .stage{position:relative;display:inline-block;box-shadow:0 12px 40px rgba(0,0,0,.55);border-radius:10px;overflow:hidden;background:#0d1117}
+  .stage img{display:block;width:auto;max-width:min(1180px,90vw);height:auto}.stage.mobile img{max-width:min(360px,90vw)}
+  .hot{position:absolute;border-radius:6px;cursor:pointer}
+  .hot::after{content:attr(data-label);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;font-size:11px;font-weight:600;color:#fff;background:var(--accent);padding:3px 8px;border-radius:5px;opacity:0;transition:opacity .12s;pointer-events:none}
+  .hot:hover,.hot.flash{box-shadow:0 0 0 2px var(--accent),0 0 0 6px #0d99ff44;background:#0d99ff22}
+  .hot:hover::after,.hot.flash::after{opacity:1}
+  .navrow{display:flex;gap:10px;align-items:center;margin-top:16px}
+  .navrow button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:7px 14px;cursor:pointer;font:inherit}
+  .dots{display:flex;gap:6px}.dot{width:8px;height:8px;border-radius:50%;background:#555;cursor:pointer}.dot.on{background:var(--accent)}
+  .grid{display:none;flex-wrap:wrap;gap:30px;padding:28px;justify-content:center}
+  body.overview .grid{display:flex}body.overview .wrap{display:none}
+  .card .ttl{font-size:12px;color:var(--muted);margin-bottom:8px}.card .ttl b{color:var(--text)}
+  .card img{display:block;max-width:420px;border-radius:8px;box-shadow:0 8px 26px rgba(0,0,0,.5);border:1px solid var(--line);cursor:pointer}
+  body.overview.mobile .card img{max-width:200px}.arrow{align-self:center;color:var(--accent);font-size:26px}
+</style></head>
+<body class="flow desktop">
+<header>
+  <b>Proto · <prd-slug></b>
+  <span class="hint">click <span style="color:var(--accent)">blue</span> hotspots · <kbd>H</kbd> flash</span>
+  <span class="spacer"></span>
+  <div class="seg" id="mode"><button data-mode="flow" class="on">Flow</button><button data-mode="overview">Overview</button></div>
+  <div class="seg" id="vp"><button data-vp="desktop" class="on">Desktop</button><button data-vp="mobile">Mobile</button></div>
+</header>
+<p class="fidelity">⚡ Faithful on layout · real components · design tokens · the real app shell. Mock data; click-through is a Figma-style flow between captured frames — live behavior is <code>/build</code>'s job.</p>
+<div class="wrap">
+  <nav><div class="lbl">User journey</div><div id="rail"></div></nav>
   <main>
-    <div class="fidelity">
-      ⚡ Faithful on: layout · components · design tokens · <b>page composition in the real shell</b>.<br>
-      Mock data, no behavior — click handlers + API calls are <code>/build</code>'s work, not shown here.
-    </div>
-
-    <!-- ===== SECTION 1: PAGE OVERVIEW (the Figma frames, journey order) ===== -->
-    <h2>Page overview — user journey</h2>
-    <!-- for each screen, in journey order: -->
-    <div class="frame-group" id="page-<slice-n>">
-      <div class="frame-label"><slice-n>. <screen title> — full page in the real shell</div>
-      <div class="viewport-row">
-        <div class="frame-wrap"><span class="vp">desktop · 1280px</span>
-          <img src="<slice-n>-page-desktop.png" alt="<screen> desktop"></div>
-        <div class="frame-wrap"><span class="vp">mobile · 390px</span>
-          <img src="<slice-n>-page-mobile.png" alt="<screen> mobile"></div>
-      </div>
-    </div>
-
-    <!-- ===== SECTION 2: STATE DETAIL (secondary — per-state) ===== -->
-    <h2>State detail</h2>
-    <!-- for each screen × state (the non-happy states; the happy 'page' frame is shown above): -->
-    <div class="frame-group" id="state-<slice-n>-<state>">
-      <div class="frame-label"><slice-n>. <screen> — <state></div>
-      <div class="viewport-row">
-        <div class="frame-wrap"><span class="vp">desktop · 1280px</span>
-          <img src="<slice-n>-<state>-desktop.png" alt=""></div>
-        <div class="frame-wrap"><span class="vp">mobile · 390px</span>
-          <img src="<slice-n>-<state>-mobile.png" alt=""></div>
-      </div>
-    </div>
+    <div class="caption" id="cap"></div>
+    <div class="states" id="states"></div>
+    <div class="stage" id="stage"><img id="frame" alt=""></div>
+    <div class="navrow"><button id="prev">‹ Prev</button><div class="dots" id="dots"></div><button id="next">Next ›</button></div>
   </main>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+// One entry per SCREEN in journey order. states.page is mandatory; add empty/loading/error as captured.
+// hot (from 6a-bis): the affordance that advances to screen index `to`. Last screen: {to:0,label:'↺ Restart'} or omit.
+const SCREENS = [
+  { title:'<screen 1 title>', cap:'<one-line caption>',
+    states:{ page:{desktop:'slice1-page-desktop.png',mobile:'slice1-page-mobile.png'} },
+    hot:{ to:1, label:'<affordance>', desktop:{x:0,y:0,w:0,h:0}, mobile:{x:0,y:0,w:0,h:0} } },
+  // …one object per screen in journey order…
+];
+const $=s=>document.querySelector(s),stage=$('#stage'),frame=$('#frame'),cap=$('#cap'),
+  rail=$('#rail'),dots=$('#dots'),statesBar=$('#states'),grid=$('#grid');
+let cur=0,st='page',vp='desktop';
+function render(){
+  const s=SCREENS[cur];if(!s.states[st])st='page';
+  frame.src=s.states[st][vp];frame.alt=s.title;stage.className='stage'+(vp==='mobile'?' mobile':'');
+  cap.innerHTML='<b>'+(cur+1)+'. '+s.title+'</b>'+(s.cap?'<br>'+s.cap:'');
+  statesBar.innerHTML='';Object.keys(s.states).forEach(k=>{const b=document.createElement('button');b.textContent=k;b.className=k===st?'on':'';b.onclick=()=>{st=k;render()};statesBar.appendChild(b)});
+  stage.querySelectorAll('.hot').forEach(h=>h.remove());
+  const c=s.hot&&s.hot[vp];if(c&&st==='page'){const a=document.createElement('a');a.className='hot';a.dataset.label=s.hot.label;a.style.cssText='left:'+c.x+'%;top:'+c.y+'%;width:'+c.w+'%;height:'+c.h+'%';a.onclick=()=>setScreen(s.hot.to);stage.appendChild(a)}
+  rail.innerHTML='';dots.innerHTML='';SCREENS.forEach((g,i)=>{const a=document.createElement('a');a.className=i===cur?'on':'';a.innerHTML='<span class="n">'+(i+1)+'</span>'+g.title;a.onclick=()=>setScreen(i);rail.appendChild(a);const d=document.createElement('span');d.className='dot'+(i===cur?' on':'');d.onclick=()=>setScreen(i);dots.appendChild(d)});
+}
+function setScreen(i){cur=(i+SCREENS.length)%SCREENS.length;st='page';render()}
+function renderGrid(){grid.innerHTML='';SCREENS.forEach((s,i)=>{const c=document.createElement('div');c.className='card';c.innerHTML='<div class="ttl"><b>'+(i+1)+'. '+s.title+'</b></div><img src="'+s.states.page[vp]+'">';c.querySelector('img').onclick=()=>{document.body.classList.remove('overview');$('#mode [data-mode=flow]').click();setScreen(i)};grid.appendChild(c);if(i<SCREENS.length-1){const ar=document.createElement('div');ar.className='arrow';ar.textContent='→';grid.appendChild(ar)}})}
+$('#mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));document.body.classList.toggle('overview',b.dataset.mode==='overview');if(b.dataset.mode==='overview')renderGrid()};
+$('#vp').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#vp button').forEach(x=>x.classList.toggle('on',x===b));vp=b.dataset.vp;document.body.classList.toggle('mobile',vp==='mobile');render();renderGrid()};
+$('#prev').onclick=()=>setScreen(cur-1);$('#next').onclick=()=>setScreen(cur+1);
+addEventListener('keydown',e=>{if(e.key.toLowerCase()==='h')stage.querySelectorAll('.hot').forEach(h=>{h.classList.add('flash');setTimeout(()=>h.classList.remove('flash'),900)});if(e.key==='ArrowRight')setScreen(cur+1);if(e.key==='ArrowLeft')setScreen(cur-1)});
+render();
+</script>
 </body>
 </html>
 ```
 
-Use **relative** `<img src>` (the bare PNG filename) so the Studio resolves each image as a sibling
-request — `resolveProtoAsset` serves `tasks/proto-<slug>/<file>.png`. Do NOT inline base64 or use
-absolute/`localhost:PORT` paths; those break the sibling-request model and bloat the file.
+Use **relative** `<img src>` (the bare PNG filename) so the Studio resolves each as a sibling —
+`resolveProtoAsset` serves `tasks/proto-<slug>/<file>.png`. No base64, no absolute/`localhost:PORT` paths.
 
 #### Verify
 
 ```bash
-grep -c 'id="page-'  tasks/proto-<slug>/preview.html   # = number of screens (journey frames)
-grep -c 'id="state-' tasks/proto-<slug>/preview.html   # = total screen × state count
+grep -c 'title:' tasks/proto-<slug>/preview.html   # = screen count (one SCREENS entry per journey frame)
+grep -c 'page:'  tasks/proto-<slug>/preview.html   # >= screen count (every screen has a page frame)
 ```
-The first count must equal the screen count, the second the state count. If short, note the missing
-frames in `index.md` rather than dropping them silently.
+Open it (`file://`) and confirm: **Flow** advances on hotspot click, **Overview** shows the journey with
+arrows, the **viewport** toggle swaps frames, **state** toggles flip per-screen states. If a frame or
+hotspot is missing, note it in `index.md` — never drop silently.
 
-**Note:** the gallery shows static rendered frames (layout, hierarchy, spacing, copy, the real shell)
-— all a pre-build preview needs. Interactivity is intentionally absent; that is `/build`'s work.
+**Note:** the gallery is interactive as a **Figma-style frame-to-frame flow** (click-through between
+captured frames + state/viewport toggles). It does NOT run live behavior (validation, API calls, real
+state) — that remains `/build`'s work.
+
+---
+
+## Step 6c — (optional) Export to Figma  [only when the Figma MCP is connected]
+
+Push the **same** captured proto into a Figma file so it can be reviewed/edited in Figma alongside
+(not instead of) the static gallery. This is **strictly additive**: the static `preview.html` gallery
+remains the canonical deliverable, and `/build` reads the gallery + handoff notes (Step 8), never Figma.
+
+**Connection gate (skip silently if absent).** Check whether the **first-party** Figma MCP is connected
+— i.e. the write-to-canvas tools `generate_figma_design`, `create_new_file`, `upload_assets` are
+available. If they are NOT, **skip this step silently**: do not block the run, do not tell the user to
+install Figma (unless they ask). Use the first-party server's write-to-canvas tools — do **not** wire
+the old third-party plugin-bridge (`cursor-talk-to-figma`); the first-party server writes to canvas now,
+so the bridge is unnecessary. Write-to-canvas is a Figma **beta** (currently free, slated to become
+usage-based paid) — that's another reason it stays optional, never a hard dependency.
+
+**Where this runs — headless/VPS reality (path A, the default).** The desktop Figma MCP (`127.0.0.1:3845`)
+is **local-only**, and a headless `claude -p` run (how Pipeline Studio and a VPS spawn proto) **can't
+complete interactive OAuth** — so on a VPS/Studio run the Figma MCP is normally absent and this step **skips
+silently, which is correct**; the static gallery is the deliverable. To get the export, run it **where Figma
+is connected**: on your Mac (Figma desktop, authed) use **`--figma-only <gallery-dir>`** (see Input) against
+the gallery the VPS produced. This **decouples** the unattended render (VPS) from the interactive Figma
+round-trip (your machine) — no tunnels, no token-in-config, no OAuth-in-headless.
+
+> **Deferred (path B) — Figma export INSIDE a headless VPS run.** Possible but not yet wired: it needs a
+> **remote** Figma MCP authenticated **non-interactively** (a token/PAT in an `Authorization` header, not
+> OAuth — the run inherits Studio's spawn env, so a token can flow in). **Reachability is NOT the blocker**
+> (Tier A's `capture.js` runs in the browser / headless Playwright; Tier B is pure HTTP upload). The one open
+> question is whether the remote Figma MCP supports **static-token auth + `upload_assets`/`generate_figma_design`**
+> — verify against Figma's beta before relying on it. Until then, use path A above.
+
+If connected, produce the export in two fidelity tiers (mirror the skill's honesty rails — always state
+which tier you got):
+
+### Tier A — live editable layers (PREFERRED)
+1. `search_design_system` / `get_libraries` **first** → resolve the project's **real Figma** component
+   library, so generated layers map onto actual components + variables, not loose vectors.
+2. `create_new_file` → name it `Proto: <prd-slug>`.
+3. `generate_figma_design` to capture the **running** `proto-preview` route (Step 5d) into the file,
+   **per screen in journey order** (Step 6a) — full-page happy frame first, then the other states. Each
+   capture: call the tool with the `fileKey` (no `captureId`) → it returns a `captureId`; ensure
+   `capture.js` (`https://mcp.figma.com/mcp/html-to-design/capture.js`) is loaded on the page — inject it
+   via the browser MCP `javascript_tool`, or temporarily add the `<script src=…capture.js>` tag (throwaway,
+   remove at teardown); open the route with the `#figmacapture=<captureId>&figmaendpoint=…&figmadelay=1000`
+   hash; then poll `generate_figma_design` with the `captureId` every ~5s until `completed`. One
+   `captureId` per page.
+
+**Localhost works — capture is client-side (verified 2026-06-28).** An earlier draft warned the remote
+server couldn't reach `localhost`; that's wrong. `capture.js` runs **in the browser**, serializes the DOM,
+and uploads to Figma — the browser (which reaches localhost) is the bridge, so the hosted server never
+touches the dev port. Tier A's real requirement is a **browser session** that can open the proto-preview
+URL with `capture.js` present (no desktop server / tunnel needed). If no browser/capture path is available,
+fall back to Tier B. (For EXTERNAL, non-localhost URLs, `capture.js` must be injected via Playwright.)
+
+### Tier B — screenshot board (FALLBACK, guaranteed)
+1. `create_new_file` → `Proto: <prd-slug>`.
+2. `upload_assets` (`count` = number of PNGs) → it returns single-use `submitUrl`s; POST each PNG to its
+   `submitUrl` (`curl -F "file=@<file>.png;type=image/png" <submitUrl>` — multipart `file` field
+   preferred, the filename becomes the layer name). Upload the `tasks/proto-<slug>/*.png` frames — page
+   overview first (journey order), then per-state — mirroring the two `preview.html` sections (Step 6b).
+   These are flat images, **not** editable layers; say so.
+
+**Verify + record.** Confirm `create_new_file` returned a file URL. If `generate_figma_design` /
+`upload_assets` errors, retry once, then fall through (Tier A → Tier B → static-only) and note the
+reduction in `index.md` rather than dropping silently. Record the Figma file URL and which tier you
+produced; surface both in the Completion Output.
 
 ---
 
@@ -428,15 +613,17 @@ Slices previewed: [N user-facing]
   1. <title> — states: happy, loading, empty, error   (screens: M)
   2. ...
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
-HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based, overview-led; opens with file:// AND in Studio)
+HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
 Handoff notes: tasks/proto-<slug>-notes.md
 Studio Preview: opens the static gallery (tasks/proto-<slug>/preview.html) via the Preview ↗ button
+Figma export: <Figma file URL — Tier A editable layers | Tier B screenshot board | skipped (no Figma MCP)>
 
 Fidelity: faithful on layout/components/look/responsive/page-composition-in-real-shell/per-state;
           approximate on live data density + edge cases; no backend/logic.
 
 Next actions:
 > Open the Preview ↗ in Pipeline Studio (the static page-overview gallery)
+> Open the exported Figma file to review/edit the layers (if Step 6c ran)
 > Review tasks/proto-<slug>/index.md and confirm the look
 > /build tasks/<prd-file>  (promotes these components into real implementation)
 ```
@@ -462,7 +649,8 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Screenshotting a compile-error / error page | Fix the provider (5a) first; never capture an error as the "preview" |
 | Declaring done without verifying the server serves | `lsof`/curl the route before screenshotting |
 | Rendering the slice in a void / bare canvas instead of the real page | Full-shell composition (5b#1) — import the real layout/shell and render the slice inside it |
-| State-matrix-only gallery with no page-level view | Lead `preview.html` with the journey-ordered page overview (6b); demote per-state to "state detail" |
+| State-matrix-only gallery with no journey flow | Build the Figma-flow gallery (6b): a click-through Flow + a journey-ordered Overview; per-screen states are a toggle, never a bare matrix |
+| Plain static PNG list (no hotspots / no flow) when the journey is known | Wire 6a-bis hotspots so clicking the real control advances screen→screen — that is the Figma-prototype feel |
 | `<iframe srcdoc>` DOM gallery (renders unstyled in Studio — no dev server persists) | Embed the 6a PNG screenshots via relative `<img src>` (6b) — already-rendered, needs no server |
 | Absolute / `localhost:PORT` / base64 `img src` in the gallery | Relative PNG filenames only — `resolveProtoAsset` serves them as siblings (6b) |
 | Capturing the page frame at one viewport only | Shoot both desktop (1280) and mobile (390) — design.md is mobile-first |
@@ -470,6 +658,10 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Deleting the `proto-preview` route at the end of the proto run | It PERSISTS — `/build` owns teardown (Step 8). It's the capture harness + promotion source, not a deletable scratch file |
 | Advertising the `preview.json` manifest as a live Studio preview | The current Studio ignores it and opens the static `preview.html`; the manifest is optional/legacy (5e) |
 | Preferring a bare / Storybook harness when the real shell can mount | Prefer full-shell composition (5b#1) for page fidelity; the bare harness is the fallback only |
+| Making Figma export a hard dependency / telling the user to install Figma unprompted | Step 6c is optional — skip silently when the Figma MCP isn't connected; the static gallery is the deliverable |
+| Assuming Tier A can't capture localhost because the server is remote | Capture is **client-side** (`capture.js` in a browser) — localhost works; Tier A's real need is a browser session + `capture.js`, not server→localhost reachability (6c) |
+| Wiring the old third-party plugin-bridge (`cursor-talk-to-figma`) to write to Figma | The first-party server writes to canvas now — use `generate_figma_design` / `create_new_file` / `upload_assets` (6c) |
+| Treating the Figma file as the canonical deliverable or as `/build`'s source | Static gallery + handoff notes stay canonical; Figma export is an extra review surface, `/build` doesn't read it |
 
 ## Rules
 
@@ -481,9 +673,13 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 - **Throwaway but shell-faithful.** The preview **composes the real app shell** (5b#1) for page
   fidelity, yet lands only under the `proto-preview` namespace (or Storybook, the fallback), marked
   disposable, with a cleanup contract handed to `/build`.
-- **Overview first.** The gallery leads with the journey-ordered full-page frames (the Figma view);
-  per-state shots are secondary detail — never a state matrix alone (6b).
+- **Figma-flow gallery.** `preview.html` is a click-through prototype: a **Flow** (hotspots advance
+  screen→screen) + a journey-ordered **Overview**, with per-screen state + viewport toggles — never a
+  bare state matrix (6b).
 - **Honest fidelity, every run.** Always show what the preview is faithful on vs approximate on.
+- **Figma export is additive & honest (6c).** Only when the Figma MCP is connected; prefer Tier A
+  editable layers, fall back to Tier B screenshots when no browser/capture path is available, and always state
+  which tier you produced. Never a hard dependency; never the canonical deliverable for `/build`.
 
 ## Script
 

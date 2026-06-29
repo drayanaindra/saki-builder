@@ -47,9 +47,26 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 - **Do not hand control back** until you either print `PRD_BUILD_COMPLETE` or hit a real
   hard stop (missing PRD, NO-GO, honestly-blocked slice). If a turn runs long, keep going —
   start the next slice rather than stopping to ask "should I continue?"
-- **Progress scratchpad.** Maintain `tasks/.build-<prd-slug>-progress.md` with the slice
-  checklist (done / in-progress / remaining), updated after every slice. If context is
+- **Progress scratchpad (human log).** Maintain `tasks/.build-<prd-slug>-progress.md` with the
+  slice checklist (done / in-progress / remaining), updated after every slice. If context is
   cleared mid-build, re-read it on start and **skip already-green slices** to resume.
+- **State manifest (machine resume state).** Also maintain `tasks/.build-<prd-slug>-state.json` —
+  the studio reads + verifies this to resume an interrupted build at the exact step. Update it
+  **after every step** (rplan / approved / qa / reviewer), not just every slice:
+  ```json
+  { "prd": "<path>", "branch": "<branch>", "commitPolicy": "per-step",
+    "slices": [ { "n": 1, "title": "…", "status": "not-started|in-progress|done|blocked",
+      "steps": { "rplan":    { "status": "done", "artifact": "tasks/<...>-slice1-plan.md" },
+                 "approved": { "status": "done", "commit": "<sha>" },
+                 "qa":       { "status": "done" },
+                 "reviewer": { "status": "done" } } } ] }
+  ```
+  Rules: set `artifact` = the slice's plan file when rplan finishes; `commit` = the step's commit
+  SHA when approved commits (use `commitPolicy:"none"` if this build does not commit per step — the
+  studio then uses slice-level resume). Set `slices[n].status:"done"` only at step 6 (qa green +
+  reviewer clean). **Best-effort + safe:** a missing/partial manifest must degrade to a normal full
+  run — never block on it. The studio trusts a step only when its artifact verifies (plan file
+  exists / commit resolves), so an inaccurate manifest costs at worst a redo, never a skipped step.
 - **Loop guard.** If the same slice fails the same way ~3 times, stop hammering it: write
   the reason to the scratchpad, output `BLOCKED: slice <N> — <reason>`, then move on to any
   independent remaining slices before reporting.
@@ -134,6 +151,28 @@ git branch --show-current
     Example: `prd-wave-2.md` → `feature/wave-2`.
   - Run `git checkout -b feature/<derived-name>` and print `AUTO-BRANCH: feature/<derived-name>`.
 - If already on a feature branch: proceed directly.
+
+---
+
+## GATE 2: Resume check (deterministic) — skip verified-complete work
+
+Before the per-slice loop, determine the **start point** so an interrupted build resumes instead of
+restarting:
+
+1. **Honor an injected `RESUME:` directive.** If the invocation carries one (the studio computes it
+   from the verified state manifest), it is authoritative:
+   - `RESUME: start at slice N, step <step> …` → begin at slice N, that step; treat earlier slices
+     (and earlier steps of slice N) as complete.
+   - `RESUME: slices … already complete; start at slice N` → begin at slice N (slice-level).
+2. **Else read on-disk state yourself.** Parse `tasks/.build-<prd-slug>-state.json` if present (else
+   the markdown scratchpad): skip every slice whose `status:"done"` AND whose `approved` commit
+   resolves; within the first unfinished slice, skip `rplan` if its plan file exists and `approved`
+   if its commit resolves; always re-run `qa` + `reviewer`.
+3. **Print** `RESUMING: <N-1> slices complete, starting at slice N step <step>` (or `STARTING FRESH`
+   when nothing is complete), then enter the loop.
+
+Safety: when in doubt, **redo — never skip**. A wrongly-skipped step is a silent gap; a redundant
+redo is cheap and idempotent (TDD).
 
 ---
 
@@ -264,6 +303,7 @@ Slices: [N/N] done
   1. <title> ✓  (qa: pass, review: clean)
   2. <title> ✓  ...
 E2E: <pass | no suite found>
+PRD_BUILD_COMPLETE
 
 Auto-resolved decisions (review & override if any are wrong):
   slice N — <question> → <decision>  (<one-line why>)
