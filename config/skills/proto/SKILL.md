@@ -1,6 +1,6 @@
 ---
 name: proto
-description: Render a faithful, throwaway UI preview of a finished PRD's user-facing slices INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Sits between /prd and /build. Usage — /proto <prd-file.md> [--slice=N].
+description: Render a faithful, throwaway UI preview of a finished PRD's COMPLETE end-to-end user journey — every user-facing step plus the connective entry/success screens that join them, each in all its reachable states — INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Sits between /prd and /build. Usage — /proto <prd-file.md> [--slice=N].
 ---
 
 # UI Preview Stage (faithful, throwaway)
@@ -22,6 +22,16 @@ This is a *preview*, not a build. Hold the line on what it is and isn't:
 Show this fidelity contract to the user every run. Never imply the preview makes `/build` trivial —
 it removes the *look* risk, not the *behavior* work.
 
+**End-to-end by default — preview the whole journey, never a curated subset:**
+- **Every step, in sequence** — entry/login → each user-facing slice → success/confirmation, including the
+  connective screens (landing, auth, first-run empty, intermediate result, confirmation) that join them even
+  when they are not first-class §8 slices, plus the user-visible *outcome* screen of any "backend" slice. The
+  flow must run start-to-finish with no gap.
+- **Every reachable state** — for each screen render all states it can actually reach (happy / loading /
+  empty / validation-error / server-error / permission), not just the happy path.
+- **Whole PRD by default** — a no-arg run previews the entire journey; `--slice=N` and omitting a state are
+  explicit, justified narrowings, never the implicit behavior.
+
 ---
 
 ## Input
@@ -30,8 +40,9 @@ Usage: `/proto <prd-file.md> [--slice=N]` (filler words fine) — or `/proto --f
 to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only).
 
 Locate the PRD exactly like `/build`: take the token ending in `.md` (or matching `prd-*`), and
-check, in order: `tasks/<name>`, `./<name>`, the path as given. `--slice=N` previews one slice;
-default previews all user-facing slices.
+check, in order: `tasks/<name>`, `./<name>`, the path as given. `--slice=N` is an explicit narrowing
+flag that previews one slice in isolation; the default (no flag) always previews the **complete
+end-to-end journey** across every user-facing step.
 
 **`--figma-only <gallery-dir>` mode** — skip GATE 1 → Step 6b entirely; take an existing
 `tasks/proto-<slug>/` (its PNGs) and run **only Step 6c** against it. Purpose: run the Figma export on a
@@ -53,12 +64,23 @@ Looked for: tasks/<name>, ./<name>, <name>
 Pass a valid PRD path: /proto <prd-file.md>
 ```
 Do NOT invent a PRD. From it, extract:
-- **§8 Vertical Slices** — the work list. Keep only **user-facing** slices (a screen/route a user
-  or role hits). Skip backend-only slices — there is nothing to preview.
+- **§8 Vertical Slices** — the work list. Include every slice with any **user-visible** outcome — a
+  screen/route a user hits, OR the result / confirmation / notification screen a "backend" slice produces.
+  Skip a slice only when it has *no* user-visible surface at all (pure infra/migration). A backend slice is
+  not automatically skippable: if its effect is something the user eventually sees, render that outcome
+  screen so the journey has no gap.
 - **§9 Acceptance Criteria** — the observable UI behaviors → which states to render.
 - **§10 Business Rules & Invariants** — surfaces UI variants (e.g. "rejected if amount > balance"
   → a validation/error state to show).
 - **§11 Non-Goals** — never render beyond them.
+
+**Assemble the complete journey, not just the slices.** From the slices + §9 + the Gherkin, lay out the
+full end-to-end path the user walks: the **entry point** (landing/login), every user-facing step in
+sequence, the **connective screens** that join them (auth, first-run empty, intermediate confirmations),
+and the **terminal** success/confirmation. Add these entry/connective/terminal screens to the screen list
+even when they are not standalone §8 slices — the deliverable is one continuous journey, not a set of
+isolated slice previews. Guard: connective screens are *journey glue* (the app's real login/landing/success,
+the minimal confirmation a step implies), not new scope — never invent a feature beyond §11.
 
 Also read any `tasks/*-flow.md` (rplan Step 2.5 Gherkin) for the slice — it already enumerates the
 states the user expects. If present, it is the authoritative state list.
@@ -70,7 +92,8 @@ read the relevant persona(s) and use them to inform:
 - Interaction density and affordance size (§5 UI/UX Constraints — e.g. mobile context = larger tap targets)
 Cite the persona when it drives a visual decision: `→ persona/buyer.md §5`.
 
-Print the user-facing slice list so the run is auditable.
+Print the full journey (entry → steps → success), marking each screen as a §8 slice or connective glue,
+so the run is auditable.
 
 ---
 
@@ -207,9 +230,11 @@ proceed to Step 3 without a pause.
 
 ## Step 3 — Map slices → screens × states
 
-For each user-facing slice, enumerate the **screens** and the **states** to render. Pull states
-from §9 criteria, §10 rules, and the Gherkin (if present). Render only states the slice actually
-has — do not pad:
+For each screen in the journey (every user-facing step + the connective screens from GATE 1),
+enumerate the **states** to render. Pull states from §9 criteria, §10 rules, and the Gherkin (if present).
+Render **every state the screen can actually reach** — default to the full set below; omit a state only
+when it is genuinely impossible for that screen, and say which and why. The bias is completeness, not
+curation:
 
 - **happy** (mandatory) — the primary success view
 - **loading** — skeleton/spinner while data resolves
@@ -218,7 +243,8 @@ has — do not pad:
 - **server/network error** — the common toast/retry surface
 - **permission-denied** — only if the slice involves multiple roles
 
-One screen may carry several states. Keep the list tight — duplicate-looking states collapse to one.
+One screen may carry several states. Collapse only states that render pixel-identical; never drop a
+reachable state just to shorten the list.
 
 ---
 
@@ -779,9 +805,10 @@ Design system updated: tasks/proto-<slug>/design-system-updates.md
   Added: <list of new component files>
   Tokens: <list of new token names, or "none">
 
-Slices previewed: [N user-facing]
-  1. <title> — states: happy, loading, empty, error   (screens: M)
+Journey previewed: entry → [N user-visible steps] → success   (continuous, no gaps)
+  1. <title> — states: happy, loading, empty, validation-error, server-error[, permission]
   2. ...
+  (connective screens — login / landing / result / success — marked [glue])
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
 HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
 Handoff notes: tasks/proto-<slug>-notes.md
@@ -825,7 +852,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Folder named `_proto`/`__proto` in Next App Router → 404 | Routable name (`proto-preview`); `_`-prefix = private/non-routed |
 | Preview route 307-redirects to `/login` | Default-deny middleware — add the scoped Step 5c bypass |
 | Claiming 1:1 after a Partial detection | Flag exactly which half is approximate |
-| Padding states the slice doesn't have | Render only states from §9 / §10 / the Gherkin |
+| Curating to the "important" states/slices instead of the whole journey | E2E by default (GATE 1 + Step 3) — every reachable state, every user-visible step, entry→success; `--slice` or omitting a state must be explicit + justified, never the default. Still never invent a state genuinely impossible for the screen. |
 | Bare preview route that throws on a missing provider | Step 5a — detect + wrap in mock providers, or use Storybook |
 | Booting real auth/DB to render a preview | Mock the session/locale/data-layer; never hit live auth |
 | Screenshotting a compile-error / error page | Fix the provider (5a) first; never capture an error as the "preview" |
@@ -848,8 +875,13 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 ## Rules
 
 - **Preview, not build.** No backend, no real data, no state logic, no tests, no prod routes.
-- **PRD is source of truth.** Scope = its user-facing slices; states = its §9/§10 + the Gherkin;
-  boundaries = its §11 non-goals. Never re-elicit scope.
+- **PRD is source of truth.** Scope = its full user journey (every user-visible step + the connective
+  entry/success screens that join them); states = its §9/§10 + the Gherkin; boundaries = its §11 non-goals.
+  Never re-elicit scope.
+- **End-to-end by default.** Always render the complete journey — every user-visible step (incl.
+  backend-slice outcome screens), the connective entry/success screens between them, and every reachable
+  state per screen. A no-arg run covers the whole PRD; `--slice=N` and omitting a state are explicit,
+  justified narrowings, never the implicit default.
 - **Real components or stop.** Gate 2 is blocking — a faithful preview without a real design system
   is a contradiction; say so rather than fabricate.
 - **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get

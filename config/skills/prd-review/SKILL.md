@@ -1,6 +1,6 @@
 ---
 name: prd-review
-description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, metrics, slicing, evidence) that cites every finding and refuses to validate facts it cannot ground. Run after /prd, before handing slices to /rplan. Emits a coarse verdict signal, not a precise score.
+description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, metrics, slicing, evidence) that cites every finding and refuses to validate facts it cannot ground. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag) and invariants to test their failure path, then emits a manual-test checklist so bugs/missing-tasks are caught before manual testing, not discovered during it. Run after /prd, before handing slices to /rplan. Emits a coarse verdict signal, not a precise score.
 ---
 
 # PRD Review — Structural Scan + Adversarial Judge Panel
@@ -54,9 +54,9 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 | 6 | ≥1 **counter-metric** naming the metric/failure-mode it guards | | |
 | 7 | **Appetite + outcome-tied Kill Criteria** | | |
 | 8 | Vertical slices — **≤7**, each `Serves JTBD` + `Serves outcome` | | |
-| 9 | Acceptance criteria — **≤5/slice**, each links an outcome OR names a guardrail | | |
+| 9 | Acceptance criteria — **≤5/slice**; each links an outcome OR names a guardrail; each is **observable** (Given/When/Then + a checkable signal) and tagged **`[auto]`** (curl/test/file/grep) or **`[manual]`** (human/browser) | | |
 | 10 | **≥2 Non-Goals**; Rabbit Holes & Open Questions present | | |
-| 11 | **Business Rules** (when domain logic present) — each rule falsifiable; each `🔒` invariant tested by a §9 criterion | | |
+| 11 | **Business Rules** (when domain logic present) — each rule falsifiable; each `🔒` invariant tested by a §9 criterion that exercises its **failure path** (over-limit / empty / concurrent / unauthorized), not only the happy path | | |
 
 **Hard-fail rules (any one → Phase 1 FAILED):**
 - Primary JTBD in persona form ("As a [role], I want…") → FAIL
@@ -65,6 +65,8 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 - Any slice that traces to no JTBD (orphan) → FAIL
 - Kill criteria absent or only effort-scoped (not tied to a §5 metric) → FAIL
 - A `🔒 INVARIANT` (money/stock/tenant) with no acceptance criterion testing it → FAIL
+- An acceptance criterion that is **not observable** (no checkable signal — e.g. "works correctly", "is intuitive") OR lacks an `[auto]`/`[manual]` tag → FAIL (this is what detonates in manual test)
+- A `🔒 INVARIANT` whose only criterion tests the **happy path** (no failure/edge criterion) → FAIL
 
 **If ALL ✅:**
 ```
@@ -134,6 +136,7 @@ Unverifiable claims (facts asserted but not checkable from the document):
 4. Appetite vs slice count mismatch (a "1 afternoon" appetite with 7 fat slices).
 5. Acceptance criteria that are **not observable** ("works correctly" is not testable).
 6. Business rules (§10) that are vague/unfalsifiable, or a `🔒` invariant with no criterion testing it.
+7. **Missing failure/edge criteria — the post-manual-test bug source.** For each slice, name the failure paths the happy-path ACs leave untested (over-limit, empty, concurrent, unauthorized, network-fail) and **write the criterion that would catch them** (Given/When/Then + signal). Do NOT just flag — *prescribe* the criterion, tagged `[auto]`/`[manual]`. These prescribed criteria are exactly the "new tasks / bugs" that otherwise surface only when a human tests by hand.
 
 **Judge 4 — Evidence & Grounding (the honesty lens).** Find:
 1. Walk EVERY factual claim in §2 and §5. For each, decide: **self-supporting from the document, or reliant on outside truth?**
@@ -151,7 +154,8 @@ Wait for all four. Print each judgment in full.
 2. **Deduplicate** — the same issue from two judges counts once (keep the higher severity).
 3. **Classify** — BLOCK (fix before `/rplan`) / HIGH / MED / LOW.
 4. **Collect unverifiable claims** from all judges into one list — these are NOT defects, they are grounding TODOs (run `/prd --research` or validate manually).
-5. **Emit a verdict signal — NOT a precise score** (the judge is non-deterministic; a decimal would be false precision):
+5. **Assemble the manual-test checklist.** Collect every `[manual]`-tagged acceptance criterion (across all slices) PLUS every failure/edge criterion Judge 3 prescribed, into one ordered checklist. This is the script a human runs by hand — it **pre-scopes** manual testing so bugs/missing-tasks are caught against a list, not *discovered* mid-test. The `[auto]` criteria are not listed here — `/qa` runs those.
+6. **Emit a verdict signal — NOT a precise score** (the judge is non-deterministic; a decimal would be false precision):
 
    | Signal | Condition |
    |--------|-----------|
@@ -172,6 +176,10 @@ MED/LOW: [count, listed in the review file]
 
 Unverifiable claims (grounding TODO, NOT defects):
   • [§section] "[claim]" — ground via /prd --research or data
+
+Manual-test checklist (run these by hand — pre-scoped so nothing is discovered mid-test):
+  ☐ [slice] Given … When … Then … — expected signal: […]   [manual]
+  (full list + the [auto] criteria for /qa are written to the review file)
 
 Honest caveats: external facts were NOT validated; this is one sample of a non-deterministic
 judge; a human decides.
@@ -204,6 +212,8 @@ Next:
 - Discard uncited findings — they are unverifiable by definition.
 - The verdict is a signal for a human, not an approval stamp. Do not phrase it as ground truth.
 - "I'll validate that claim myself" from a judge = a rules violation; route it to Unverifiable claims.
+- An acceptance criterion is NOT done at PRD time unless it is **observable** and tagged `[auto]`/`[manual]` — Phase 1 fails otherwise. Post-manual-test "new tasks/bugs" almost always trace to this gate being skipped; do not wave it through.
+- Judge 3 must **prescribe** missing failure/edge criteria, never merely flag their absence — a flag forces the author to re-derive the fix and re-review (the back-and-forth this gate exists to remove).
 
 ---
 

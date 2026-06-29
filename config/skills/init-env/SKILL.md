@@ -142,6 +142,14 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - Note any project-specific auth strategy (JWT keys, cookie name, OAuth vs token)
    - Leave Playwright generation logic (Step 1.5 template) unchanged — it is project-agnostic
 
+   Optionally create `.claude/skills/prd-review/SKILL.md` as a project override when the repo
+   has domain-specific judges or a house style. Use the global as the base structure and:
+   - Replace the four judge prompts with project-specific lenses (domain metric model, house JTBD style)
+   - Keep Phase 1's executable-criteria gate (`[auto]`/`[manual]` tag, invariant failure-path) and
+     the Phase 3 manual-test checklist unchanged — both are project-agnostic and load-bearing
+   - Document the project's `[auto]` verification commands (curl base URL, test runner) so the
+     manual-test checklist cleanly separates from what `/qa` will automate
+
 10. **Scaffold Playwright test infrastructure** (if frontend detected):
 
    a. Install dotenv if not present: `npm install dotenv --save-dev`
