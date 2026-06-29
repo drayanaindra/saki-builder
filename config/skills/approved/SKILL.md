@@ -1,6 +1,6 @@
 ---
 name: approved
-description: Approve the current plan and switch model to Sonnet. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, and metrics-triggered refactoring during implementation.
+description: Approve the current plan and switch model to Sonnet. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, metrics-triggered refactoring. Loads the plan's research context, reconciles plan↔code drift in place, and runs a Plan-Conformance Gate (every wiring chain verified against the diff) before /qa so implementation stays consistent with the approved design.
 user-invocable: true
 ---
 
@@ -23,11 +23,15 @@ print('Model set to claude-sonnet-4-6')
 "
 ```
 
-## Step 2: Load the plan
+## Step 2: Load the plan + its research context
 
 Find the most recent `*-plan.md` in the project root. Read it. Extract:
 - All steps with their Test column and Committable flag
 - The **Confidence Ledger** — index every entry by the step number it cites. Entries without a step number go in a "global" bucket.
+
+Then load the plan's companion files (same `[task]` slug):
+- **`[task]-context.md`** (the research findings `/rplan` pinned: existing models, schemas, file paths, patterns). If present, this is your **source of truth for existing code shape** — do NOT re-derive what it already documents (re-research wastes tokens and risks deriving a different shape than the plan assumed). If absent, note `⚠ no context file — will read code on demand` and proceed.
+- **`[task]-flow.md`** (Gherkin behavior spec) if present — the implementation's observable behavior must match it.
 
 If the plan has no Test column (old-format plan), derive TDD mode per step:
 - Steps with service/domain logic → Test-First
@@ -58,11 +62,17 @@ Then immediately begin executing step by step using the XP cycle below.
 
 ## XP Implementation Cycle (per plan step)
 
-For EACH step in the plan, follow this cycle:
+**Output discipline (anti-bloat, anti-hallucination).** Emit exactly ONE compact line per step on the happy path. Expand to detail ONLY on a notable event: RED unexpectedly passes, GREEN stays red, suite breaks, a YAGNI cut, a plan-drift adjustment, or a commit. Verbose per-step ceremony fills context and raises hallucination risk — keep the signal-to-noise high. The phases below are mandatory gates; only their *output* is condensed.
 
-### Phase 1: SPEC — Read the step
+Compact per-step line (happy path):
+```
+[N/M] <step> · <TDD-mode> · RED✗→GREEN✓ · refactor:<none|what> · <commit sha|grouped>
+```
 
-Read the step's action, files, and Test field. Determine TDD mode:
+For EACH step, run the cycle:
+
+### Phase 1 — SPEC
+Read the step's action, files, Test field. Pick TDD mode:
 
 | TDD Mode | When | Cycle |
 |----------|------|-------|
@@ -71,105 +81,62 @@ Read the step's action, files, and Test field. Determine TDD mode:
 | Test-After | Config, migration, rename, trivial | Implement → run existing test suite → refactor if needed |
 | Human-Test-First | Auth, payment, multi-tenant security | ASK user to write/approve test → implement → confirm GREEN |
 
-Print:
-```
-[STEP N/M] [step description]
-  TDD: [Test-First / Test-Along / Test-After / Human-Test-First]
-  Test: [test function name from plan, or "derive from spec"]
-  Files: [list]
-  Ledger entries for this step: [list each entry verbatim, or "none"]
-```
+Resolve the step's ledger entries as part of GREEN — never implement past a step whose unresolved entry describes a real gap (missing auth, UNKNOWN, vague spec). Resolving = do the work, then delete the entry citing where it was resolved.
 
-If the step has any unresolved ledger entries, address them as part of GREEN — do not implement past a step whose unresolved entries describe an actual gap (missing auth, unresolved UNKNOWN, vague spec). Resolving means: doing the work, then editing the ledger to remove the entry with a citation of where it was resolved.
+### Phase 2 — RED (skip for Test-After / Test-Along)
+Write the planned test asserting the **expected behavior** from the spec (not the implementation). Run it:
+- Go: `go test ./[package]/... -run [TestName] -v -count=1`
+- Frontend: `cd frontend && npm test -- --testPathPattern=[file]`
 
-### Phase 2: RED — Write the failing test
+Confirm it FAILS. **If it passes → the test is wrong (asserts nothing) or the feature already exists — STOP and investigate**, print why.
 
-**Skip this phase for Test-After and Test-Along modes.**
+### Phase 3 — GREEN
+1. Write the MINIMUM code to pass the test.
+2. **YAGNI:** before each new fn/struct/file — required by THIS step? breaks without it now? premature abstraction (interface w/ one impl, factory for one type, error handling for impossible states)? → if gratuitous, **cut it** (note the cut in the step line).
+3. **Symbol pre-check (anti-hallucination):** before the FIRST use of any library / cross-module / unfamiliar symbol, grep or read it to confirm the name + signature exist. Prefer the shapes already pinned in `[task]-context.md`. **Never call a symbol from memory** — a hallucinated method costs a full Red→fix cycle.
+4. Run the test → GREEN, then the package suite (`go test ./[package]/... -count=1`).
+5. **Plan-drift check (keep the contract true):** if GREEN required deviating from the step's planned file / function / wiring, the plan is now stale — edit that plan line (and any affected **Plan Wiring** chain) in place to match what you built, appending `— adjusted in impl: <one-line why>`. Never let code and plan diverge silently; a stale plan poisons the next slice's planning.
 
-1. Write the test file/function specified in the plan's Test column
-2. The test must assert the EXPECTED BEHAVIOR from the plan specification, NOT the implementation
-3. Run the test:
-   - Go: `go test ./[package]/... -run [TestName] -v -count=1`
-   - Frontend: `cd frontend && npm test -- --testPathPattern=[file]`
-4. Confirm it FAILS (RED). If it passes → the test is wrong (testing nothing) or the feature already exists. Investigate before proceeding.
+**Hard gate:** test still red after implementation → debug, do NOT advance.
 
-Print:
-```
-  RED ✗ [TestName] — [failure reason, e.g. "function not found", "nil pointer"]
-```
+### Phase 4 — REFACTOR (metrics-triggered)
+Check the files you touched: Go file >300 LOC → split · Go fn >40 LOC → extract · TSX >500 LOC → split component · same pattern 3+× → extract helper · complexity >10 → simplify. If any exceeded → refactor while keeping tests GREEN, re-run to confirm no regression. Else no-op (`refactor:none`).
 
-### Phase 3: GREEN — Write minimum code to pass
+### Phase 5 — COMMIT (only if Committable=Yes or last in an atomic group)
+1. Full suite: `go test ./... -count=1 -timeout 60s`
+2. Linter: `go vet ./...`
+3. If frontend touched: `cd frontend && npx tsc --noEmit`
+4. All green → stage, commit referencing the plan step, mark the step `[ ]`→`[x]` in the plan file.
 
-1. Implement the MINIMUM code needed to make the test pass
-2. **YAGNI check:** Before writing each new function/struct/file, ask:
-   - Is this required by the current step? If no → don't write it
-   - Will the code break without it? If no → don't write it
-   - Am I adding error handling for impossible states? If yes → remove it
-   - Am I abstracting prematurely (interface with one impl, factory for one type)? If yes → simplify
-3. Run the test again. Confirm it PASSES (GREEN).
-4. Run the full test suite for the package: `go test ./[package]/... -count=1`
+**Never commit red** — fix first (hard gate). Committable=No → skip; the commit lands when the grouping step completes.
 
-Print:
-```
-  GREEN ✓ [TestName] passed
-  Suite: [N] passed, [N] failed (if any failures, fix before proceeding)
-```
-
-**If test still fails after implementation:** Debug. Do NOT move on with a failing test. This is a hard gate.
-
-### Phase 4: REFACTOR — Clean up (metrics-triggered)
-
-Check these metrics on the files you just modified:
-
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Go file LOC | > 300 lines | Split into focused files |
-| Go function LOC | > 40 lines | Extract helper functions |
-| TSX file LOC | > 500 lines | Split component |
-| Duplication | Same pattern 3+ times in codebase | Extract shared helper |
-| Cyclomatic complexity | > 10 per function | Simplify conditionals |
-
-If ANY threshold is exceeded:
-1. Refactor while keeping tests GREEN
-2. Run tests after refactoring to confirm no regression
-3. Print: `REFACTOR: [what was done] — tests still GREEN ✓`
-
-If NO threshold exceeded:
-- Print: `REFACTOR: metrics OK — no refactoring needed`
-
-### Phase 5: COMMIT — Small release
-
-**Only if step is marked Committable=Yes (or is the last in an atomic group):**
-
-1. Run full project test suite: `go test ./... -count=1 -timeout 60s`
-2. Run linter: `go vet ./...`
-3. If frontend was touched: `cd frontend && npx tsc --noEmit`
-4. If ALL pass → stage and commit with descriptive message referencing the plan step
-5. Mark step as complete in the plan file: `[ ]` → `[x]`
-
-Print:
-```
-  COMMIT: Step N/M — [commit message summary]
-  Tests: [N] passed | Vet: clean | TSC: clean
-```
-
-**If tests fail:** Fix before committing. Do NOT commit with failing tests. This is a hard gate.
-
-**If step is Committable=No:** Skip this phase, continue to next step. The commit happens when the completing step finishes.
-
-### Phase 6: NEXT — Move to next step
-
-Print progress:
-```
-[DONE] Step N/M — [1-line summary]
-[NEXT] Step N+1/M — [next step description]
-```
+### Phase 6 — advance
+Emit the compact step line, move to the next step.
 
 ---
 
 ## After All Steps Complete
 
-### Phase 7: Pre-QA Smoke Check
+### Phase 7: Plan-Conformance Gate (consistency check)
+
+Before smoke/QA, verify the implementation matches the **approved** plan. This is the *"did we build what was approved"* gate — distinct from `/qa` (acceptance criteria) and `/reviewer` (correctness/security). It is the mechanism that makes implementation consistent after design approval.
+
+1. Take the plan's **Plan Wiring** call-chains (`Component → api.ts fn → METHOD /path → service.fn → Model.field`) and the **Steps** table.
+2. For each chain, grep the diff / codebase to confirm every named symbol exists **as wired**: the component, the api function, the route + method, the service function, the model field.
+3. Classify each chain:
+   - `✅ MATCHES` — every named symbol present and wired as planned.
+   - `⚠ ADJUSTED` — deviates from the plan, but the plan was already reconciled in the Phase 3 drift-check (the plan line now describes what was built).
+   - `✗ MISSING` — a named symbol is absent or wired differently and the plan was NOT updated. This is a real gap.
+4. For every `✗ MISSING`: either fix the code to match the plan, or — if the deviation was intentional — reconcile the plan line now (Phase 3 drift rule) so it reads `⚠ ADJUSTED`. **Do not proceed to `/qa` with an unexplained `✗`.**
+
+Print:
+```
+Plan-Conformance: [N] chains | ✅ [N] match | ⚠ [N] adjusted (plan updated) | ✗ [N] missing → [resolved how]
+```
+
+All chains must be `✅` or `⚠` before continuing.
+
+### Phase 8: Pre-QA Smoke Check
 
 Run the same env detection that `/qa` runs, so blockers surface here (with the implementer in context) instead of inside `/qa` (where they look like test failures):
 
@@ -208,6 +175,10 @@ XP Summary:
   Tests written first: [N]
   YAGNI items caught: [N] (things NOT built)
 
+Plan-Conformance: [N] wiring chains | ✅ [N] | ⚠ [N] adjusted (plan reconciled)
+  Plan drift reconciled: [N] step/wiring lines updated to match what was built
+  [list each ⚠ adjustment: "step X — <what changed> — <why>"]
+
 Pre-QA Smoke:
   Frontend project: [yes/no]
   Dev server: [up/down/n/a]      [if down: cd $FRONTEND_ROOT && npm run dev]
@@ -230,6 +201,11 @@ Next actions:
 - Do NOT refactor without running tests before and after
 - Do NOT commit with failing tests — ever
 - Do NOT add features/abstractions not in the plan step (YAGNI)
+- **Load and trust `[task]-context.md`** — do NOT re-derive existing code shape (models, fields, signatures) it already documents; re-research wastes tokens and invites drift from the plan's assumptions
+- **Never call a symbol from memory** — grep/read to confirm it exists before first use (Phase 3 symbol pre-check). A hallucinated method name costs a full Red→fix cycle
+- **Keep the plan true** — any in-implementation deviation from a step's planned file/function/wiring must be reconciled back into the plan file (Phase 3 drift-check) so the contract never goes stale
+- **Plan-Conformance Gate must pass before `/qa`** — every Plan-Wiring chain `✅ MATCHES` or `⚠ ADJUSTED` (plan updated); never advance with an unexplained `✗ MISSING`
+- **One compact line per step** — expand output only on failure or a notable event (RED-passes / stays-red / YAGNI cut / drift adjustment / commit); verbose ceremony per step dilutes signal and raises hallucination risk
 - If a step has no test specified and contains business logic → derive a test from the step's success criteria
 - If no active plan is found, ask: "Which plan should I implement?"
 - At branch points: state situation + options, choose safest default if no user response
