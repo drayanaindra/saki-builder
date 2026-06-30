@@ -32,7 +32,10 @@ You are in TRUST MODE. This means:
 - The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an ABSOLUTE NO-GO (below),
   or a slice that cannot be made green after repeated honest attempts. An unresolved `before slice
   N` open question is **not** a stop — `/build` auto-resolves it (Per-Slice Loop, step 0) and
-  proceeds.
+  proceeds. **Exception:** a fork the PRD author tagged `[human]` is a deliberate, human-only
+  decision — pause for it via the `NEEDS_DECISION:` gate (step 0a). That is a *resumable pause*, not
+  a confirmation prompt: you emit the gate and end the turn; the studio collects the answer and
+  re-drives you. It is the one sanctioned way to defer a decision to the operator.
 
 ---
 
@@ -206,8 +209,27 @@ slice N is green and reviewed.
 ### 0. Open-question gate — auto-resolve the fork, don't stop
 Before planning slice N, check the Open Questions (the PRD's *Rabbit Holes & Open Questions*
 section) extracted in Gate 1. If any question gated `before slice N` (or an earlier slice) is
-**not** marked `✅ RESOLVED`, **resolve it yourself and proceed** — do not stop. The goal is to
-ship the expectation, so a missing decision is something `/build` *makes*, not something it waits
+**not** marked `✅ RESOLVED`, handle it as follows.
+
+**0a. Human-required forks — STOP and ask, do NOT auto-resolve.** If an unresolved fork that gates
+slice N (or earlier) is tagged `[human]` (the PRD author marked it for a human product decision),
+you must NOT decide it yourself. Emit the gate sentinel as your OWN final line and **end the turn**:
+
+```
+NEEDS_DECISION: {"slice":N,"kind":"fork","question":"<the question, one line>","options":["<opt A>","<opt B>",…]}
+```
+
+- One compact JSON object on a single line, prefixed exactly `NEEDS_DECISION: ` at line-start (the
+  studio parses it; a malformed or mid-sentence mention is ignored, so never narrate it loosely).
+- Always include `options` (the real alternatives the PRD states); if the fork is genuinely
+  open-ended, pass `"options":[]` and the studio shows a free-text field.
+- Stop at the **first** such fork and end the turn — do not batch or proceed past it. The studio
+  surfaces the picker, writes the operator's choice into the PRD as `✅ RESOLVED — <decision>`, and
+  re-drives `/build`, which then reads it like any resolved question. This is a pause, not a block:
+  no `BLOCKED:`, no give-up — the build resumes the moment the human answers.
+
+**0b. Everything else — resolve it yourself and proceed** (the default; untagged forks). The goal is
+to ship the expectation, so a missing decision is something `/build` *makes*, not something it waits
 on. Resolve it with the first rule that applies:
 
 1. **Take the PRD's lean.** If the entry states a recommendation, default, or "leaning X" — use it.
@@ -247,8 +269,12 @@ Run the `rplan-review` skill when any of these hold; otherwise skip straight to 
 re-read the plan.
 
 ### 3. `/approved` — implement
-Invoke the `approved` skill to implement the slice under XP discipline (TDD Red→Green→Refactor,
-commit-per-step, YAGNI). You are the approver here — invoke it without waiting for the user.
+**First load the `clean-code` skill** (Skill tool, `skill: clean-code`) so the slice is written to
+the SonarQube clean-code standard — the Pre-merge Gate grades the diff (Clean as You Code), so
+writing clean now avoids a gate failure later. Then invoke the `approved` skill to implement the
+slice under XP discipline (TDD Red→Green→Refactor, commit-per-step, YAGNI). You are the approver
+here — invoke both without waiting for the user. (Re-load `clean-code` every slice; this keeps it in
+context even if a context clear happened between slices.)
 
 ### 4. `/qa` — test against acceptance criteria + in-scope invariants
 Invoke the `qa` skill. It runs **this slice's** acceptance criteria as real tests; every
@@ -329,4 +355,7 @@ Next actions:
   `qa` / `reviewer`; do not re-implement their logic here.
 - **Never fake green.** Don't weaken or delete tests to pass `/qa` or e2e. A blocked slice
   is reported honestly.
+- **Clean-code standard, always.** Every slice is written to the SonarQube clean-code standard —
+  load the `clean-code` skill before implementing (step 3) so each diff clears the Pre-merge Gate
+  (Clean as You Code) on the first try.
 - **E2E before done, always.**

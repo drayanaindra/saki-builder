@@ -44,6 +44,17 @@ Enforced automatically by `sonar-gate.sh` (PreToolUse:Bash hook). If blocked:
 
 To bypass (intentional, documented reason only): run `git push` manually outside Claude Code.
 
+## Clean Code Standards (write-time, SonarQube)
+
+Write code that passes the gate the first time — don't write then fix. The gate grades your **diff**
+(Clean as You Code), so apply this to every line you touch. Top gate-blockers, always-on:
+
+- **Reliability**: null-check before deref (`if x is not None:`, not `if x:`); always close resources (`with`/`defer`/try-with-resources); check error returns; cover every switch/enum case.
+- **Security**: no hardcoded secrets; parameterize SQL/shell (no string-concat injection); validate external input at the boundary; strong crypto only (no MD5/SHA-1/DES/ECB).
+- **Maintainability**: cognitive complexity ≤ 15, function ≤ 40 LOC, params ≤ 7; DRY (extract at 3rd repeat, < 3% duplication); guard clauses over deep nesting; named constants over magic numbers; no dead/commented-out code; never swallow exceptions; new-code coverage ≥ 80%.
+
+Full reference (per-quality rule list + workflow): the `/clean-code` skill (`~/.claude/skills/clean-code/SKILL.md`). `/build` auto-loads it during implementation; invoke it manually before any non-trivial code change.
+
 ## Secrets (BLOCKING)
 
 NEVER route secrets/credentials (JWTs, API keys, tokens, passwords) through the chat — not even while debugging. When a step needs a token: read responses via the browser Network tab, run an in-page Console snippet that uses the token in place, or act server-side. Paste only non-secret outputs (response bodies, numeric ids/claims). If a secrets-detection hook blocks a paste, that's correct — don't disable it; use one of the local paths instead.

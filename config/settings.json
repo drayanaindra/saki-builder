@@ -45,7 +45,7 @@
       "NotebookEdit"
     ]
   },
-  "model": "claude-sonnet-4-6",
+  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -94,6 +94,11 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/sonar-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/format-staged.sh",
+            "timeout": 30
           }
         ]
       },
@@ -119,12 +124,28 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/build-completion-gate.sh",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "sonarqube@claude-plugins-official": true,
-    "figma@claude-plugins-official": true
+    "figma@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "data-engineering@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {

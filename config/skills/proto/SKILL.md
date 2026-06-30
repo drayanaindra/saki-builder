@@ -690,6 +690,41 @@ produced; surface both in the Completion Output.
 
 ## Step 7 — Present + expectation check
 
+### 7a. Serve a clickable local preview (terminal runs only)
+
+When `/proto` runs from a **terminal** (not under Pipeline Studio), start a throwaway static server on
+the gallery dir so the result hands back a **clickable URL** instead of a `file://` path. Under Pipeline
+Studio (`$SAKI_OUT` is set — Studio spawns headless with `stdio:'ignore'`, so a backgrounded server would
+die with the turn and its stdout is never read), **skip this**: Studio serves the gallery itself and its
+**Preview ↗** button opens it via `/api/proto/<base64-cwd>/…/preview.html`.
+
+```bash
+if [ -z "$SAKI_OUT" ]; then
+  pkill -f "http\.server 8999" 2>/dev/null; sleep 0.4   # reclaim a stale 8999 if any (see gotcha #1)
+  PORT=$(python3 -c "import socket
+for p in range(8999,9100):
+    s=socket.socket()
+    try: s.bind(('127.0.0.1',p)); s.close(); print(p); break
+    except OSError: s.close()")                          # reuse 8999 when free, else first free 9000+
+  ( python3 -m http.server "$PORT" --bind 127.0.0.1 --directory tasks/proto-<slug> >/dev/null 2>&1 & )
+  echo "Local preview: http://127.0.0.1:$PORT/preview.html"
+fi
+```
+
+Three gotchas this guards — **all hit in a real test**, do not "simplify" them away:
+1. **Kill pattern must match the args, not `python3`.** The real process is `Python -m http.server 8999 …`
+   (the framework binary is capital `Python`), so `pkill -f "python3.*http.server"` matches **nothing**
+   and stale servers pile up. Match `http\.server 8999`.
+2. **Fixed-port + stale listener = silent WRONG gallery.** A leftover server on 8999 serving a *different*
+   `proto-<slug>` will answer the request and you'll preview the wrong prototype with no error. The
+   free-port scan (after the kill) + a fresh `--bind 127.0.0.1` makes the URL hit *this* run's server.
+3. **Advertise `127.0.0.1`, never `localhost`.** macOS resolves `localhost` → IPv6 `::1` first; a default
+   `http.server` binds IPv4 only, so `http://localhost:PORT` can miss our server (or hit a stale IPv6 one
+   bound to `*:PORT`). `http://127.0.0.1:PORT/preview.html` is deterministic. Stop it later with
+   `pkill -f "http\.server <port>"`.
+
+### 7b. Present
+
 Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 
 > 1. "Does this match what you expected the end user to see — or adjust before `/build`?"
@@ -812,6 +847,7 @@ Journey previewed: entry → [N user-visible steps] → success   (continuous, n
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
 HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
 Handoff notes: tasks/proto-<slug>-notes.md
+Local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — Cmd/Ctrl-click to open · stop: pkill -f "http.server <port>")
 Studio Preview: opens the static gallery (tasks/proto-<slug>/preview.html) via the Preview ↗ button
 Figma export: <Figma file URL — Tier A editable layers | Tier B screenshot board | skipped (no Figma MCP)>
 
@@ -820,6 +856,7 @@ Fidelity: faithful on layout/components/look/responsive/page-composition-in-real
 Design system: updated before /build — new components are real, not approximations.
 
 Next actions:
+> Open the local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — served in Step 7a)
 > Open the Preview ↗ in Pipeline Studio (the static page-overview gallery)
 > Open the exported Figma file to review/edit the layers (if Step 6c ran)
 > Review tasks/proto-<slug>/index.md and confirm the look
