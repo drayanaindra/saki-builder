@@ -74,10 +74,11 @@ Completed: [1-line summary]
 Next actions:
 > [most logical next step]
 > [alternative]
+> /wrap (if the task touched git — converge to clean before moving on)
 > /retro (if session was substantial)
 ```
 
-Be specific ("run `pytest tests/test_users.py`" not "test it"). Show next uncompleted plan step if working from a plan. Include `/retro` after 5+ tasks or 30+ min.
+Be specific ("run `pytest tests/test_users.py`" not "test it"). Show next uncompleted plan step if working from a plan. Include `/retro` after 5+ tasks or 30+ min. Suggest `/wrap` whenever the task reached a done state with git work outstanding (MR green / merged, commits unpushed, or a worktree still open) — it commits WIP, lands+pushes each worktree branch, removes the worktree, and returns to a clean `main`, so no work is left behind.
 
 ## Learning Loop
 
