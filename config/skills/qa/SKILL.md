@@ -337,6 +337,53 @@ For each `.up.sql` file, verify a `.down.sql` counterpart exists.
 
 ---
 
+## Step 3.5: Coverage gate (local — runs BEFORE any SonarQube analysis)
+
+Coverage must clear a floor **here**, before push — so the SonarQube new-code gate is already green when it
+runs, instead of being discovered red at the gate. Floor = `COVERAGE_MIN` (env, **default 70**; set
+`COVERAGE_MIN=80` to match a stricter SonarQube new-code condition, `COVERAGE_MIN=0` to skip for a spike).
+
+**Run the stack's coverage command (machine-readable report), parse the total %, FAIL below the floor:**
+
+| Stack | Command |
+|-------|---------|
+| Vitest | `npx vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text` → `coverage/coverage-summary.json` |
+| Jest | `npx jest --coverage --coverageReporters=json-summary` → `coverage/coverage-summary.json` |
+| Go | `go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out` → the `total:` line |
+| pytest | `pytest --cov --cov-report=term --cov-fail-under=${COVERAGE_MIN:-70}` (self-fails — no parsing) |
+
+```bash
+MIN=${COVERAGE_MIN:-70}
+PCT=$(python3 -c "import json;print(json.load(open('coverage/coverage-summary.json'))['total']['lines']['pct'])" 2>/dev/null)
+awk "BEGIN{exit !($PCT>=$MIN)}" && echo "COVERAGE OK: ${PCT}% >= ${MIN}%" || echo "COVERAGE FAIL: ${PCT}% < ${MIN}%"
+```
+
+**Mirror SonarQube's *new-code* model — also gate the CHANGED files, not only the total.** SonarQube grades
+new code; a 70% total can still hide a 0%-covered new file. When a diff baseline exists, compute coverage
+restricted to the changed source files and require each ≥ floor:
+```bash
+BASE=$(git merge-base HEAD origin/main 2>/dev/null || echo HEAD~1)
+git diff --name-only "$BASE"...HEAD -- '*.ts' '*.tsx' '*.js' '*.go' '*.py' | grep -vE '\.test\.|_test\.|\.spec\.'
+# read each changed file's pct from coverage-summary.json; FAIL any below MIN
+```
+
+**Verdict (this is a real QA criterion — never SKIP):**
+- **PASS** (total ≥ floor AND every changed file ≥ floor) → record `COVERAGE: <pct>% ✓`, continue.
+- **FAIL** → RED. In `/build` / `/approved` (TDD) context, treat like any failing test: list the
+  lowest-covered files + uncovered lines, write the missing tests (Red→Green), re-run; do not proceed while
+  red. Standalone `/qa`: report `COVERAGE FAIL` + file list as a blocking result.
+- **No coverage tooling** → `COVERAGE: BLOCKED — no coverage tooling`, with the exact install line
+  (`npm i -D @vitest/coverage-v8`, `pip install pytest-cov`, …). Never silently pass.
+
+**Fail-fast by default (the durable fix):** bake the floor into the test runner so plain `npm test` fails
+when coverage drops — `/init-env` scaffolds this and it is the real "by default" enforcement:
+- Vitest → `test.coverage.thresholds = { lines: 70, functions: 70, branches: 70, statements: 70 }` (`vite.config.ts`)
+- Jest → `coverageThreshold: { global: { lines: 70, branches: 70, functions: 70, statements: 70 } }`
+- pytest → `--cov-fail-under=70` in `addopts`
+- Go → a CI assertion that the `total:` line ≥ 70
+
+---
+
 ## Step 4: Run each criterion
 
 For every criterion from Step 2, run its test command and capture the output.
