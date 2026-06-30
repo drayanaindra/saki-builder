@@ -132,6 +132,11 @@
             "type": "command",
             "command": "~/.claude/hooks/build-completion-gate.sh",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pipeline-completion-gate.sh",
+            "timeout": 15
           }
         ]
       }
@@ -145,7 +150,8 @@
     "code-simplifier@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "data-engineering@claude-plugins-official": true
+    "data-engineering@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
