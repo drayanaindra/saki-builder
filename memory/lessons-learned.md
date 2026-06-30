@@ -53,4 +53,15 @@ Slate Go/embed/SQLite patterns kept project-local in the Slate repo's `.claude/m
 **Promotion candidates** (flag for `/reflect`):
 - "Pull/verify canonical source before building" already exists as CLAUDE.md rule #6 — this is independent recurrence. Consider strengthening rule #6 with the concrete failure mode (stale-local cost/value analysis).
 - "Default-to-cut on own-work redundancy (authorship bias)" is global behavior guidance — promote to `patterns.md` on one more recurrence.
-- "Stage explicit paths, never `git add -A` with unrelated untracked files" — global tool practice; promote on one more recurrence.
+- "Stage explicit paths, never `git add -A` with unrelated untracked files" — global tool practice; promote on one more recurrence. **(RESOLVED 2026-07-01: already robustly in `patterns.md` — "explicit-path add captures concurrent edits" + "never git add -A"; reconfirmed live this session via the `/wrap` entanglement-guard safe-stop. No further action.)**
+
+## 2026-07-01 — built `/wrap` converge-to-clean skill; entanglement-guard safe-stop in practice
+
+- [PATTERN] **Converge-to-clean as an explicit, ORDERED end-of-task step** prevents "work left behind after iterations": commit WIP → land+push each worktree branch → remove worktree → THEN switch to main. Switching to main is gated LAST on a clean+pushed state — never strand a dirty worktree. Operationalized as the new global `/wrap` skill. (1 session; the component pains it fixes — worktree cleanup, entanglement, unpushed branches — each already recur 2–3× across projects and live individually in `patterns.md`.)
+- [PATTERN] **On a dirty tree carrying pre-existing/foreign WIP, split by unit-of-work into scoped commits + safe-stop — never one blind sweep.** Running `/wrap` on this repo found 4 distinct units (only 1 authored this session); the entanglement guard stopped the blind commit and produced 4 scoped commits after explicit confirmation. Live reconfirmation of the `patterns.md` explicit-path / never-`git add -A` rules.
+- [DISCOVERY] **Global skills (`~/.claude/skills/*`) are available in EVERY project automatically — they are NOT part of `/init-env`'s scaffold**, which only creates project-SPECIFIC overrides (stack-tailored rplan-review/qa/prd-review). Stack-agnostic skills like `/wrap` need no per-project step; they ship via `install.sh`. So "will X be in `/init-env`?" → only if X is project-specific; global-first skills never are.
+- [DISCOVERY] **`git status --porcelain` under RTK prints `ok` for empty output** — don't misread it as a dirty file. Confirm clean via `git status -sb` (header-only `## main...origin/main`, no file lines). Same family as the `patterns.md` RTK `grep -q .` guardrail-false-positive caveat.
+
+**Promotion candidates** (flag for `/reflect`):
+- The two [PATTERN] converge-to-clean lines: **HOLD** — `/wrap` is 1 session old (used once). Promote a single lean line to `patterns.md → Workflow` once `/wrap` proves useful across 2+ more sessions. The discipline is sound; the operationalization is untested over time. (User may elect to promote early — it's a deliberately-built workflow they own.)
+- The RTK `git status --porcelain` → `ok` [DISCOVERY]: 1×; natural one-line extension of the existing `patterns.md` RTK entry. Promote on first recurrence (or fold in opportunistically next time that RTK entry is edited).
