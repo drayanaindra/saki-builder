@@ -82,6 +82,21 @@ even when they are not standalone §8 slices — the deliverable is one continuo
 isolated slice previews. Guard: connective screens are *journey glue* (the app's real login/landing/success,
 the minimal confirmation a step implies), not new scope — never invent a feature beyond §11.
 
+**No dead-end affordances — cover every surface the app shell exposes (BLOCKING completeness check).**
+Once the app shell is detected (Gate 2), **walk its real navigation**: every header/nav item, every
+sidebar/menu entry, and every primary affordance that implies a destination (a clickable row → a detail
+view, a "+"/CTA → a create surface). **Each one must map to a rendered proto screen in the journey
+list.** A shell that advertises `Activity`, `Completed`, or a clickable card while the proto renders only
+the §8 slices produces dead-end affordances — the exact "I didn't see the end-to-end UI" failure. Resolve
+every gap one of two ways, never silently:
+- **The surface is in scope** → add it to the journey AND ensure the PRD defines it (a surface the proto
+  shows must be a surface `/build` builds — if it's not in §8, flag it back as a PRD gap to add first;
+  proto and PRD must agree).
+- **The surface is genuinely out of scope** (§11) → it must NOT be a live affordance in the shell. Note
+  it, and treat the dangling nav item as a shell-fidelity bug to remove, not a screen to invent.
+This is distinct from "never invent a feature beyond §11": that forbids *adding* scope; this forbids
+*shipping a shell that promises scope the journey doesn't cover*. The reconciliation is two-way.
+
 Also read any `tasks/*-flow.md` (rplan Step 2.5 Gherkin) for the slice — it already enumerates the
 states the user expects. If present, it is the authoritative state list.
 
@@ -337,13 +352,18 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
 
 ### 5d. Mount, mark, serve
 
-- **Visible prototype banner (required):** render a fixed banner element in the `/proto-preview` page
+- **Visible prototype banner (required):** render a banner element in the `/proto-preview` page
   body containing the literal token `__PROTO__` and the text
   `⚡ Prototype preview — UI only · mock data · controls inert`. This does double duty: (1) it sets the
   operator's expectations so a faithful-but-inert page isn't mistaken for a broken app, and (2)
   `__PROTO__` is the **health-check sentinel** the Studio greps in the page body to confirm a real
   render (Step 5e `readySentinel`). Also keep the disposable source comment
   `// __PROTO__ — throwaway preview, do not ship` on every preview file.
+  **Place it in normal document flow (a static block at the end of the body), NOT `position:fixed`/`sticky`.**
+  A fixed/overlay banner renders at the *first viewport's* edge, so in a **full-page** capture (Step 6a,
+  `fullPage:true`) it lands in the MIDDLE of a tall page and overlaps real content — a capture-fidelity bug
+  that's invisible on a short desktop page but obvious on a long mobile one. In-flow = it appears once,
+  cleanly, after all content, at every viewport.
 - **Isolation:** preview files live only under the `proto-preview` namespace (or Storybook) so they
   are trivially deletable and can never reach production.
 - **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
@@ -472,6 +492,28 @@ console.log('captured screenshots + hotspots.json')
 Confirm the PNGs exist and `hotspots.json` is non-empty (and no `PAGE ERRORS` printed — those mean a
 provider/compile failure: fix 5a/5c, never ship an error frame). If a shot fails, retry once, else note it
 in `index.md`. Then write `index.md` leading with the journey-ordered page frames + the fidelity contract.
+
+**Mobile-fidelity check (BLOCKING — the mobile frame must be a real mobile layout, not a squished desktop).**
+Proto renders the project's REAL components, so a non-responsive component yields a genuinely broken mobile
+frame — surface it, never ship it silently. After capture, OPEN the mobile (390) PNGs and verify each:
+- **No horizontal overflow** — content fits the 390 width; nothing is clipped off the right edge, no
+  side-scroll. (A `fullPage` shot that's far wider than 390 is the tell — a row/grid that didn't stack.)
+- **The app shell adapted** — a fixed desktop sidebar must collapse/hide (or move to a chip row / drawer)
+  below the breakpoint, not eat half a 390px screen. The header nav stays usable.
+- **No crushed multi-column layouts** — board/kanban/columns and side-by-side cards must stack vertically
+  on mobile; a 3-up row crammed into 390 (truncated titles, wrapped badges/labels) is a fail.
+- **Controls reachable** — form fields and CTAs go full-width / stack rather than overflow.
+- **No oversized gaps** — a desktop grid that collapses to one column on mobile leaves a large empty band
+  between the chrome (collapsed sidebar / tab row) and the page content: the default `align-content:stretch`
+  splits the leftover viewport height *between* the auto rows. Fix by making the content row absorb the
+  slack (`grid-rows-[auto_1fr]` on mobile, reset `md:grid-rows-none`) or `content-start` — the empty space
+  belongs at the bottom, not between the menu and the page.
+If any mobile frame fails, the cause is almost always a **non-responsive real component** (a fixed-width
+shell grid, a horizontal-only flex, a badge/label with no `whitespace-nowrap`/`shrink-0`). That is a
+**design-system gap** — treat it like a Step 2.5 ⚠️: fix the responsive layout in the real component
+(`flex-col md:flex-row`, hide/transform the sidebar at the breakpoint, etc.), re-capture, and re-verify
+BEFORE presenting. Do not present a broken mobile frame and call it "approximate" — responsiveness is a
+look-fidelity property proto exists to derisk, not a `/build` behavior concern.
 
 ### 6a-bis. The hotspot anchors (input to the 6a script)
 
