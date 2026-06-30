@@ -26,6 +26,7 @@ cache/
 paste-cache/
 shell-snapshots/
 session-env/
+.playwright-mcp/
 history.jsonl
 stats-cache.json
 mcp-needs-auth-cache.json
