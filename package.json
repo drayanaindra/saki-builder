@@ -1,0 +1,12 @@
+{
+  "name": "saki-builder",
+  "private": true,
+  "description": "Config validator for the saki-builder Claude Code plugin (zero-dependency structural checks). Not a runtime package.",
+  "scripts": {
+    "test": "node test/validate.js",
+    "validate": "node test/validate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

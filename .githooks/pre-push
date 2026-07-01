@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# saki-builder pre-push hook — block a push if the config validator fails.
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass intentionally (documented reason only):  git push --no-verify
+set -e
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: node not found — skipping saki-builder validation (install Node >=18 to enable)" >&2
+  exit 0
+fi
+
+echo "pre-push: running saki-builder config validator…" >&2
+if ! node test/validate.js; then
+  echo "" >&2
+  echo "✗ pre-push blocked: config validation failed. Fix the errors above, or 'git push --no-verify' to override." >&2
+  exit 1
+fi

@@ -1,0 +1,19 @@
+{
+  "name": "saki-builder",
+  "description": "Solve Education internal Claude Code marketplace — the SAKI Builder personal-scale toolkit.",
+  "owner": {
+    "name": "Solve Education",
+    "url": "https://gitlab.solveeducation.org/solveed"
+  },
+  "plugins": [
+    {
+      "name": "saki-builder",
+      "displayName": "SAKI Builder",
+      "source": "./",
+      "description": "research→plan→build→qa→review skills, adversarial reviewers, domain agents, safety hooks, an execution protocol, and a split learning loop. Run /saki-builder:init after install to tailor it to your project.",
+      "keywords": ["workflow", "planning", "code-review", "tdd"],
+      "category": "workflow",
+      "defaultEnabled": true
+    }
+  ]
+}
