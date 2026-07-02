@@ -1,19 +1,19 @@
 ---
 name: build
-description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /rplan → (/rplan-review if needed) → /approved → /qa → /reviewer on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /build <prd-file.md>.
+description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /saki-builder:build <prd-file.md>.
 ---
 
 # Autonomous PRD Executor
 
 You are operating in **TRUST MODE** — fully autonomous execution. The PRD has already
-been written and reviewed (via `/prd`) and the user has pre-authorized this flow. Your
+been written and reviewed (via `/saki-builder:prd`) and the user has pre-authorized this flow. Your
 single goal: **ship every vertical slice in the PRD, fully tested, with no outstanding
 issues.** Do not stop until that is true.
 
 This command is the one-shot equivalent of running, by hand, for each slice:
 
 ```
-/rplan  →  /rplan-review (only if needed)  →  /approved  →  /qa  →  /reviewer
+/saki-builder:rplan  →  /saki-builder:rplan-review (only if needed)  →  /saki-builder:approved  →  /saki-builder:qa  →  /saki-builder:reviewer
 ```
 
 …then verifying the whole thing end-to-end.
@@ -24,14 +24,14 @@ This command is the one-shot equivalent of running, by hand, for each slice:
 
 You are in TRUST MODE. This means:
 - **NEVER ask "Do you want to proceed?"** or any variation. Make the call, log it, continue.
-- **Do NOT wait for plan approval.** `/rplan` normally stops for a human; here you
-  auto-approve any plan that clears the confidence bar and proceed to `/approved` yourself.
-- Agent-based sub-skills that are part of this flow (`/rplan-review`, `/reviewer`) are
+- **Do NOT wait for plan approval.** `/saki-builder:rplan` normally stops for a human; here you
+  auto-approve any plan that clears the confidence bar and proceed to `/saki-builder:approved` yourself.
+- Agent-based sub-skills that are part of this flow (`/saki-builder:rplan-review`, `/saki-builder:reviewer`) are
   permitted — they are how slices get reviewed. Just never pause for user confirmation
   around them.
 - The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an ABSOLUTE NO-GO (below),
   or a slice that cannot be made green after repeated honest attempts. An unresolved `before slice
-  N` open question is **not** a stop — `/build` auto-resolves it (Per-Slice Loop, step 0) and
+  N` open question is **not** a stop — `/saki-builder:build` auto-resolves it (Per-Slice Loop, step 0) and
   proceeds. **Exception:** a fork the PRD author tagged `[human]` is a deliberate, human-only
   decision — pause for it via the `NEEDS_DECISION:` gate (step 0a). That is a *resumable pause*, not
   a confirmation prompt: you emit the gate and end the turn; the studio collects the answer and
@@ -45,7 +45,7 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 `/goal`). So this skill enforces its **own** persistence — behave as if a goal were set:
 
 - **Completion signal.** You are done ONLY when every slice in the PRD is green
-  (`/qa` passes **and** `/reviewer` is clean) **and** the e2e suite passes. At that point,
+  (`/saki-builder:qa` passes **and** `/saki-builder:reviewer` is clean) **and** the e2e suite passes. At that point,
   and only then, print `PRD_BUILD_COMPLETE`. Never print it early.
 - **Do not hand control back** until you either print `PRD_BUILD_COMPLETE` or hit a real
   hard stop (missing PRD, NO-GO, honestly-blocked slice). If a turn runs long, keep going —
@@ -77,24 +77,24 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 ### For guaranteed cross-turn autonomy, launch under /goal
 
 Because a skill can't self-activate `/goal`, the most autonomous way to start is for the
-**user** to type the wrapper (the engine is `/goal`, the orchestration is `/build`):
+**user** to type the wrapper (the engine is `/goal`, the orchestration is `/saki-builder:build`):
 
 ```
-/goal /build tasks/prd-<feature>.md — done when every slice passes /qa and /reviewer and the e2e suite is green
+/goal /saki-builder:build tasks/prd-<feature>.md — done when every slice passes /saki-builder:qa and /saki-builder:reviewer and the e2e suite is green
 ```
 
-Plain `/build tasks/prd-<feature>.md` still runs and self-iterates per the rules above; the
+Plain `/saki-builder:build tasks/prd-<feature>.md` still runs and self-iterates per the rules above; the
 `/goal` wrapper just makes the cross-turn persistence bulletproof.
 
 ---
 
 ## Input
 
-Usage: `/build <prd-file.md>` (filler words are fine, e.g. `/build start build prd-wave-2.md`).
+Usage: `/saki-builder:build <prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
 
 Extract the PRD path from the arguments: take the token ending in `.md` (or matching
 `prd-*`). Locate the file by checking, in order: `tasks/<name>`, `./<name>`, the path as
-given. The `/prd` skill saves to `tasks/prd-<feature>.md`, so `tasks/` is the common case.
+given. The `/saki-builder:prd` skill saves to `tasks/prd-<feature>.md`, so `tasks/` is the common case.
 
 ---
 
@@ -104,7 +104,7 @@ Read the PRD file. If it cannot be found or read, **STOP** and output:
 ```
 HARD STOP — PRD NOT FOUND
 Looked for: tasks/<name>, ./<name>, <name>
-Pass a valid PRD path: /build <prd-file.md>
+Pass a valid PRD path: /saki-builder:build <prd-file.md>
 ```
 Do NOT invent a PRD or ask the user to paste one — this is the one input the command requires.
 
@@ -112,7 +112,7 @@ From the PRD, extract (match sections by **heading title**, not number — PRD s
 as sections are added):
 - **Vertical Slices** — the ordered, numbered list. Slices are forward-dependency-only, so
   **PRD order is execution order**. This is your work list.
-- **Acceptance Criteria per Slice** — these become each slice's `/qa` success criteria.
+- **Acceptance Criteria per Slice** — these become each slice's `/saki-builder:qa` success criteria.
 - **Business Rules & Invariants** (the *Business Rules & Invariants* section, if present) — the
   domain rules every slice must uphold. If it reads "none beyond CRUD", skip the rule checks in the
   loop below. Otherwise: each rule links to an acceptance criterion, and a criterion may cite
@@ -123,15 +123,15 @@ as sections are added):
 - **Open Questions** (the *Rabbit Holes & Open Questions* section) — each question with a
   `before slice N` deadline, and whether it carries a `✅ RESOLVED` marker. These are architectural
   forks that gate specific slices (see the Per-Slice Loop, step 0). Ignore `before launch | before
-  beta | before GA` deadlines — those are rollout decisions, outside `/build`'s scope.
+  beta | before GA` deadlines — those are rollout decisions, outside `/saki-builder:build`'s scope.
 
 Print the extracted slice list (numbered titles) and any **unresolved** `before slice N` gates so
 the run is auditable — these will be **auto-resolved** in the loop (step 0), not blocked on — then
 begin.
 
-### Optional: reuse a `/proto` preview if one exists
+### Optional: reuse a `/saki-builder:proto` preview if one exists
 
-If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/proto` first), read it. It records the
+If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/saki-builder:proto` first), read it. It records the
 **real design-system components + token references** chosen per screen, already validated visually.
 When implementing a user-facing slice, **promote** those presentational components (mock data →
 real data + state + tests + backend wiring) instead of re-picking from scratch — the look is
@@ -195,7 +195,7 @@ If a slice would require one of the above, **STOP** that slice and output:
 ```
 HARD BLOCK — DB DESTRUCTIVE OPERATION DETECTED
 Slice [N]: [what was blocked]
-Forbidden in /build mode. Resolve manually with explicit human approval.
+Forbidden in /saki-builder:build mode. Resolve manually with explicit human approval.
 ```
 Then continue with the remaining independent slices.
 
@@ -225,11 +225,11 @@ NEEDS_DECISION: {"slice":N,"kind":"fork","question":"<the question, one line>","
   open-ended, pass `"options":[]` and the studio shows a free-text field.
 - Stop at the **first** such fork and end the turn — do not batch or proceed past it. The studio
   surfaces the picker, writes the operator's choice into the PRD as `✅ RESOLVED — <decision>`, and
-  re-drives `/build`, which then reads it like any resolved question. This is a pause, not a block:
+  re-drives `/saki-builder:build`, which then reads it like any resolved question. This is a pause, not a block:
   no `BLOCKED:`, no give-up — the build resumes the moment the human answers.
 
 **0b. Everything else — resolve it yourself and proceed** (the default; untagged forks). The goal is
-to ship the expectation, so a missing decision is something `/build` *makes*, not something it waits
+to ship the expectation, so a missing decision is something `/saki-builder:build` *makes*, not something it waits
 on. Resolve it with the first rule that applies:
 
 1. **Take the PRD's lean.** If the entry states a recommendation, default, or "leaning X" — use it.
@@ -248,27 +248,27 @@ Then **record the decision** so it is auditable and a human can override it late
 - Write it to the progress scratchpad and emit the marker line:
   `AUTO-RESOLVED: slice N — <question> → <decision>`.
 
-Carry the decision into step 1 (`/rplan`) as a stated assumption so the plan and its tests are
+Carry the decision into step 1 (`/saki-builder:rplan`) as a stated assumption so the plan and its tests are
 built on it.
 
-### 1. `/rplan` — plan the slice
+### 1. `/saki-builder:rplan` — plan the slice
 Invoke the `rplan` skill (Skill tool, `skill: rplan`) scoped to **this slice only**: its
 description plus its acceptance criteria, **and the Business Rules & Invariants in scope for it**
 (the rules its criteria link to, plus any `🔒 INVARIANT` the slice's writes could violate). The
 plan must be built to uphold them — call out each in-scope invariant so the implementation and its
-tests account for it. `/rplan` will research, build the plan, and score confidence. **Do not wait
+tests account for it. `/saki-builder:rplan` will research, build the plan, and score confidence. **Do not wait
 for approval** — read the resulting plan and its confidence score yourself.
 
-### 2. `/rplan-review` — *only if needed*
+### 2. `/saki-builder:rplan-review` — *only if needed*
 Run the `rplan-review` skill when any of these hold; otherwise skip straight to step 3:
-- `/rplan` confidence is below its 96% bar, **or**
+- `/saki-builder:rplan` confidence is below its 96% bar, **or**
 - the slice is HIGH risk (auth, DB migration, deletes, money, security boundary), **or**
 - the slice spans >2 modules or has >3 acceptance criteria.
 
-`/rplan-review` hardens the plan (criteria → test commands, domain-expert pass). After it,
+`/saki-builder:rplan-review` hardens the plan (criteria → test commands, domain-expert pass). After it,
 re-read the plan.
 
-### 3. `/approved` — implement
+### 3. `/saki-builder:approved` — implement
 **First load the `clean-code` skill** (Skill tool, `skill: clean-code`) so the slice is written to
 the SonarQube clean-code standard — the Pre-merge Gate grades the diff (Clean as You Code), so
 writing clean now avoids a gate failure later. Then invoke the `approved` skill to implement the
@@ -276,25 +276,25 @@ slice under XP discipline (TDD Red→Green→Refactor, commit-per-step, YAGNI). 
 here — invoke both without waiting for the user. (Re-load `clean-code` every slice; this keeps it in
 context even if a context clear happened between slices.)
 
-### 4. `/qa` — test against acceptance criteria + in-scope invariants
+### 4. `/saki-builder:qa` — test against acceptance criteria + in-scope invariants
 Invoke the `qa` skill. It runs **this slice's** acceptance criteria as real tests; every
 criterion must pass. **Also verify each in-scope Business Rule** — and for a `🔒 INVARIANT`,
 assert it holds under concurrency / partial failure where the stack allows (e.g. a race or
 double-fire test), not just the happy path, since a passing acceptance criterion does not prove an
-invariant holds. If any criterion or invariant check fails → fix in place and re-run `/qa`. Do not
+invariant holds. If any criterion or invariant check fails → fix in place and re-run `/saki-builder:qa`. Do not
 proceed while red.
 
-### 5. `/reviewer` — fresh-context review
+### 5. `/saki-builder:reviewer` — fresh-context review
 Invoke the `reviewer` skill on the slice's diff. If it reports **blocking** issues
-(correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/qa`
-and `/reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
+(correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/saki-builder:qa`
+and `/saki-builder:reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
 
 ### 6. Mark done, advance
 Log `SLICE [N] ✓ — <title>` with a one-line note (commits, files, test result), then move
 to the next slice.
 
-**Loop until issue-free:** a slice is "done" only when `/qa` is fully green **and**
-`/reviewer` has no blocking findings. If you cannot get a slice green after repeated honest
+**Loop until issue-free:** a slice is "done" only when `/saki-builder:qa` is fully green **and**
+`/saki-builder:reviewer` has no blocking findings. If you cannot get a slice green after repeated honest
 attempts, stop and report exactly what's blocking — do not fake completion or weaken tests
 to pass.
 
@@ -310,10 +310,10 @@ e2e is green. Detect and run whichever applies (check `package.json` scripts / c
 - the project's own e2e command if defined elsewhere
 
 If e2e fails → treat it as a blocking issue: trace it to the offending slice, fix, re-run
-`/qa` for that slice, then re-run e2e. Repeat until green.
+`/saki-builder:qa` for that slice, then re-run e2e. Repeat until green.
 
 If **no e2e suite exists**, do NOT silently pass. Report:
-`⚠ NO E2E SUITE FOUND — slice-level /qa passed, but no end-to-end coverage exists.`
+`⚠ NO E2E SUITE FOUND — slice-level /saki-builder:qa passed, but no end-to-end coverage exists.`
 
 ---
 
@@ -322,7 +322,7 @@ If **no e2e suite exists**, do NOT silently pass. Report:
 When every slice is green, reviewed, and e2e passes, output:
 
 ```
---- /build COMPLETE ---
+--- /saki-builder:build COMPLETE ---
 PRD: <prd-file>
 Branch: feature/<name>
 Slices: [N/N] done
@@ -353,7 +353,7 @@ Next actions:
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.
 - **Single source of truth for behavior.** Invoke `rplan` / `rplan-review` / `approved` /
   `qa` / `reviewer`; do not re-implement their logic here.
-- **Never fake green.** Don't weaken or delete tests to pass `/qa` or e2e. A blocked slice
+- **Never fake green.** Don't weaken or delete tests to pass `/saki-builder:qa` or e2e. A blocked slice
   is reported honestly.
 - **Clean-code standard, always.** Every slice is written to the SonarQube clean-code standard —
   load the `clean-code` skill before implementing (step 3) so each diff clears the Pre-merge Gate

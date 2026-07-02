@@ -22,10 +22,10 @@ Report the output:
 ## When to use
 
 - After the repo owner pushes new or updated skills
-- After `/sync` runs on another machine and you want the latest on this one
+- After `/saki-builder:sync` runs on another machine and you want the latest on this one
 - First thing in a new session on a machine that hasn't pulled recently
 
 ## Related
 
-- `/sync` — push your learnings to remote (opposite direction)
+- `/saki-builder:sync` — push your learnings to remote (opposite direction)
 - After pulling, restart Claude Code to pick up skill changes

@@ -253,4 +253,10 @@ Confidence Gate: [x] Confidence Ledger present and every entry cited  [x] All ch
   - **Hook (1)** `inject-core.js` fires on SessionStart, injecting `instructions/core.md` + personal overlay — **always-on cost ~2,277 tok** (confirmed `CONF=90%` reaches the model). Team-baseline patterns deliberately deferred to Phase 3 (don't broadcast raw personal patterns).
   - Restructure (1.1/1.2) confirmed unnecessary (path-override). Core-skill sibling refs (rplan `template.md`, qa `playwright-patterns.md`) portabilized to `${CLAUDE_PLUGIN_ROOT}/…`.
   - Validator hardened to handle agents-as-file-paths + hooks.json; green at 73 skills / 3 agents.
-- **Next: Phase 2** — namespace ~380 internal `/skill` refs → `/saki-builder:*`; triage & port shared hooks into `config/hooks/hooks.json`; fix `gateway-*` path refs for the 27 nested library skills.
+- **2026-07-02 — Phase 2 COMPLETE** (v0.2.0). Verified via real install: 46 skills, 3 hook events, ~2,422 always-on tok.
+  - **319 internal refs namespaced** → `/saki-builder:*` (`bin/namespace-refs.js`, guarded regex; externals left bare). Validator now resolves every ref.
+  - **6 shared hooks** registered in `config/hooks/hooks.json` (inject-core, repo-context, dangerous-command-guard, format-staged, build/pipeline-completion-gate). Personal hooks (rtk, sonar*, macOS notify) documented opt-in in `config/docs/hooks-personal.md` (shipped-but-unregistered; not moved, to keep the owner's symlinked settings working).
+  - `templates/settings.recommended.json` (permissions/model/effort — plugin can't ship these). Agent doc-refs → `${CLAUDE_PLUGIN_ROOT}/...`. `CHANGELOG.md` added.
+  - **⚠ Entanglement noted:** the Phase-2 commit also bundles pre-existing owner WIP in 4 skill files (`prd`, `prd-review`, `proto`, `rplan-review` — a "Basis column" content edit) because the namespacing sweep touched the same files; can be split out later.
+  - **⏭ Deferred:** learnings-related `~/.claude/memory/patterns` refs (reflect, reviewer) → Phase 3. `gateway-*` path table refs (`skills/library/...` — pre-existing wrong paths, need investigation) → Phase 3/follow-up.
+- **Next: Phase 3** — learnings split (team baseline `memory/` read-only + `~/.claude/memory/patterns-personal.md` overlay); rewire `/saki-builder:reflect` + `/saki-builder:sync`; fix the deferred memory refs.

@@ -1,12 +1,14 @@
 ---
 name: rplan-review
-description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Blocks on missing sections. Run after /rplan before /approved.
+description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Leads on implementation reality (each step's failure paths + the build work it implies but omits), grounds every finding to a cited step and verifies blockers against the code before they count, and requires experts to prescribe the exact plan edit. Gates on failure-surface completeness. Blocks on missing sections. Run after /saki-builder:rplan before /saki-builder:approved.
 user-invocable: false
 ---
 
 # Plan Review — Structural Scan + Parallel Expert Review
 
 You are the review coordinator. Your job: verify the plan is complete and safe to implement, using domain expert agents in parallel.
+
+**Priority order for the whole review: ① surface implementation reality → ② keep every finding grounded → ③ prescribe, don't lecture.** ① The lead question every expert answers first is *what fails or is silently assumed when this step runs* — the failure/edge paths the happy path hides, and the build work a step implies but the Steps table omits (backfill, index, authz middleware, rollback, feature flag). ② Every finding cites the exact step/section it attacks; uncited findings are discarded and every blocker is verified against the actual code before it enters the ledger (subagents misread patterns and flag correct APIs as bugs). ③ A finding must prescribe the exact plan edit that fixes it (step + file + function/criterion), never merely flag.
 
 There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely.
 
@@ -62,7 +64,7 @@ The plan author must rewrite the plan. These gaps cannot be resolved by answerin
 Missing/incomplete:
   ❌ [section]: [specific gap]
 
-Action: Fill missing sections → re-run /rplan-review
+Action: Fill missing sections → re-run /saki-builder:rplan-review
 
 REVIEW STOPPED.
 ```
@@ -73,7 +75,7 @@ Do NOT proceed to Phase 2 if Phase 1 failed.
 
 ## Phase 1.5: Verify Criteria Hardening (no rewriting)
 
-**`/rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
+**`/saki-builder:rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
 
 Read the Success Criteria section. For each criterion, check it has ALL THREE:
 1. **Actor + Action** — who does what
@@ -82,21 +84,21 @@ Read the Success Criteria section. For each criterion, check it has ALL THREE:
 
 **If every criterion has all three (or is explicitly `🔲 MANUAL` with numbered steps + Playwright stub):**
 ```
-PHASE 1.5 PASSED — criteria already hardened by /rplan 6d
+PHASE 1.5 PASSED — criteria already hardened by /saki-builder:rplan 6d
 ```
 
 **If any criterion is missing fields:**
 ```
 PHASE 1.5 FAILED — criteria not hardened
 
-The plan must run /rplan Step 6d hardening before review.
+The plan must run /saki-builder:rplan Step 6d hardening before review.
 Unhardened: [list of criterion IDs and what's missing]
 
-Action: Re-run /rplan to harden criteria → re-run /rplan-review
+Action: Re-run /saki-builder:rplan to harden criteria → re-run /saki-builder:rplan-review
 REVIEW STOPPED.
 ```
 
-Do NOT rewrite criteria here. That is `/rplan`'s job; rewriting in two places drifts.
+Do NOT rewrite criteria here. That is `/saki-builder:rplan`'s job; rewriting in two places drifts.
 
 ---
 
@@ -119,6 +121,16 @@ Detect which domains are touched by the plan, then launch the relevant expert ag
 ### Expert agent prompts
 
 Launch each applicable agent with this prompt pattern. Pass the full plan text in the prompt.
+
+**Shared contract — prepend this to EVERY expert prompt below:**
+```
+Priority order: ① implementation reality first · ② grounded · ③ prescribe.
+- LEAD with implementation reality: before your domain checks, for each step you own name (a) the failure/edge paths the happy path leaves untested, and (b) the build work the step IMPLIES but the Steps table OMITS — backfill, index, authz middleware, rollback, feature flag.
+- CITE EVERY FINDING: quote the exact step # / section + the text you object to. Uncited findings are DISCARDED in synthesis — do not pad with vague concerns.
+- PRESCRIBE, don't flag: each blocker names the exact plan edit that fixes it (the step to add/change: file + function/criterion). A description with no prescribed edit is a half-finding.
+- DEFAULT TO BLOCKER for a state-changing or 🔒 step whose failure path is untested — do not soften it to a warning.
+- Do NOT propose a numeric confidence adjustment — Phase 3 owns the ledger.
+```
 
 **Backend Expert Agent:**
 ```
@@ -161,7 +173,7 @@ Output format:
 FRONTEND REVIEW
 Blockers: (list)
 Warnings: (list)
-Confidence adjustment: [+N% or -N% per issue]
+(cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
 ```
 
 **Database/Security Expert Agent:**
@@ -183,7 +195,7 @@ Output format:
 DB/SECURITY REVIEW
 Blockers: (list)
 Warnings: (list)
-Confidence adjustment: [+N% or -N% per issue]
+(cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
 ```
 
 **UI/UX Expert Agent:**
@@ -227,7 +239,7 @@ Output format:
 PRODUCT REVIEW
 Blockers: (list)
 Warnings: (list)
-Confidence adjustment: [+N% or -N% per issue]
+(cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
 ```
 
 ### Collect all results
@@ -240,20 +252,22 @@ Wait for all agents to return. Print each review result in full.
 
 Merge all expert findings:
 
-1. **Deduplicate** — same issue flagged by multiple experts counts once
-2. **Classify** — Blocker (must fix before /approved) vs Warning (should fix, not blocking)
-3. **Extend the Confidence Ledger — do NOT overwrite the score with a formula.**
+1. **Discard uncited findings.** A blocker or warning that doesn't quote a step # / section is dropped — state how many were discarded. (Experts pad to look thorough; an uncited finding is unverifiable by definition.)
+2. **Verify every BLOCKER against the actual code/plan line before it enters the ledger.** Subagents misread patterns and flag correct APIs as bugs (CLAUDE.md core rule #4). Read the cited `path:line` yourself; a blocker that doesn't survive verification is downgraded or dropped, with a one-line note. **Best-effort when the repo isn't on disk:** if the plan's checkout isn't available, mark such blockers `PLAUSIBLE (unverified — repo absent)` rather than confirming or dropping them.
+3. **Deduplicate** — same issue flagged by multiple experts counts once
+4. **Classify** — Blocker (must fix before /saki-builder:approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
+5. **Extend the Confidence Ledger — do NOT overwrite the score with a formula.**
 
-   For each blocker, append a new ledger entry to the plan file using the existing format from `/rplan` Step 4:
+   For each blocker, append a new ledger entry to the plan file using the existing format from `/saki-builder:rplan` Step 4:
    - Cite evidence (`path:line`, the expert that found it, the step number it ties to)
-   - Use the standard deduction from `/rplan` Step 4b (closest match, e.g. missing auth → "missing user role coverage" -3, vague step -5)
+   - Use the standard deduction from `/saki-builder:rplan` Step 4b (closest match, e.g. missing auth → "missing user role coverage" -3, vague step -5)
    - Apply the risk multiplier of the step the issue ties to (×1, ×1.5, ×2 per Step 4c)
 
    For each warning, append a ledger entry with `-1` (uncited warnings invalid), or skip if non-actionable.
 
    **Recompute the score** = `100 − sum(ledger)`. The score lives entirely in the ledger; ad-hoc per-expert `+/-N%` adjustments are NOT applied separately.
 
-   If the plan has no ledger (i.e. it was scored without one), state: "PHASE 3 ABORTED — plan has no Confidence Ledger. Re-run /rplan to score with ledger first."
+   If the plan has no ledger (i.e. it was scored without one), state: "PHASE 3 ABORTED — plan has no Confidence Ledger. Re-run /saki-builder:rplan to score with ledger first."
 
 Print synthesis:
 
@@ -261,13 +275,15 @@ Print synthesis:
 --- SYNTHESIS ---
 
 Domains reviewed: [Backend / Frontend / DB+Security / Product]
+Uncited findings discarded: [N]  ·  Blockers verified against code: [N kept / N dropped]
+Failure-surface: [N]/[M] state-changing steps with failure path covered · [K] implied-work gaps found
 
-Blockers (must fix before /approved):
-  ❌ [B1] [domain]: [description]
-  ❌ [B2] [domain]: [description]
+Blockers (must fix before /saki-builder:approved — each cites a step # and prescribes the fix):
+  ❌ [B1] [domain] §step: [description] → FIX: [exact plan edit: step + file + function/criterion]
+  ❌ [B2] [domain] §step: [description] → FIX: [...]
 
 Warnings (non-blocking):
-  ⚠️ [W1] [domain]: [description]
+  ⚠️ [W1] [domain] §step: [description] → FIX: [...]
 
 Confidence: [initial]% → [final]%
 ```
@@ -275,7 +291,7 @@ Confidence: [initial]% → [final]%
 **If blockers exist:**
 ```
 PHASE 3 FAILED — blockers found
-Fix all ❌ blockers in the plan file, then re-run /rplan-review.
+Fix all ❌ blockers in the plan file, then re-run /saki-builder:rplan-review.
 ```
 
 **If no blockers, confidence > 96%:**
@@ -288,7 +304,7 @@ Proceeding to Phase 4.
 ```
 PHASE 3 PARTIAL — no blockers but confidence [X]% ≤ 96%
 Resolve warnings or add more detail to reach 96%.
-Re-run /rplan-review after updating the plan.
+Re-run /saki-builder:rplan-review after updating the plan.
 ```
 
 ---
@@ -330,7 +346,7 @@ Warnings found: [N]
 Verdict:
   ✅ APPROVED FOR IMPLEMENTATION
      All phases passed. Confidence [X]% > 96%.
-     Next: /approved
+     Next: /saki-builder:approved
 
   OR
 
@@ -338,16 +354,21 @@ Verdict:
      [Phase N] failed:
      - [blocker 1]
      - [blocker 2]
-     Next: Fix blockers → re-run /rplan-review
+     Next: Fix blockers → re-run /saki-builder:rplan-review
 ```
 
 ---
 
 ## Rules
 
+Priority order: **① surface implementation reality → ② keep every finding grounded → ③ prescribe, don't lecture.** When they conflict, that order wins.
+
 - NEVER skip Phase 1. A structural gap is never a probe question.
-- Launch expert agents in parallel — never sequentially.
+- Launch expert agents in parallel — never sequentially. Every expert LEADS with implementation reality (failure paths + implied build work) before its domain checks.
 - Only launch agents for domains that are actually touched by the plan.
+- Discard uncited findings, and VERIFY every blocker against the cited code/plan line before it enters the ledger — subagents flag correct APIs as bugs; an unverified CRITICAL is not a blocker yet.
+- Every blocker must PRESCRIBE the exact plan edit that fixes it (step + file + function/criterion) — a bare description is a half-finding.
+- A state-changing/🔒 step with an untested failure path or omitted implied work (backfill/index/authz/rollback) is a BLOCKER, not a warning — regardless of confidence score.
 - A blocker from any agent = plan is NOT ready, regardless of confidence score.
 - "I'll handle it during implementation" = BLOCKER.
 - Annotate the plan file with all resolved findings under "Annotation Space".
@@ -361,4 +382,4 @@ This is the **general version**. For project-specific domain experts (language, 
 .claude/skills/rplan-review/SKILL.md
 ```
 That file overrides this one and should contain agents tuned to the project's stack and conventions.
-Run `/init-env` to scaffold the project-specific override automatically.
+Run `/saki-builder:init-env` to scaffold the project-specific override automatically.

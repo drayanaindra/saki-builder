@@ -66,7 +66,7 @@ Review accumulated learnings and promote confirmed patterns.
 6. **Sync to repo** (if claude-config is installed):
    - After writing to any `~/.claude/memory/patterns*.md` file, remind user to run:
      ```bash
-     cd ~/claude-config && ./sync.sh
+     cd ~/claude-config && ./saki-builder:sync.sh
      ```
    - This commits and pushes the updated learnings so other machines stay in sync.
 

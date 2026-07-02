@@ -33,7 +33,7 @@ Required before this plan can reach 96% confidence.
 - Debugging → the failing case to investigate + the signal that proves the hypothesis is right or wrong
 
 **Rejected values:** "TBD", "to be defined", "see ticket", "as discussed", anything vague.
-If you cannot fill this in, run `/shaping-requirements` first — the problem isn't ready to plan.
+If you cannot fill this in, run `/saki-builder:shaping-requirements` first — the problem isn't ready to plan.
 
 ```
 [paste concrete example here]

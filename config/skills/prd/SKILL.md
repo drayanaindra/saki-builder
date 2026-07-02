@@ -22,7 +22,7 @@ inputs:
 
 You are acting as a product analyst for project {{project_name}} ({{project_type}}). Stack: {{stack}}.
 
-The PRD bridges the human's intent to the build pipeline (`/rplan` → `/approved` → `/qa`).
+The PRD bridges the human's intent to the build pipeline (`/saki-builder:rplan` → `/saki-builder:approved` → `/saki-builder:qa`).
 
 **Philosophy:** The human sets the expectation. You apply the discipline. The deliverable must be
 readable without you.
@@ -100,8 +100,14 @@ Two primary jobs = two PRDs. Related jobs: 0–3 max. Tag each slice to one job.
 ### 2. Outcomes (Ulwick format)
 
 1 primary + 2–3 secondary + 1 counter-metric.
-Each: `Minimize/Maximize [metric] when [context]` + target + basis tag (`baseline N→M` /
-`benchmark` / `aspirational`) + measurement method.
+Emit §5 as a table with an explicit **Basis** column — without a column for it the basis tag
+gets dropped at write time (the exact leak `/saki-builder:prd-review` hard-fails on):
+
+`| # | Outcome (Minimize/Maximize [metric] when [context]) | Target | Basis | Method | JTBD |`
+
+**Basis** is required on every row — one of `baseline N→M` (a measured starting point),
+`benchmark` (an external/comparable reference), or `aspirational` (no baseline yet — an honest
+target, not a measured one). A numeric target with an empty/absent Basis is fabricated precision.
 Counter-metric must name the specific failure mode it guards (e.g. "guards 5.1: faster onboarding
 gamed by skipping verification → locked-out users").
 
@@ -162,7 +168,7 @@ If score < 90 → fix the cited gaps and re-score. Do NOT present below 90.
 ## Step 7 — Save the full PRD (for downstream skill consumption)
 
 Save to `tasks/prd-{{input.feature | slugify}}.md` with ALL sections in this exact order
-so `/rplan`, `/proto`, and `/qa` can parse them:
+so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can parse them:
 
 ```
 <!-- prd-quality: [score]/100 -->
@@ -174,7 +180,7 @@ so `/rplan`, `/proto`, and `/qa` can parse them:
 ## 2. Problem & Evidence
 ## 3. Primary Job to be Done
 ## 4. Related Jobs
-## 5. Desired Outcomes / Success Metrics
+## 5. Desired Outcomes / Success Metrics   (cols: # | Outcome | Target | Basis | Method | JTBD)
 ## 6. Appetite & Kill Criteria
 ## 7. Solution Shape
 ## 8. Vertical Slices
@@ -187,7 +193,7 @@ so `/rplan`, `/proto`, and `/qa` can parse them:
 ```
 
 Include a `⚠ DISCOVERY-RISK` banner below the machine-readable header if the evidence table
-is 100% `assumed` — this is a signal for `/rplan` to surface it as a plan-level UNKNOWN.
+is 100% `assumed` — this is a signal for `/saki-builder:rplan` to surface it as a plan-level UNKNOWN.
 
 ---
 
@@ -229,11 +235,11 @@ Then ask: *"Does this match what you had in mind — or should we adjust before 
 
 Suggest next steps in plain English:
 
-- If the feature has a UI: *"Run `/proto tasks/prd-[slug].md` to see what it'll look like
+- If the feature has a UI: *"Run `/saki-builder:proto tasks/prd-[slug].md` to see what it'll look like
   before we write any real code."*
-- Always: *"Run `/rplan tasks/prd-[slug].md --slice=1` to plan the first piece."*
+- Always: *"Run `/saki-builder:rplan tasks/prd-[slug].md --slice=1` to plan the first piece."*
 
-Do NOT produce file-level tasks in the PRD — that is `/rplan`'s job.
+Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s job.
 
 ---
 

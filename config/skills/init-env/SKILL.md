@@ -12,11 +12,11 @@ Set up the Claude Code production development environment for this project: $ARG
 
 Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule for Step 1:
 
-- **Interactive (default)** — a human ran `/init-env`. Ask for project name, business context, key
+- **Interactive (default)** — a human ran `/saki-builder:init-env`. Ask for project name, business context, key
   constraints as normal.
 - **Non-interactive / PRD-driven** — `$ARGUMENTS` contains a path to a PRD (e.g.
-  `tasks/prd-*.md` / `docs/prd/**/prd.md`), OR no `$ARGUMENTS` were given but a `tasks/prd-*.md`
-  exists in the repo. This happens when a tool (e.g. pipeline-studio) runs `/init-env` headless in a
+  `tasks/prd-*.md` / `docs/prd/**/saki-builder:prd.md`), OR no `$ARGUMENTS` were given but a `tasks/prd-*.md`
+  exists in the repo. This happens when a tool (e.g. pipeline-studio) runs `/saki-builder:init-env` headless in a
   SINGLE turn before a build. In this mode you have **no human to ask** and **one turn to finish** —
   so do NOT run the full 14-step Process below. Instead run this **LEAN, BOUNDED scaffold** and
   complete ALL of it before stopping:
@@ -31,7 +31,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
   >    If an existing `.claude/` is FOREIGN, back it up first (see Step 1 backup rule).
   > 1. `CLAUDE.md` (lean, <100 lines) — Step 2 below, but skip the interactive "ask user" parts.
   > 2. `.claude/agents/reviewer.md` and `.claude/agents/qa.md` — Steps 6–7 below (these are what
-  >    `/build` invokes). Also `.claude/agents/planner.md` (Step 5).
+  >    `/saki-builder:build` invokes). Also `.claude/agents/planner.md` (Step 5).
   > 3. `.claude/memory/patterns.md` and `.claude/memory/lessons-learned.md` — Step 11 below (the
   >    `@import` target + raw inbox).
   > 4. The marker `.claude/.env-init.json` — Step 12 below (config MUST be `$HOME`).
@@ -40,7 +40,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
   > **Deliberately SKIP in headless mode** (heavier / better done interactively later; and the hooks
   > would interfere with the autonomous build that runs right after): `.claude/settings.json` hooks
   > (Step 4), `docs/project-context.md` (Step 3), `.claude/hooks/` scripts (Step 8), skill overrides
-  > (Step 9), Playwright infra (Step 10). The operator can run `/init-env` interactively later to add
+  > (Step 9), Playwright infra (Step 10). The operator can run `/saki-builder:init-env` interactively later to add
   > these.
 
 ## Process
@@ -63,7 +63,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - @import global execution protocol
    - @import DDD patterns: `@~/.claude/docs/ddd-patterns.md`
    - @import modular architecture: `@~/.claude/docs/modular-architecture.md`
-   - @import project-local learned patterns: `@.claude/memory/patterns.md` — the promoted store for THIS repo (created in Step 11). Auto-loads project-specific patterns so `/prd`/`/rplan`/`/build` recall them. Do NOT import `lessons-learned.md` (raw inbox — keeps context lean).
+   - @import project-local learned patterns: `@.claude/memory/patterns.md` — the promoted store for THIS repo (created in Step 11). Auto-loads project-specific patterns so `/saki-builder:prd`/`/saki-builder:rplan`/`/saki-builder:build` recall them. Do NOT import `lessons-learned.md` (raw inbox — keeps context lean).
    - Detect project stage (Stage 1-4) based on model count, file sizes, team size
    - Add a "Bounded Contexts" table (ask user or infer from project structure)
    - Add "Architecture Stage" section noting current stage and transition triggers
@@ -103,7 +103,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - Copy from global template: `~/.claude/agents/qa.md`
    - The global template auto-detects the stack at runtime (Python/Go/TS/Rust)
    - No customization needed — it reads `pyproject.toml`, `package.json`, etc. to pick the right commands
-   - This agent is invoked by Claude programmatically (not by user via /qa)
+   - This agent is invoked by Claude programmatically (not by user via /saki-builder:qa)
    - Usage by orchestrator Claude: `Agent(subagent_type="qa", prompt="Verify criteria for: [task]. Plan: [path]")`
 
 8. **Create .claude/hooks/ scripts** (if needed):
@@ -148,7 +148,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - Keep Phase 1's executable-criteria gate (`[auto]`/`[manual]` tag, invariant failure-path) and
      the Phase 3 manual-test checklist unchanged — both are project-agnostic and load-bearing
    - Document the project's `[auto]` verification commands (curl base URL, test runner) so the
-     manual-test checklist cleanly separates from what `/qa` will automate
+     manual-test checklist cleanly separates from what `/saki-builder:qa` will automate
 
 10. **Scaffold Playwright test infrastructure** (if frontend detected):
 
@@ -197,13 +197,13 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    Note to user: "Fill in TEST_JWT with a long-lived (≥24h) dev token for Playwright auth tests"
 
 11. **Initialize memory** (two files, two roles — mirror the global `~/.claude/memory/` split):
-   - Create `.claude/memory/lessons-learned.md` (empty template) — the **raw inbox**. `/retro`
+   - Create `.claude/memory/lessons-learned.md` (empty template) — the **raw inbox**. `/saki-builder:retro`
      appends session learnings here. **NOT** imported into CLAUDE.md (unpromoted/noisy — keeping it
      out keeps always-on context lean).
-   - Create `.claude/memory/patterns.md` (empty template) — the **promoted store**. `/reflect` writes
+   - Create `.claude/memory/patterns.md` (empty template) — the **promoted store**. `/saki-builder:reflect` writes
      confirmed project-specific patterns here. This is the file the project CLAUDE.md `@import`s
-     (Step 2), so promoted patterns auto-load into `/prd` / `/rplan` / `/build`. Seed it with a
-     header comment: `# Project Learned Patterns` + `> Promoted by /reflect from lessons-learned.md.
+     (Step 2), so promoted patterns auto-load into `/saki-builder:prd` / `/saki-builder:rplan` / `/saki-builder:build`. Seed it with a
+     header comment: `# Project Learned Patterns` + `> Promoted by /saki-builder:reflect from lessons-learned.md.
      Auto-loaded via CLAUDE.md. Raw notes live in lessons-learned.md.`
 
 12. **Write the init marker** `.claude/.env-init.json` — the durable "this repo's Claude env was

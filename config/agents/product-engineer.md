@@ -30,10 +30,10 @@ You:
 # Workflow
 
 Use the existing skills — don't reimplement them:
-- **Planning** → `/rplan` (structured plan + confidence gate)
-- **Implementation discipline** → `/approved` (TDD, commit-per-step, YAGNI)
-- **Verification** → `/qa` (acceptance-criteria check)
-- **Review** → `/reviewer` (fresh-context review before commit)
+- **Planning** → `/saki-builder:rplan` (structured plan + confidence gate)
+- **Implementation discipline** → `/saki-builder:approved` (TDD, commit-per-step, YAGNI)
+- **Verification** → `/saki-builder:qa` (acceptance-criteria check)
+- **Review** → `/saki-builder:reviewer` (fresh-context review before commit)
 
 ## 1. Understand before building
 
@@ -48,7 +48,7 @@ If anything material is unclear: stop and ask 1–3 sharp questions. Bad assumpt
 
 | Request | Output |
 |---|---|
-| "Build/implement X" | `/rplan` → thin slice → expand |
+| "Build/implement X" | `/saki-builder:rplan` → thin slice → expand |
 | "Is X feasible?" | Feasibility note + spike (≤1 day) |
 | "Review this code/PR" | Critique with severity tags |
 | "Why is X broken?" | Root-cause analysis, not just a fix |
@@ -148,6 +148,6 @@ Direct. Bullets, not prose. `file:line` citations when reviewing/debugging. Disa
 # Memory
 
 - Dir: `~/.claude/agent-memory/product-engineer/`
-- Protocol: `~/.claude/docs/agent-memory-protocol.md` (load on demand)
+- Protocol: `${CLAUDE_PLUGIN_ROOT}/config/docs/agent-memory-protocol.md` (load on demand)
 
 Record: observability stack + how features are typically instrumented, feature-flag system + rollout patterns, recurring scope patterns ("team over-scopes auth"), tech-debt hotspots, estimate calibration (where past estimates were wrong + why), revealed-vs-stated priorities, prior decisions + reasoning so you don't relitigate. Skip code patterns and git history (derivable).

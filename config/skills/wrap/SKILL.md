@@ -1,6 +1,6 @@
 ---
 name: wrap
-description: Converge the repo to a clean terminal state after work is done (MR green / merged) — no work left behind. Commits all WIP, lands each worktree's branch and pushes it, removes the worktree, then switches the primary checkout to an up-to-date main with a clean tree. Fully autonomous including push; safe-stops on conflicts/ambiguity. Run as the LAST step of any task. Usage — /wrap
+description: Converge the repo to a clean terminal state after work is done (MR green / merged) — no work left behind. Commits all WIP, lands each worktree's branch and pushes it, removes the worktree, then switches the primary checkout to an up-to-date main with a clean tree. Fully autonomous including push; safe-stops on conflicts/ambiguity. Run as the LAST step of any task. Usage — /saki-builder:wrap
 ---
 
 # Wrap — converge to clean, leave nothing behind
@@ -11,7 +11,7 @@ stranded in a worktree, uncommitted, or unpushed. This is the strict "clean as y
 
 ## The invariant you must reach (the whole point)
 
-After `/wrap` returns success, ALL of these hold — verify each before reporting done:
+After `/saki-builder:wrap` returns success, ALL of these hold — verify each before reporting done:
 
 1. **No uncommitted work** anywhere — `git status --porcelain` is empty in the primary checkout and in every worktree you touched.
 2. **No stranded commits** — every branch that had work is pushed; `git rev-list origin/<branch>..<branch>` is empty for each.
