@@ -19,6 +19,7 @@
     "agents"
   ],
   "skills": ["./config/skills"],
-  "agents": ["./config/agents"],
+  "agents": ["./config/agents/product-engineer.md", "./config/agents/qa.md", "./config/agents/senior-pm.md"],
+  "hooks": "./config/hooks/hooks.json",
   "mcpServers": "./.claude-plugin/saki.mcp.json"
 }

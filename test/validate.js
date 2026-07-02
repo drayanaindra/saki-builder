@@ -102,19 +102,32 @@ function walkSkills (rel) {
 }
 for (const sp of skillPaths) walkSkills(sp.replace(/^\.\//, ''))
 
-// --- 4. Agents (from plugin.json agents paths, default ./config/agents) ----
+// --- 4. Agents (plugin.json "agents" = agent FILE paths, or a dir; default ./config/agents)
+// The manifest schema wants agent file paths (a bare dir path fails validation), but a plain
+// dir is still handled here for the legacy default.
 const agentPaths = (plugin && plugin.agents) || ['./config/agents']
 const agentNames = new Set()
+function validateAgentFile (rel) {
+  const abs = path.join(ROOT, rel)
+  if (!fs.existsSync(abs)) { err(`agent file not found: ${rel}`); return }
+  const fm = frontmatter(abs)
+  if (!fm) { err(`${rel}: no frontmatter block`); return }
+  if (!fm.description) err(`${rel}: frontmatter missing "description"`)
+  agentNames.add(fm.name || path.basename(rel).replace(/\.md$/, ''))
+}
 for (const ap of agentPaths) {
   const rel = ap.replace(/^\.\//, '')
+  const abs = path.join(ROOT, rel)
+  if (fs.existsSync(abs) && fs.statSync(abs).isFile()) { validateAgentFile(rel); continue }
   for (const d of listDir(rel)) {
-    if (!d.isFile() || !d.name.endsWith('.md')) continue
-    const fm = frontmatter(path.join(ROOT, rel, d.name))
-    const base = d.name.replace(/\.md$/, '')
-    if (!fm) { err(`${rel}/${d.name}: no frontmatter block`); continue }
-    if (!fm.description) err(`${rel}/${d.name}: frontmatter missing "description"`)
-    agentNames.add(fm.name || base)
+    if (d.isFile() && d.name.endsWith('.md')) validateAgentFile(path.join(rel, d.name))
   }
+}
+
+// --- 4b. Hooks manifest (plugin.json "hooks") parses ----------------------
+if (plugin && typeof plugin.hooks === 'string') {
+  const hj = readJSON(plugin.hooks.replace(/^\.\//, ''))
+  if (hj && typeof hj.hooks !== 'object') err(`${plugin.hooks}: missing "hooks" object`)
 }
 
 // --- 5. Reference resolution: every /saki-builder:<x> must resolve ---------
@@ -128,15 +141,22 @@ for (const cp of cmdPaths) {
 }
 const resolvable = new Set([...skillNames, ...agentNames, ...cmdNames])
 const refRe = /\/saki-builder:([a-z0-9][a-z0-9-]*)/g
+function scanFile (rel) {
+  if (!rel.endsWith('.md')) return
+  const txt = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+  refRe.lastIndex = 0
+  let m
+  while ((m = refRe.exec(txt))) {
+    if (!resolvable.has(m[1])) err(`unresolved reference /saki-builder:${m[1]} in ${rel}`)
+  }
+}
 function scanRefs (rel) {
+  const abs = path.join(ROOT, rel)
+  if (!fs.existsSync(abs)) return
+  if (fs.statSync(abs).isFile()) { scanFile(rel); return }
   for (const d of listDir(rel)) {
-    if (d.isDirectory()) { scanRefs(path.join(rel, d.name)); continue }
-    if (!d.name.endsWith('.md')) continue
-    const txt = fs.readFileSync(path.join(ROOT, rel, d.name), 'utf8')
-    let m
-    while ((m = refRe.exec(txt))) {
-      if (!resolvable.has(m[1])) err(`unresolved reference /saki-builder:${m[1]} in ${rel}/${d.name}`)
-    }
+    if (d.isDirectory()) scanRefs(path.join(rel, d.name))
+    else if (d.name.endsWith('.md')) scanFile(path.join(rel, d.name))
   }
 }
 for (const sp of skillPaths) scanRefs(sp.replace(/^\.\//, ''))

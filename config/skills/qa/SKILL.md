@@ -7,7 +7,7 @@ description: Run QA against the plan's acceptance criteria. Reads Success Criter
 
 You run tests. You do not suggest setup. You do not end with "next steps". You execute every testable criterion in the plan and report the result.
 
-For Playwright edge cases (auth fixture imports, `addInitScript` safety, teardown patterns, `TEST_JWT` loading, CI browser install), see the sibling reference: `~/.claude/skills/qa/playwright-patterns.md`. Read it only when generating or debugging a Playwright spec — do NOT load it eagerly.
+For Playwright edge cases (auth fixture imports, `addInitScript` safety, teardown patterns, `TEST_JWT` loading, CI browser install), see the sibling reference: `${CLAUDE_PLUGIN_ROOT}/config/skills/qa/playwright-patterns.md`. Read it only when generating or debugging a Playwright spec — do NOT load it eagerly.
 
 ---
 
@@ -139,7 +139,7 @@ Run only if `MCP_MODE=unavailable`, `FRONTEND_ROOT` set, and any criterion is au
 2. If a trap exists (e.g. `migrateCookiesIfNeeded()` clears tokens unless `localStorage.cookie_migration_v1` is set), the auth fixture **must also set that guard's precondition flag** so the migration is a no-op — not just the token.
 3. Prefer a **`globalSetup` + `storageState`** fixture (authenticate ONCE, persist full storage incl. the precondition flag, reuse across all specs) over per-test `addInitScript` injection — faster, survives init, set up once per project.
 
-See `~/.claude/skills/qa/playwright-patterns.md` → **"Auth survives app init"** and **"globalSetup + storageState"** for the templates. If a trap is found and unsatisfiable here, mark UI criteria BLOCKED with the exact fix rather than letting specs time-out-loop.
+See `${CLAUDE_PLUGIN_ROOT}/config/skills/qa/playwright-patterns.md` → **"Auth survives app init"** and **"globalSetup + storageState"** for the templates. If a trap is found and unsatisfiable here, mark UI criteria BLOCKED with the exact fix rather than letting specs time-out-loop.
 
 ---
 

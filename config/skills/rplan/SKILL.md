@@ -58,7 +58,7 @@ Boundary? [what to skip / not include in this scope]
 
 ---
 
-Create an execution plan following the template at `~/.claude/skills/rplan/template.md` (sibling file in this skill directory).
+Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config/skills/rplan/template.md` (the sibling `template.md` in this skill's directory — glob for it if the variable isn't expanded).
 
 ## Process
 

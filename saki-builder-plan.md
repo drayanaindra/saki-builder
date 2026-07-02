@@ -242,5 +242,15 @@ memory/patterns*.md        → memory/patterns*.md        (TEAM BASELINE, read-o
 > Open questions for you: (a) OK to run the Phase-0 spike now (non-destructive, deleted after)? (b) Confirm plugin+marketplace name `saki-builder` (marketplace slug + plugin id identical, like ed-harness)? (c) Rename the on-disk repo dir too, or keep `claude-config/` and only brand the plugin `saki-builder`?
 
 ---
-Status: [x] Draft  [ ] Annotated  [ ] Approved  [ ] In Progress  [ ] Complete
-Confidence Gate: [x] Confidence Ledger present and every entry cited  [x] All checklist items checked (N/A justified)  [ ] Confidence >= 96% (at 92% — one MED unknown, spike-gated)  [x] Unknowns <= 2
+Status: [x] Draft  [ ] Annotated  [x] Approved  [x] In Progress  [ ] Complete
+Confidence Gate: [x] Confidence Ledger present and every entry cited  [x] All checklist items checked (N/A justified)  [x] Confidence >= 96% (97% post-spike)  [x] Unknowns <= 2 (0 remaining)
+
+## Progress log
+- **2026-07-02 — Phase 0 COMPLETE** (commit `c7e3e87`, branch `feat/saki-builder-plugin`). Spikes resolved all mechanics unknowns; scaffold + validator (73 skills / 3 agents green) + pre-push guard landed. Phase 1.1/1.2 (restructure) downgraded to NO-OP by the path-override finding.
+- **2026-07-02 — Phase 1 COMPLETE.** Verified end-to-end via a real `claude plugin install` from the local marketplace:
+  - **Skills (46)** load namespaced `/saki-builder:*` (inventory-confirmed). The 27 nested library skills correctly do NOT register as slash commands (they're `user-invocable:false` gateway docs — Phase 2 path-fix).
+  - **Agents (3)** load at runtime as `saki-builder:{product-engineer,qa,senior-pm}`. **Finding:** the manifest `agents` key needs explicit **file paths** (`["./config/agents/x.md", …]`), not a dir — a dir path fails schema validation (`agents: Invalid input`). `claude plugin details` cosmetically miscounts path-override agents as 0, but they load (runtime-verified).
+  - **Hook (1)** `inject-core.js` fires on SessionStart, injecting `instructions/core.md` + personal overlay — **always-on cost ~2,277 tok** (confirmed `CONF=90%` reaches the model). Team-baseline patterns deliberately deferred to Phase 3 (don't broadcast raw personal patterns).
+  - Restructure (1.1/1.2) confirmed unnecessary (path-override). Core-skill sibling refs (rplan `template.md`, qa `playwright-patterns.md`) portabilized to `${CLAUDE_PLUGIN_ROOT}/…`.
+  - Validator hardened to handle agents-as-file-paths + hooks.json; green at 73 skills / 3 agents.
+- **Next: Phase 2** — namespace ~380 internal `/skill` refs → `/saki-builder:*`; triage & port shared hooks into `config/hooks/hooks.json`; fix `gateway-*` path refs for the 27 nested library skills.
