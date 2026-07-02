@@ -90,9 +90,14 @@ Plain `/saki-builder:build tasks/prd-<feature>.md` still runs and self-iterates 
 
 ## Input
 
-Usage: `/saki-builder:build <prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
+Usage: `/saki-builder:build <E<n> | prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
 
-Extract the PRD path from the arguments: take the token ending in `.md` (or matching
+**Epic id (`E<n>`) — the disciplined path:** if the argument is an epic id, read `tasks/roadmap.md`, find
+`### E<n>`, and resolve its `**Child PRD:**` link to `tasks/prd-<slug>.md`. If `E<n>` has no Child PRD yet
+(its value is `—`), **STOP**: `E<n> has no PRD yet — run /saki-builder:pickup E<n> first`. Remember the `E<n>`
+so the Completion Output can flip its roadmap status to `Shipped`.
+
+Otherwise extract the PRD path from the arguments: take the token ending in `.md` (or matching
 `prd-*`). Locate the file by checking, in order: `tasks/<name>`, `./<name>`, the path as
 given. The `/saki-builder:prd` skill saves to `tasks/prd-<feature>.md`, so `tasks/` is the common case.
 
@@ -319,7 +324,9 @@ If **no e2e suite exists**, do NOT silently pass. Report:
 
 ## Completion Output
 
-When every slice is green, reviewed, and e2e passes, output:
+When every slice is green, reviewed, and e2e passes: **if this build was started from an epic (`E<n>`),
+flip that epic to `Shipped` in `tasks/roadmap.md`** — set its `**Status:**` to `Shipped` and `**Updated:**`
+to today (`date +%F`). The roadmap lifecycle closes here (Planned → In-progress → Shipped). Then output:
 
 ```
 --- /saki-builder:build COMPLETE ---

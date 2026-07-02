@@ -47,7 +47,7 @@
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/pipeline-completion-gate.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/pickup-completion-gate.sh\"",
             "timeout": 15
           }
         ]

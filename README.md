@@ -26,6 +26,9 @@ config/                  # Shared config (safe for all users)
 │   ├── ddd-patterns.md         # Domain-Driven Design code patterns
 │   └── modular-architecture.md # Growth-driven architecture ladder (flat → modular → DDD → microservices)
 ├── skills/
+│   ├── roadmap/         # /roadmap      — view/init the epic portfolio (tasks/roadmap.md); the disciplined entry point
+│   ├── epic/            # /epic         — add an epic (Goal · Job · User flow · Success signal); 1 epic = 1 PRD
+│   ├── pickup/          # /pickup       — start an epic: seed /prd, loop /prd ↔ /prd-review to green (ready for /proto)
 │   ├── prd/             # /prd          — generate a PRD from a feature intent (premise + quality + grounding + business-rule gates)
 │   ├── prd-review/      # /prd-review   — adversarial PRD review: parallel judge panel (product, metrics, slicing, evidence), every finding cited
 │   ├── proto/           # /proto        — faithful throwaway UI preview of a PRD's slices (real design system, Playwright screenshots) before /build
@@ -113,7 +116,10 @@ immediately makes new patterns available to Claude Code.
 
 | Command         | What it does                                                                                                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/prd`          | Generate a Product Requirements Document (Job Story, outcomes, vertical slices, acceptance criteria, business rules & invariants, non-goals) from a feature intent. Gates on substance — premise, quality score, evidence grounding. Saved to `tasks/prd-<feature>.md`. |
+| `/roadmap`      | View (or `init`) the product roadmap — `tasks/roadmap.md`, the single team-shareable portfolio of epics + status. The disciplined entry point: every feature must trace to an epic here. |
+| `/epic`         | Add an epic to the roadmap (interactive: Goal → Target user & Job → User flow → Success signal). 1 epic = 1 PRD = ≤7 slices. `--list` shows all epics + status. |
+| `/pickup`       | **Start an epic.** `/pickup E<n>` reads the epic, seeds `/prd`, and loops `/prd` ↔ `/prd-review` to green (`SHIP · READY`), then stops — ready for `/proto`. Flips the epic `In-progress`; escapes to `Blocked` if the review can't reach a shippable PRD. The **only** entry to feature work (no cold-intent path). |
+| `/prd`          | Generate a Product Requirements Document (Job Story, outcomes, vertical slices, acceptance criteria, business rules & invariants, non-goals) from a feature intent. Gates on substance — premise, quality score, evidence grounding. Saved to `tasks/prd-<feature>.md`. Usually invoked by `/pickup`, not directly. |
 | `/prd-review`   | Adversarial, fresh-context PRD review: a deterministic structural scan, then a parallel judge panel (product, metrics, slicing, evidence) that cites every finding. Run after `/prd`, before `/build`. |
 | `/proto`        | Render a faithful, **throwaway** UI preview of the PRD's user-facing slices using the project's real design-system components + tokens, screenshotting every state via Playwright — so you see the end-user surface **before** `/build` writes code. Sits between `/prd` and `/build`. |
 | `/build`        | **Autonomously execute a finished PRD.** `/build <prd-file.md>` reads the PRD's vertical slices and runs `/rplan` → (`/rplan-review` if needed) → `/approved` → `/qa` → `/reviewer` on each, looping until every slice is green and reviewed. Hard-stops on an unresolved `before slice N` open question; enforces the PRD's `🔒 INVARIANT`s in `/qa` + `/reviewer`. Always runs the e2e suite before declaring done. No confirmation prompts. |
@@ -142,53 +148,57 @@ immediately makes new patterns available to Claude Code.
 /sync           -> push patterns to remote
 ```
 
-### PRD pipeline (`/prd → /prd-review → /proto → /build`)
+### Epic-anchored stepwise flow (`/roadmap → /epic → /pickup → /proto → /build`)
 
-For a feature big enough to warrant a PRD, the full pipeline runs end to end:
-
-```
-/prd <intent>   -> write the PRD; gates on premise, quality score, evidence grounding,
-                   and business rules / invariants                -> tasks/prd-<feature>.md
-/prd-review     -> adversarial judge panel (product · metrics · slicing · evidence), every finding cited
-/proto <prd>    -> throwaway UI preview of user-facing slices (real design system + Playwright shots)
-/build <prd>    -> autonomously execute every slice (see below)
-```
-
-`/prd-review` and `/proto` are optional but recommended: `/prd-review` catches a weak premise or
-mis-sliced scope before any code is written; `/proto` sets the UI expectation before `/build`
-commits to it.
-
-### Autonomous PRD execution (`/build`)
-
-Once a PRD is written and reviewed (with `/prd`), hand the whole thing to `/build` and walk away:
+Feature work is a disciplined assembly line — every feature traces to an epic on the roadmap, and each
+command boundary is a natural review gate:
 
 ```
-/build prd-wave-2.md
-  -> reads the PRD's vertical slices (PRD order = execution order) + business rules/invariants
+/roadmap init        -> scaffold tasks/roadmap.md (the portfolio)              (once per project)
+/epic                -> add an epic: Goal · Target user & Job · User flow · Success signal   [Planned]
+/pickup E<n>         -> seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY), stop      [In-progress]
+                        -> writes tasks/prd-<slug>.md (Epic: E<n>), records Child PRD on the roadmap
+/proto E<n>          -> throwaway UI preview (real design system + Playwright shots)
+                        -> running /proto IS your approval of the PRD (no separate step)
+/build E<n>          -> autonomously execute every slice (see below)                          [Shipped]
+```
+
+**The gate is structural.** `/pickup` requires an epic id — there is no cold-intent feature path.
+`/pickup` loops the PRD to green autonomously and escapes to `Blocked` (never fabricates grounding, never
+loops forever) if the review can't reach a shippable spec. The single human gate is at proto: **running
+`/proto E<n>` is the approval**.
+
+> **`/pipeline` is retired** in favour of this stepwise flow. Recover the old autonomous pipeline via
+> `git show <old-sha>:config/skills/pipeline/SKILL.md`.
+
+### Autonomous slice execution (`/build`)
+
+`/build E<n>` (or `/build prd-<feature>.md`) hands the whole PRD to an autonomous loop — walk away:
+
+```
+/build E3
+  -> resolves E3 -> its Child PRD -> reads the vertical slices (PRD order = execution order) + invariants
   -> for EACH slice, autonomously:
        open-question gate (hard-stop if a `before slice N` decision is unresolved)
        -> /rplan -> (/rplan-review if needed) -> /approved -> /qa -> /reviewer
      looping until the slice is green and review is clean
   -> runs the e2e suite before declaring the goal done
+  -> flips the epic to Shipped on the roadmap
 ```
 
-`/build` asks nothing — its only hard stops are a missing PRD file, an **unresolved `before slice N`
-open question** in the PRD (it refuses to guess a load-bearing architectural decision), an absolute
-DB no-go, or a slice that genuinely can't be made green (reported honestly, never faked). It also
-enforces the PRD's business-rule `🔒 INVARIANT`s — verified in `/qa` (at the concurrency / partial-failure
-bar) and blocking in `/reviewer`. It replaces the old single-feature `/build` pipeline; recover that
-via `git show <old-sha>:config/skills/build/SKILL.md`.
+`/build` asks nothing — its only hard stops are a missing PRD, an **unresolved `before slice N`
+open question** (it refuses to guess a load-bearing architectural decision), an absolute DB no-go, or a
+slice that genuinely can't be made green (reported honestly, never faked). It enforces the PRD's
+business-rule `🔒 INVARIANT`s — verified in `/qa` and blocking in `/reviewer`.
 
-**For bulletproof cross-turn autonomy, launch under `/goal`.** A skill can't switch on
-Claude Code's built-in `/goal` engine by itself, so the most persistent way to run is to
-type the wrapper yourself — `/goal` keeps Claude working across turns, `/build` does the work:
+**For bulletproof cross-turn autonomy, launch under `/goal`:**
 
 ```
-/goal /build tasks/prd-wave-3.md — done when every slice passes /qa and /reviewer and the e2e suite is green
+/goal /build E3 — done when every slice passes /qa and /reviewer and the e2e suite is green
 ```
 
-Plain `/build tasks/prd-wave-3.md` also self-iterates (completion signal + progress
-scratchpad + loop guard), but the `/goal` wrapper is what guarantees it never stops early.
+Plain `/build E3` also self-iterates (completion signal + progress scratchpad + loop guard), but the
+`/goal` wrapper is what guarantees it never stops early.
 
 ## Plan Quality Gates (4-gate system)
 

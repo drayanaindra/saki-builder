@@ -40,8 +40,8 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
   > **Deliberately SKIP in headless mode** (heavier / better done interactively later; and the hooks
   > would interfere with the autonomous build that runs right after): `.claude/settings.json` hooks
   > (Step 4), `docs/project-context.md` (Step 3), `.claude/hooks/` scripts (Step 8), skill overrides
-  > (Step 9), Playwright infra (Step 10). The operator can run `/saki-builder:init-env` interactively later to add
-  > these.
+  > (Step 9), Playwright infra (Step 10), the product roadmap (Step 11b). The operator can run
+  > `/saki-builder:init-env` interactively later to add these.
 
 ## Process
 
@@ -205,6 +205,16 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      (Step 2), so promoted patterns auto-load into `/saki-builder:prd` / `/saki-builder:rplan` / `/saki-builder:build`. Seed it with a
      header comment: `# Project Learned Patterns` + `> Promoted by /saki-builder:reflect from lessons-learned.md.
      Auto-loaded via CLAUDE.md. Raw notes live in lessons-learned.md.`
+
+11b. **Offer the product roadmap** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
+    disciplined product work starts from a roadmap of epics. Ask once:
+    `Set up a product roadmap now? It's how features get started — /saki-builder:pickup only works on an
+    epic that's on the roadmap. (y/n)`
+    - **y** → scaffold `tasks/roadmap.md` via `/saki-builder:roadmap init` (ask for the product name, default
+      the repo name), then offer to add the first 1–3 epics with `/saki-builder:epic`. Don't force it — one
+      epic is enough to demonstrate the flow; the rest can be added later.
+    - **n** → skip; note the operator can run `/saki-builder:roadmap init` + `/saki-builder:epic` anytime. Do not
+      block init on this.
 
 12. **Write the init marker** `.claude/.env-init.json` — the durable "this repo's Claude env was
     initialized by THIS config" stamp that tools use to detect env state. Write exactly:
