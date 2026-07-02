@@ -1,8 +1,19 @@
-# claude-config
+# saki-builder
 
-A structured Claude Code configuration with skills, execution protocols, and centralized learning sync.
+A Claude Code **plugin** — a shared, personal-scale toolkit of planning/build/review skills, domain
+agents, safety hooks, an always-on execution protocol, and a split learning loop. Everyone installs
+the same vetted tools and works solo with them; team coordination lives in **ed-harness**.
 
-**Fork this repo, customize it, and install it on any machine in one command.**
+**Install (no clone):**
+```
+> /plugin marketplace add https://gitlab.solveeducation.org/solveed/saki-builder.git
+> /plugin install saki-builder@saki-builder
+```
+Then start a new session. Teammate guide: **[docs/HOW-TO.md](docs/HOW-TO.md)**. Every command is
+namespaced `/saki-builder:<name>` (e.g. `/saki-builder:rplan`). Update with `/saki-builder:update`.
+
+> The legacy clone + `./install.sh` symlink flow below still works (owner/dev), but the plugin is the
+> primary path. The repo directory is named `claude-config` on disk; the plugin/brand is `saki-builder`.
 
 ## What's Inside
 

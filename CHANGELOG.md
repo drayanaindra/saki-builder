@@ -2,6 +2,18 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.4.0 — 2026-07-02
+
+Phase 4 — distribution + rebrand.
+
+- **`/saki-builder:update`** skill + **`config/hooks/check-plugin-update.js`** SessionStart nudge
+  (pull-based; fail-open; `SAKI_UPDATE_CHECK_DISABLE=1` to silence).
+- **`docs/HOW-TO.md`** — teammate onboarding (install, commands, settings merge, learning loop, hooks).
+- Rebranded `claude-config` → `saki-builder` across README + skill/hook brand mentions. `rupdate`
+  marked legacy (owner symlink-pull); plugin users use `/saki-builder:update`. Remaining
+  `claude-config` strings are functional dir paths (the on-disk dir is intentionally not renamed).
+- **Not done here (owner-only):** publishing the marketplace to GitLab. Deferred: `gateway-*` library path tables.
+
 ## 0.3.0 — 2026-07-02
 
 Phase 3 — split learning loop.

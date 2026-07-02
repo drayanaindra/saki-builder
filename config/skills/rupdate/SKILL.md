@@ -1,9 +1,9 @@
 ---
 name: rupdate
-description: Pull latest skills, patterns, and config from the remote claude-config repo. Run when you want to sync updates from another machine or after the repo owner pushes new skills.
+description: (Legacy, owner symlink-install only) Pull latest skills/patterns/config from the remote saki-builder repo checkout. For the plugin, use /saki-builder:update instead.
 ---
 
-# Update Claude Config from Remote
+# Update saki-builder from Remote (legacy symlink pull — plugin users: /saki-builder:update)
 
 Pull the latest skills, patterns, and config from the remote repo.
 

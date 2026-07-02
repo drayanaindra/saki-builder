@@ -12,6 +12,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/repo-context.sh\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/check-plugin-update.js\"",
+            "timeout": 10
           }
         ]
       }

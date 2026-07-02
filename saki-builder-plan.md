@@ -265,4 +265,15 @@ Confidence Gate: [x] Confidence Ledger present and every entry cited  [x] All ch
   - Fixed 4 namespacing false-positives (`./sync.sh`, `**/prd.md`, `./auth.service`) + hardened `bin/namespace-refs.js` guard (now excludes `./ ~/ **/` path contexts; dry-run clean).
   - `.gitignore` guards stray `patterns-personal.md`.
   - **⏭ Still deferred:** `gateway-*` path tables (`skills/library/...` pre-existing wrong paths) → Phase 4/follow-up.
-- **Next: Phase 4** — rename `claude-config`→`saki-builder` across remaining docs/scripts (6 files still flagged); `/saki-builder:update` command + `check-plugin-update.js`; README/HOW-TO; publish marketplace to GitLab (owner-only PAUSE).
+- **2026-07-02 — Phase 4 COMPLETE (code)** (v0.4.0). Verified via real install: 47 skills (incl. `update`), 3 hook events.
+  - **`/saki-builder:update`** skill + **`check-plugin-update.js`** SessionStart nudge (pull-based, fail-open).
+  - **`docs/HOW-TO.md`** teammate onboarding; README rebranded to saki-builder + plugin install.
+  - Rebranded brand mentions across README/skills/hook; `rupdate` marked legacy. Leak count 8→2 (remaining = unshipped `config/settings.json` + one functional legacy path in `rupdate` — the on-disk dir stays `claude-config` by decision).
+  - **⏸ PAUSED (owner-only):** publish the marketplace to GitLab (`solveed/saki-builder`). Steps below.
+  - **⏭ Still deferred:** `gateway-*` library path tables.
+
+### Phase 4.5 — Publish (owner-only, do when ready)
+1. Create the GitLab repo `solveed/saki-builder` (or push this repo there / add a remote).
+2. `git push -u origin feat/saki-builder-plugin` then open an MR → `main` (or push `main`).
+3. Teammates: `/plugin marketplace add https://gitlab.solveeducation.org/solveed/saki-builder.git` + `/plugin install saki-builder@saki-builder`.
+4. The `check-plugin-update.js` API URL already points at `solveed/saki-builder` — set `GITLAB_TOKEN` for private-repo update checks.

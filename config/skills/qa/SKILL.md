@@ -95,7 +95,7 @@ Skip Steps 1c, 1d, and 1.5; mark all UI criteria as BLOCKED (not FAIL).
 
 ### 1c: Detect MCP Playwright availability
 
-Check whether the session has MCP Playwright tools loaded. Tools with prefix `mcp__playwright__` are exposed when `@playwright/mcp` is registered in `~/.claude.json` (installed by `claude-config/install.sh`).
+Check whether the session has MCP Playwright tools loaded. Tools with prefix `mcp__playwright__` are exposed when `@playwright/mcp` is registered in `~/.claude.json` (registered by the saki-builder plugin, or the legacy `install.sh`).
 
 - If available → `MCP_MODE=available` — preferred path for UI criteria. No spec generation, no `npx playwright test`. Skip Step 1d and Step 1.5.
 - If not available → `MCP_MODE=unavailable` — fall back to the existing spec-generation flow (Step 1d, Step 1.5, Step 5).

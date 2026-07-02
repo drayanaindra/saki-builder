@@ -52,7 +52,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - **Interactive mode:** ask user for project name, business context, key constraints.
      **Non-interactive / PRD-driven mode:** derive all of these from the PRD (see "Invocation modes") — do NOT ask.
    - **If an existing `.claude/` is FOREIGN** (present but `.claude/.env-init.json` is missing or its
-     `config` ≠ this machine's `$HOME` — i.e. it came from another claude-config, so its `@import`
+     `config` ≠ this machine's `$HOME` — i.e. it came from another saki-builder install, so its `@import`
      paths / hook scripts / agents won't resolve here): back it up FIRST —
      `ts=$(date +%Y%m%d-%H%M%S); mv .claude ".claude.bak-$ts"; [ -f CLAUDE.md ] && mv CLAUDE.md "CLAUDE.md.bak-$ts"` —
      then scaffold fresh below. Never overwrite a foreign `.claude/` in place.
@@ -109,7 +109,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
 8. **Create .claude/hooks/ scripts** (if needed):
    - protect-files.sh (block edits to .env, lock files — project-specific patterns)
    - pre-commit-check.sh (run tests before commit)
-   - NOTE: `dangerous-command-guard.sh` is already active globally via `~/.claude/hooks/` (from claude-config).
+   - NOTE: `dangerous-command-guard.sh` is already active globally via the saki-builder plugin.
      It blocks DROP DB/TABLE, destructive rm, git push --force main, migrate down/force/drop, curl|sh, etc.
      Do NOT recreate it per-project — it applies automatically to all projects.
 

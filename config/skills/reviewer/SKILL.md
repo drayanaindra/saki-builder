@@ -58,7 +58,7 @@ NOT paste the whole file):
   **Python Async**; prompt/LLM files → **AI / LLM Integration**.
 - Skip the `patterns-<topic>.md` topic files and any unrelated stacks.
 
-If the file is absent (e.g. a project where claude-config isn't installed), skip silently — the
+If the file is absent (e.g. a project where saki-builder isn't installed), skip silently — the
 checklist from Step 2 still applies.
 
 ## Step 3: Launch review

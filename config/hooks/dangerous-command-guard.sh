@@ -2,8 +2,8 @@
 # dangerous-command-guard.sh — Global safety policy for Claude Code bash execution
 # Runs as PreToolUse:Bash hook. Blocks destructive commands, allows everything else.
 #
-# Distribution: lives in ~/claude-config/config/hooks/ → symlinked to ~/.claude/hooks/
-# Applies to ALL projects via global settings.json PreToolUse:Bash hook.
+# Distribution: shipped by the saki-builder plugin (config/hooks/), registered via hooks.json.
+# Applies to ALL projects as a PreToolUse:Bash hook.
 
 COMMAND="${CLAUDE_TOOL_INPUT_COMMAND:-}"
 
