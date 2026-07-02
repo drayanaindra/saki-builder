@@ -259,4 +259,10 @@ Confidence Gate: [x] Confidence Ledger present and every entry cited  [x] All ch
   - `templates/settings.recommended.json` (permissions/model/effort — plugin can't ship these). Agent doc-refs → `${CLAUDE_PLUGIN_ROOT}/...`. `CHANGELOG.md` added.
   - **⚠ Entanglement noted:** the Phase-2 commit also bundles pre-existing owner WIP in 4 skill files (`prd`, `prd-review`, `proto`, `rplan-review` — a "Basis column" content edit) because the namespacing sweep touched the same files; can be split out later.
   - **⏭ Deferred:** learnings-related `~/.claude/memory/patterns` refs (reflect, reviewer) → Phase 3. `gateway-*` path table refs (`skills/library/...` — pre-existing wrong paths, need investigation) → Phase 3/follow-up.
-- **Next: Phase 3** — learnings split (team baseline `memory/` read-only + `~/.claude/memory/patterns-personal.md` overlay); rewire `/saki-builder:reflect` + `/saki-builder:sync`; fix the deferred memory refs.
+- **2026-07-02 — Phase 3 COMPLETE** (v0.3.0). Learnings split shipped.
+  - **Team baseline** (`memory/patterns*.md`, read-only, MR-governed) vs **personal overlay** (`~/.claude/memory/patterns-personal.md`, per-machine, injected, never pushed). Documented in `config/docs/learning-loop.md`.
+  - Rewired `reflect` (audience-first routing: personal instant vs team-baseline MR), `sync` (branch+MR, never direct main push; personal never synced), `reviewer` (reads both layers). All learnings skills migrated off `~/.claude/memory/patterns.md`.
+  - Fixed 4 namespacing false-positives (`./sync.sh`, `**/prd.md`, `./auth.service`) + hardened `bin/namespace-refs.js` guard (now excludes `./ ~/ **/` path contexts; dry-run clean).
+  - `.gitignore` guards stray `patterns-personal.md`.
+  - **⏭ Still deferred:** `gateway-*` path tables (`skills/library/...` pre-existing wrong paths) → Phase 4/follow-up.
+- **Next: Phase 4** — rename `claude-config`→`saki-builder` across remaining docs/scripts (6 files still flagged); `/saki-builder:update` command + `check-plugin-update.js`; README/HOW-TO; publish marketplace to GitLab (owner-only PAUSE).

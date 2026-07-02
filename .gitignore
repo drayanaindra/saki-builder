@@ -4,6 +4,10 @@ personal/hooks/
 personal/settings-personal.json
 personal/patterns-personal.md
 
+# Personal learnings overlay — never shared (lives in ~/.claude/memory, but guard the repo too)
+patterns-personal.md
+**/patterns-personal.md
+
 # OS
 .DS_Store
 Thumbs.db

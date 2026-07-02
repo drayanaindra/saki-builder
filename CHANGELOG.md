@@ -2,6 +2,20 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.3.0 — 2026-07-02
+
+Phase 3 — split learning loop.
+
+- **Team baseline** (`memory/patterns*.md`, shipped read-only) vs **personal overlay**
+  (`~/.claude/memory/patterns-personal.md`, per-machine, injected by `inject-core.js`, never pushed).
+- Rewired `/saki-builder:reflect` — routes by audience: personal overlay (instant) vs team baseline (via MR).
+- Rewired `/saki-builder:sync` — team-baseline edits share via a branch + MR, never a direct push to `main`;
+  personal overlay is never synced.
+- `/saki-builder:reviewer` now reads both layers.
+- `config/docs/learning-loop.md` documents the model; `.gitignore` guards stray `patterns-personal.md`.
+- Fixed 4 namespacing false-positives (`./sync.sh`, `**/prd.md`, `./auth.service`) + hardened the
+  `bin/namespace-refs.js` guard against `./ ~/ **/` path contexts.
+
 ## 0.2.0 — 2026-07-02
 
 Phase 2 — full migration to the plugin model.

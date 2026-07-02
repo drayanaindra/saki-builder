@@ -1,6 +1,6 @@
 ---
 name: reflect
-description: Cross-project learning - review lessons learned, promote confirmed patterns to global config. Run weekly.
+description: Cross-project learning - review lessons learned, promote confirmed patterns. Splits promotion between your private personal overlay (instant) and the MR-governed team baseline. Run weekly.
 ---
 
 # Cross-Project Reflection
@@ -11,7 +11,8 @@ Review accumulated learnings and promote confirmed patterns.
 
 1. **Read all lesson sources**:
    - Current project: `.claude/memory/lessons-learned.md`
-   - Global patterns: `~/.claude/memory/patterns.md`
+   - Team baseline (read-only reference): `${CLAUDE_PLUGIN_ROOT}/memory/patterns.md` (+ `patterns-<topic>.md`) — or the saki-builder repo's `memory/` if you have it checked out
+   - Personal overlay: `~/.claude/memory/patterns-personal.md`
    - Other projects: search `~/.claude/projects/*/memory/lessons-learned.md`
 
 2. **Identify promotion candidates**:
@@ -19,32 +20,30 @@ Review accumulated learnings and promote confirmed patterns.
    - Correction was made and never reverted
    - Anti-pattern caused real problems (wasted time, bugs)
 
-3. **Promote confirmed patterns** — route by scope, not just confidence:
+3. **Promote confirmed patterns — route by AUDIENCE first, then scope.**
+
+   The loop is split so teammates never conflict on one file:
+   - **Personal overlay** `~/.claude/memory/patterns-personal.md` — YOUR machine only, never pushed, injected every session by the core hook. Default home for anything project-specific-to-you, experimental, or < 3 confirmations. Write freely, no review.
+   - **Team baseline** `memory/patterns*.md` in the saki-builder REPO — what everyone reads. GOVERNED: changed only via **MR** (PR review). Promote here ONLY a HIGH-confidence, cross-person, stack-portable pattern.
+     - Have the saki-builder repo checked out → edit `memory/patterns.md` (or the matching `patterns-<topic>.md`) → commit on a branch → open an MR.
+     - Only the plugin installed (read-only cache) → do NOT write the cache. Emit an **MR-ready fragment** (the `## [Category]` block in step 4) + the one-line instruction *"open an MR adding this to saki-builder `memory/patterns.md`"*, and also drop it in your personal overlay so you keep it locally.
+   - **Skill / core-rule change** → the repo's `config/skills/<name>/SKILL.md` or `instructions/core.md`, via MR (never edit the installed cache).
 
    | Destination | When |
    |-------------|------|
-   | `~/.claude/CLAUDE.md` | Rule that must apply to all projects, binding across ALL stacks |
-   | `~/.claude/skills/[skill]/SKILL.md` | Skill-specific behavior improvement (global skill change) |
-   | `~/.claude/memory/patterns.md` | Cross-stack pattern: applies regardless of language/framework — git workflows, Claude Code usage, architecture principles, debugging heuristics, workflow meta-patterns. **40k char limit — keep lean.** |
-   | `~/.claude/memory/patterns-<topic>.md` | Any pattern that is primarily relevant to one stack or domain — go here FIRST if the pattern mentions a specific framework, library, or language. Existing files: `patterns-react.md` (React/Next.js/Vite/Tailwind/TypeScript), `patterns-python.md` (Python/FastAPI/SQLAlchemy/async), `patterns-go.md` (Go/Gin/pgx/Docker), `patterns-mcp.md` (MCP/Playwright), `patterns-ai.md` (LLM/prompt/Whisper), `patterns-ios.md` (iOS/SwiftUI/Core Image). Create a new file for any new domain with 3+ entries. |
-   | Project `<repo>/.claude/memory/patterns.md` | Project-specific pattern (cited as "same project N×", not portable). Only when project exists locally; otherwise fall back to a topic file. |
-   | Project `<repo>/.claude/skills/[skill]/SKILL.md` | Project-specific skill override (project-tailored review/qa/rplan-review variant) |
-   | Project `<repo>/CLAUDE.md` | Project-specific rule (always-on for that repo) |
+   | `~/.claude/memory/patterns-personal.md` (personal, instant) | project-specific-to-you, experimental, or < 3 confirmations — **default** |
+   | Team baseline `memory/patterns.md` (via MR) | cross-stack pattern confirmed 3+×, portable across Go/React/Python — **40k char cap, keep lean** |
+   | Team baseline `memory/patterns-<topic>.md` (via MR) | confirmed pattern tied to ONE stack (react/python/go/mcp/ai/ios) |
+   | Repo `config/skills/<name>/SKILL.md` (via MR) | a skill-behavior improvement everyone should get |
+   | `instructions/core.md` (via MR) | a rule that must apply to every session, all projects |
 
    **Routing decision tree** for each new pattern:
-   1. Is it about *how Claude works* (workflow, tone, gates)? → `CLAUDE.md` or skill file
-   2. Does it mention a specific framework, library, or language? → the matching `patterns-<topic>.md`
-   3. Is it cross-stack (applies equally to Go, React, Python projects)? → global `patterns.md`
-   4. Cited as "same project N×" and project lives locally? → that project's `.claude/memory/patterns.md`
-   5. Project not local but pattern is project-specific? → topic file closest to the stack used
+   1. Cross-person AND confirmed 3+×/2+ projects AND stack-portable? → team baseline `patterns.md` (MR)
+   2. Confirmed but tied to one stack? → team baseline `patterns-<topic>.md` (MR)
+   3. About how a skill/core rule behaves, everyone should get it? → repo skill / `instructions/core.md` (MR)
+   4. Everything else (yours, experimental, project-local, < 3×)? → **personal overlay** (instant, no MR)
 
-   **Stack → file mapping** (for quick routing):
-   - React / Next.js / Vite / Tailwind / TypeScript / Node → `patterns-react.md`
-   - Python / FastAPI / SQLAlchemy / Alembic / async Python → `patterns-python.md`
-   - Go / Gin / pgx / Docker → `patterns-go.md`
-   - MCP / Playwright / claude-in-chrome → `patterns-mcp.md`
-   - LLM integration / prompt engineering / Whisper / AI agents → `patterns-ai.md`
-   - iOS / SwiftUI / Core Image / Metal → `patterns-ios.md`
+   **Stack → topic-file mapping** (team baseline): React/Next/Vite/TS → `patterns-react.md` · Python/FastAPI/SQLAlchemy → `patterns-python.md` · Go/Gin/pgx → `patterns-go.md` · MCP/Playwright → `patterns-mcp.md` · LLM/prompt/Whisper → `patterns-ai.md` · iOS/SwiftUI/Core Image → `patterns-ios.md`. A framework/language mention → topic file FIRST.
 
 4. **Write structured output to the chosen file**:
    ```
@@ -63,12 +62,9 @@ Review accumulated learnings and promote confirmed patterns.
    - Archive promoted patterns (mark as promoted, don't delete)
    - Update MEMORY.md if key facts changed
 
-6. **Sync to repo** (if claude-config is installed):
-   - After writing to any `~/.claude/memory/patterns*.md` file, remind user to run:
-     ```bash
-     cd ~/claude-config && ./saki-builder:sync.sh
-     ```
-   - This commits and pushes the updated learnings so other machines stay in sync.
+6. **Sync the team baseline** (only if you edited the repo's `memory/`):
+   - Personal-overlay writes need NO sync — `~/.claude/memory/patterns-personal.md` lives on your machine, never in the repo, and is injected each session.
+   - Team-baseline edits go through review: run `/saki-builder:sync`, which commits them on a branch and opens (or points you at) an MR — **never a direct push to `main`**. That MR is the governance gate that keeps the shared baseline curated.
 
 ## Rules
 

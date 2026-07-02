@@ -9,8 +9,8 @@
 // in that set, so they are left bare automatically — same policy ed-harness uses.
 //
 // Guards against false hits:
-//   - lookbehind (?<![\w:-]) — the slash must not be inside a path (skills/rplan) or an
-//     already-namespaced ref (/saki-builder:rplan → the "rplan" is preceded by ':').
+//   - lookbehind (?<![\w:./~*-]) — the slash must not be inside a path (skills/rplan, ./sync.sh,
+//     ~/x, **/prd.md) or an already-namespaced ref (/saki-builder:rplan → "rplan" preceded by ':').
 //   - lookahead  (?![-\w/])  — the name must be whole and not a path segment (/rplan/template.md)
 //     or a longer skill (/prd never matches inside /prd-review).
 //
@@ -34,7 +34,7 @@ const names = fs.readdirSync(skillsRoot, { withFileTypes: true })
 
 // One combined alternation, whole-word, not-already-namespaced, not-a-path.
 const alt = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
-const re = new RegExp(`(?<![\\w:/-])/(${alt})(?![-\\w/])`, 'g')
+const re = new RegExp(`(?<![\\w:./~*-])/(${alt})(?![-\\w/.])`, 'g')
 
 // Walk .md files under a root dir (recursive) or a single file.
 function mdFiles (rel) {

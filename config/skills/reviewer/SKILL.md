@@ -35,14 +35,18 @@ ls .claude/agents/reviewer.md 2>/dev/null && echo "PROJECT" || echo "GLOBAL"
 
 ## Step 2.5: Load house review patterns (learned gotchas)
 
-`~/.claude/memory/patterns.md` accumulates bug classes **caught by past reviews** — many entries are
+The saki-builder patterns accumulate bug classes **caught by past reviews** — many entries are
 literally tagged *"caught by fresh-context reviewer"* or *"only in adversarial review"*. A
 fresh-context reviewer cannot see them otherwise (it doesn't inherit the main thread's context), so
 load the relevant ones and pass them into the prompt. This is the highest-signal input available: a
-list of mistakes this team has already made.
+list of mistakes this team has already made. Read BOTH layers: the **team baseline**
+(`${CLAUDE_PLUGIN_ROOT}/memory/patterns.md` + `patterns-<topic>.md`) and your **personal overlay**
+(`~/.claude/memory/patterns-personal.md`).
 
 ```bash
-test -f ~/.claude/memory/patterns.md && echo "PATTERNS: present" || echo "PATTERNS: none — skip"
+for f in "${CLAUDE_PLUGIN_ROOT}/memory/patterns.md" "$HOME/.claude/memory/patterns-personal.md"; do
+  test -f "$f" && echo "PATTERNS: $f present" || echo "PATTERNS: $f none"
+done
 ```
 
 If present, read it and **select only the entries that match this diff** (keep the prompt lean — do

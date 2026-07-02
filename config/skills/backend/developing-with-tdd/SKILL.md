@@ -45,7 +45,7 @@ src/
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AuthService } from './saki-builder:auth.service';
+import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   let service: AuthService;

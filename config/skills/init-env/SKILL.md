@@ -15,7 +15,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
 - **Interactive (default)** — a human ran `/saki-builder:init-env`. Ask for project name, business context, key
   constraints as normal.
 - **Non-interactive / PRD-driven** — `$ARGUMENTS` contains a path to a PRD (e.g.
-  `tasks/prd-*.md` / `docs/prd/**/saki-builder:prd.md`), OR no `$ARGUMENTS` were given but a `tasks/prd-*.md`
+  `tasks/prd-*.md` / `docs/prd/**/prd.md`), OR no `$ARGUMENTS` were given but a `tasks/prd-*.md`
   exists in the repo. This happens when a tool (e.g. pipeline-studio) runs `/saki-builder:init-env` headless in a
   SINGLE turn before a build. In this mode you have **no human to ask** and **one turn to finish** —
   so do NOT run the full 14-step Process below. Instead run this **LEAN, BOUNDED scaffold** and
