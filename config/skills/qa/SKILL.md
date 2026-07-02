@@ -340,20 +340,26 @@ For each `.up.sql` file, verify a `.down.sql` counterpart exists.
 ## Step 3.5: Coverage gate (local — runs BEFORE any SonarQube analysis)
 
 Coverage must clear a floor **here**, before push — so the SonarQube new-code gate is already green when it
-runs, instead of being discovered red at the gate. Floor = `COVERAGE_MIN` (env, **default 70**; set
-`COVERAGE_MIN=80` to match a stricter SonarQube new-code condition, `COVERAGE_MIN=0` to skip for a spike).
+runs, instead of being discovered red at the gate. **The floor is ≥ 80% and NON-NEGOTIABLE** — the SonarQube
+new-code standard, enforced locally first. `COVERAGE_MIN` (env, **default 80**) may only ever RAISE it
+(a stricter project can set `COVERAGE_MIN=90`); it is **clamped so it can never drop below 80** — there is no
+spike or skip escape. A slice that can't reach 80% is not done: write the missing tests (Red→Green).
 
-**Run the stack's coverage command (machine-readable report), parse the total %, FAIL below the floor:**
+**First compute the floor — clamped so it can only be raised, never lowered below 80:**
+```bash
+MIN=${COVERAGE_MIN:-80}; case "$MIN" in ''|*[!0-9]*) MIN=80;; *) [ "$MIN" -lt 80 ] && MIN=80;; esac  # ≥80 hard floor
+```
+
+**Run the stack's coverage command (machine-readable report), parse the total %, FAIL below `$MIN`:**
 
 | Stack | Command |
 |-------|---------|
 | Vitest | `npx vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text` → `coverage/coverage-summary.json` |
 | Jest | `npx jest --coverage --coverageReporters=json-summary` → `coverage/coverage-summary.json` |
 | Go | `go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out` → the `total:` line |
-| pytest | `pytest --cov --cov-report=term --cov-fail-under=${COVERAGE_MIN:-70}` (self-fails — no parsing) |
+| pytest | `pytest --cov --cov-report=term --cov-fail-under=$MIN` (self-fails — no parsing; `$MIN` ≥ 80) |
 
 ```bash
-MIN=${COVERAGE_MIN:-70}
 PCT=$(python3 -c "import json;print(json.load(open('coverage/coverage-summary.json'))['total']['lines']['pct'])" 2>/dev/null)
 awk "BEGIN{exit !($PCT>=$MIN)}" && echo "COVERAGE OK: ${PCT}% >= ${MIN}%" || echo "COVERAGE FAIL: ${PCT}% < ${MIN}%"
 ```
@@ -377,10 +383,10 @@ git diff --name-only "$BASE"...HEAD -- '*.ts' '*.tsx' '*.js' '*.go' '*.py' | gre
 
 **Fail-fast by default (the durable fix):** bake the floor into the test runner so plain `npm test` fails
 when coverage drops — `/saki-builder:init-env` scaffolds this and it is the real "by default" enforcement:
-- Vitest → `test.coverage.thresholds = { lines: 70, functions: 70, branches: 70, statements: 70 }` (`vite.config.ts`)
-- Jest → `coverageThreshold: { global: { lines: 70, branches: 70, functions: 70, statements: 70 } }`
-- pytest → `--cov-fail-under=70` in `addopts`
-- Go → a CI assertion that the `total:` line ≥ 70
+- Vitest → `test.coverage.thresholds = { lines: 80, functions: 80, branches: 80, statements: 80 }` (`vite.config.ts`)
+- Jest → `coverageThreshold: { global: { lines: 80, branches: 80, functions: 80, statements: 80 } }`
+- pytest → `--cov-fail-under=80` in `addopts`
+- Go → a CI assertion that the `total:` line ≥ 80
 
 ---
 

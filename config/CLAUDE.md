@@ -51,7 +51,7 @@ Write code that passes the gate the first time — don't write then fix. The gat
 
 - **Reliability**: null-check before deref (`if x is not None:`, not `if x:`); always close resources (`with`/`defer`/try-with-resources); check error returns; cover every switch/enum case.
 - **Security**: no hardcoded secrets; parameterize SQL/shell (no string-concat injection); validate external input at the boundary; strong crypto only (no MD5/SHA-1/DES/ECB).
-- **Maintainability**: cognitive complexity ≤ 15, function ≤ 40 LOC, params ≤ 7; DRY (extract at 3rd repeat, < 3% duplication); guard clauses over deep nesting; named constants over magic numbers; no dead/commented-out code; never swallow exceptions; new-code coverage ≥ 80% (SonarQube gate) — `/qa` enforces a local ≥ 70% floor before push (`COVERAGE_MIN`), so coverage clears *before* the gate.
+- **Maintainability**: cognitive complexity ≤ 15, function ≤ 40 LOC, params ≤ 7; DRY (extract at 3rd repeat, < 3% duplication); guard clauses over deep nesting; named constants over magic numbers; no dead/commented-out code; never swallow exceptions; new-code coverage ≥ 80%, **non-negotiable** (SonarQube gate) — `/qa` enforces the same ≥ 80% floor locally before push (`COVERAGE_MIN`, clamped — no lowering, no spike bypass), so coverage clears *before* the gate.
 
 Full reference (per-quality rule list + workflow): the `/clean-code` skill (`~/.claude/skills/clean-code/SKILL.md`). `/build` auto-loads it during implementation; invoke it manually before any non-trivial code change.
 

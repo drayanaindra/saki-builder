@@ -219,7 +219,7 @@ Every plan must pass all 4 gates before confidence can reach 96%:
 | ----- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | Structural scan               | Pass/fail check for all 7 required sections. Hard gate — missing section stops review.                                                               |
 | 1.5   | Acceptance criteria hardening | Every vague criterion is rewritten in-place: Given/When/Then + exact test command + expected outcome. Plan file is edited before experts run.        |
-| 2     | Parallel domain expert review | Specialized agents (Backend, Frontend, DB/Security, Product) run in parallel. Each agent has domain-specific blockers. Results collected and merged. |
+| 2     | Parallel domain expert review | Specialized agents (Backend, Frontend, UI/UX, Database, Security, Architecture, QA, Product) run in parallel — only those the plan touches. Each agent has domain-specific blockers. Results collected and merged. |
 | 3     | Synthesis                     | All expert findings deduplicated, confidence recalculated, blockers vs warnings classified.                                                          |
 | 4     | Readiness check               | Every implementation step verified: can a developer execute it without asking any questions?                                                         |
 
@@ -292,7 +292,7 @@ Skills follow a two-level override pattern:
 .claude/skills/<name>/SKILL.md       <- project-specific (scaffolded by /init-env)
 ```
 
-The global `/rplan-review` uses generic domain experts (Backend, Frontend, DB/Security, Product).
+The global `/rplan-review` uses generic domain experts (Backend, Frontend, UI/UX, Database, Security, Architecture, QA, Product).
 A project override replaces these with stack-specific agents — e.g., for a Go + Next.js + PostgreSQL project:
 
 - **Go Engineer** — enforces `ctx context.Context`, RLS tenant guard, `pgx.Tx` atomicity

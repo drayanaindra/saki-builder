@@ -115,7 +115,10 @@ Detect which domains are touched by the plan, then launch the relevant expert ag
 | Backend | any `*.go`, `*.py`, `*.ts` service/API file in steps |
 | Frontend | any frontend component, page, or UI file in steps |
 | UI/UX | any new page, new component, new user flow, or design system change in steps |
-| Database/Security | any migration, schema, auth, or permission change in steps |
+| Database | any migration, schema, data-model, or index change in steps |
+| Security | any auth, permission, input-validation, secret/token, PII, or external-input handling in steps |
+| Architecture | a new module/service/boundary, a cross-module or cross-service change, a new external integration/dependency, or any step touching ≥3 modules |
+| QA | always (every plan has acceptance criteria + a test strategy to verify) |
 | Product | always (role coverage and acceptance criteria always apply) |
 
 ### Expert agent prompts
@@ -176,24 +179,48 @@ Warnings: (list)
 (cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
 ```
 
-**Database/Security Expert Agent:**
+**Database Expert Agent:**
 ```
-You are a senior database and security engineer doing adversarial plan review.
+You are a senior database engineer doing adversarial plan review.
 
 Review the following plan and identify:
-1. Migration missing a corresponding down/rollback file
-2. Destructive schema changes without backup or migration strategy
-3. Missing auth/permission check before sensitive operations
-4. Data isolation gaps (multi-tenant: could one tenant access another's data?)
-5. SQL injection or unsafe query construction risks
-6. Missing transaction boundaries for atomic operations
+1. Migration missing a corresponding down/rollback file, or an irreversible migration with no backup step
+2. Destructive schema change (column drop/rename, type narrowing) without a safe migration strategy
+3. Missing or wrong index for a query the plan's metric or hot path depends on
+4. Data-model errors: wrong cardinality, a missing FK/UNIQUE/CHECK constraint, nullable that should not be
+5. Missing transaction boundary for a multi-row / multi-table atomic operation
+6. Model→migration drift: a field/model change with no matching migration step
+7. Any step that changes schema without naming the migration file + the exact up/down command
 
 Plan:
 [paste full plan text]
 
 Output format:
-DB/SECURITY REVIEW
+DATABASE REVIEW
 Blockers: (list)
+Warnings: (list)
+(cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
+```
+
+**Security Expert Agent:**
+```
+You are a senior application security engineer doing adversarial plan review.
+
+Review the following plan and identify:
+1. Missing authn/authz check before a sensitive read or write (does every endpoint name its guard?)
+2. Broken object-level authorization / IDOR — can a user act on another user's or another tenant's row?
+3. Unvalidated external input at the boundary — injection (SQL/shell/template), XSS, SSRF, path traversal
+4. Secrets/tokens in code, logs, or responses; weak crypto (MD5/SHA-1/DES/ECB); tokens with no expiry/rotation
+5. Sensitive-data exposure — PII/financial data logged, returned in an over-broad response, or stored unencrypted
+6. Missing rate-limit / abuse guard on an expensive or auth-adjacent action; enumeration or timing leaks
+7. Any step handling auth, permissions, or external input without stating the check that protects it
+
+Plan:
+[paste full plan text]
+
+Output format:
+SECURITY REVIEW
+Blockers: (list — each one is an exploitable gap)
 Warnings: (list)
 (cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
 ```
@@ -242,6 +269,53 @@ Warnings: (list)
 (cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
 ```
 
+**Architecture Expert Agent:**
+```
+You are a senior software architect doing adversarial plan review.
+
+Review the following plan and identify:
+1. Wrong layer / boundary — business logic in a handler, a service reaching across a boundary it shouldn't, UI calling the DB directly
+2. A new module/service/integration introduced without a stated contract (interface, API shape, ownership)
+3. Coupling problems — a circular dependency, a dependency pointing the wrong way, a shared mutable surface two features race on
+4. A missing seam for a stated variation point (a hardcoded choice the plan says will vary) OR a premature abstraction with one implementation (YAGNI)
+5. Scalability/consistency risk in the design — an N+1 pattern, a sync call that should be async (or vice-versa), an unbounded fan-out, eventual-consistency assumed but not handled
+6. Cross-cutting concerns unplaced — where do logging, error propagation, transactions, idempotency, and config live for the new code?
+7. Any step that adds a component without saying how it wires into the existing architecture (who calls it, what it depends on)
+
+Plan:
+[paste full plan text]
+
+Output format:
+ARCHITECTURE REVIEW
+Blockers: (list — each one is a structural flaw that's expensive to reverse post-build)
+Warnings: (list)
+(cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
+```
+
+**QA Expert Agent:**
+```
+You are a senior QA engineer doing adversarial plan review.
+
+Review the following plan and identify:
+1. Acceptance criteria with no corresponding test named in the Steps table (what actually verifies this?)
+2. Missing test LEVEL — logic with no unit test, a cross-layer flow with no integration test, a user journey with no e2e
+3. Untested failure/edge paths — for each state-changing step, the negative cases the happy-path test skips (over-limit, empty, concurrent, unauthorized, retry/idempotency)
+4. Test-data / fixture gaps — a criterion that needs seed data, a specific account state, or a mocked external the plan never provides
+5. Regression risk — an existing behavior this change can break, with no test pinning it
+6. Non-deterministic / flaky-test risk — reliance on timing, ordering, network, or the real clock without control
+7. Any acceptance criterion not written as an executable check (exact command / observable signal) — it can't be QA'd as-is
+8. Coverage floor — any new-code step whose named tests would not reach the **NON-NEGOTIABLE ≥ 80%** coverage floor (untested branches, error paths, or whole functions with no test). Below 80% is a **BLOCKER**, never a warning — prescribe the exact missing tests.
+
+Plan:
+[paste full plan text]
+
+Output format:
+QA REVIEW
+Blockers: (list — each one leaves a behavior unverifiable or a failure path untested)
+Warnings: (list)
+(cite the step # you object to + prescribe the fixing edit; Phase 3 owns the ledger — do NOT propose a numeric adjustment)
+```
+
 ### Collect all results
 
 Wait for all agents to return. Print each review result in full.
@@ -274,7 +348,7 @@ Print synthesis:
 ```
 --- SYNTHESIS ---
 
-Domains reviewed: [Backend / Frontend / DB+Security / Product]
+Domains reviewed: [Backend / Frontend / UI/UX / Database / Security / Architecture / QA / Product]  (only those the plan touched)
 Uncited findings discarded: [N]  ·  Blockers verified against code: [N kept / N dropped]
 Failure-surface: [N]/[M] state-changing steps with failure path covered · [K] implied-work gaps found
 
