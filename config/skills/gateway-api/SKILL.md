@@ -16,12 +16,7 @@ You are the API Gateway. Route API tasks to specialized library skills.
 
 | Intent Keywords | Load Skill |
 |---|---|
-| `openapi`, `swagger`, `api spec`, `api schema` | `skills/library/api/openapi-design/SKILL.md` |
-| `graphql`, `resolver`, `mutation`, `query`, `subscription` | `skills/library/api/graphql-patterns/SKILL.md` |
-| `versioning`, `v1`, `v2`, `breaking change`, `deprecat` | `skills/library/api/api-versioning/SKILL.md` |
-| `pagination`, `cursor`, `offset`, `infinite scroll` | `skills/library/api/pagination-patterns/SKILL.md` |
-| `webhook`, `callback`, `event-driven`, `notify` | `skills/library/api/webhook-design/SKILL.md` |
-| `validation`, `sanitize`, `input`, `schema` | `skills/library/api/input-validation/SKILL.md` |
+| `validation`, `sanitize`, `input`, `schema` | `${CLAUDE_PLUGIN_ROOT}/config/skills/api/input-validation/SKILL.md` |
 
 ## Output Format
 

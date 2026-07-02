@@ -16,16 +16,11 @@ You are the Frontend Gateway. Detect intent from the current task and return the
 
 | Intent Keywords | Load Skill |
 |---|---|
-| `infinite loop`, `useEffect`, `hook loop`, `re-render loop` | `skills/library/frontend/debugging-react-hooks/SKILL.md` |
-| `performance`, `render`, `memo`, `useMemo`, `useCallback`, `slow` | `skills/library/frontend/optimizing-react-performance/SKILL.md` |
-| `state`, `zustand`, `redux`, `context api`, `global state` | `skills/library/frontend/state-management/SKILL.md` |
-| `form`, `validation`, `zod`, `react-hook-form`, `yup` | `skills/library/frontend/form-handling/SKILL.md` |
-| `routing`, `navigation`, `react-router`, `next/navigation` | `skills/library/frontend/client-side-routing/SKILL.md` |
-| `animation`, `framer`, `transition`, `motion` | `skills/library/frontend/animations/SKILL.md` |
-| `accessibility`, `a11y`, `aria`, `screen reader` | `skills/library/frontend/accessibility/SKILL.md` |
-| `css`, `tailwind`, `styled-components`, `emotion` | `skills/library/frontend/styling-patterns/SKILL.md` |
-| `ssr`, `ssg`, `next.js`, `hydration`, `server component` | `skills/library/frontend/ssr-patterns/SKILL.md` |
-| `component`, `jsx`, `tsx`, `react` (general) | `skills/library/frontend/react-component-patterns/SKILL.md` |
+| `infinite loop`, `useEffect`, `hook loop`, `re-render loop` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/debugging-react-hooks/SKILL.md` |
+| `performance`, `render`, `memo`, `useMemo`, `useCallback`, `slow` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/optimizing-react-performance/SKILL.md` |
+| `implement design`, `build component`, `design to code`, `from figma` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/implementing-frontend-design/SKILL.md` |
+| `ui audit`, `accessibility`, `a11y`, `responsive`, `ui compliance` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/auditing-interface-quality/SKILL.md` |
+| `aesthetics`, `visual review`, `design polish`, `look and feel` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/reviewing-frontend-aesthetics/SKILL.md` |
 
 ## Output Format
 

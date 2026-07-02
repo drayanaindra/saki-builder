@@ -270,7 +270,7 @@ Confidence Gate: [x] Confidence Ledger present and every entry cited  [x] All ch
   - **`docs/HOW-TO.md`** teammate onboarding; README rebranded to saki-builder + plugin install.
   - Rebranded brand mentions across README/skills/hook; `rupdate` marked legacy. Leak count 8→2 (remaining = unshipped `config/settings.json` + one functional legacy path in `rupdate` — the on-disk dir stays `claude-config` by decision).
   - **⏸ PAUSED (owner-only):** publish the marketplace to GitLab (`solveed/saki-builder`). Steps below.
-  - **⏭ Still deferred:** `gateway-*` library path tables.
+  - ~~**⏭ Still deferred:** `gateway-*` library path tables.~~ **DONE (v0.4.1):** all 6 gateways fixed — routes rewritten to `${CLAUDE_PLUGIN_ROOT}/config/skills/...`, 28 dead rows dropped, 6 unrouted skills added; all 27 routes resolve; validator now guards them.
 
 ### Phase 4.5 — Publish (owner-only, do when ready)
 1. Create the GitLab repo `solveed/saki-builder` (or push this repo there / add a remote).

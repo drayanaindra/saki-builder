@@ -2,6 +2,17 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.4.1 — 2026-07-02
+
+Fix — gateway routing tables.
+
+- The `gateway-*` skills routed to `skills/library/…` (wrong base) and to many skills that were
+  never built. `bin/fix-gateways.js` rewrote every route for an EXISTING skill to
+  `${CLAUDE_PLUGIN_ROOT}/config/skills/<cat>/<skill>/SKILL.md` and dropped 28 dead rows.
+- Added 6 existing-but-unrouted library skills (backend health/resilience, security audit, 3 frontend)
+  so no real library skill is unreachable. All 27 routes now resolve.
+- Validator now guards gateway routes — a route to a missing skill fails the build.
+
 ## 0.4.0 — 2026-07-02
 
 Phase 4 — distribution + rebrand.

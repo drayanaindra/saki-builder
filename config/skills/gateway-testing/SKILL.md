@@ -16,13 +16,8 @@ You are the Testing Gateway. Route testing tasks to specialized library skills.
 
 | Intent Keywords | Load Skill |
 |---|---|
-| `unit test`, `mock`, `stub`, `spy`, `isolated` | `skills/library/testing/unit-testing-patterns/SKILL.md` |
-| `integration test`, `e2e`, `end-to-end`, `supertest` | `skills/library/testing/integration-testing/SKILL.md` |
-| `coverage`, `lcov`, `istanbul`, `c8`, `threshold` | `skills/library/testing/coverage-strategies/SKILL.md` |
-| `snapshot`, `visual regression`, `toMatchSnapshot` | `skills/library/testing/snapshot-testing/SKILL.md` |
-| `load test`, `stress`, `k6`, `artillery`, `benchmark` | `skills/library/testing/load-testing/SKILL.md` |
-| `fixture`, `factory`, `seed`, `faker`, `test data` | `skills/library/testing/test-data-factories/SKILL.md` |
-| `flaky`, `race condition`, `async`, `intermittent fail` | `skills/library/testing/fixing-flaky-tests/SKILL.md` |
+| `unit test`, `mock`, `stub`, `spy`, `isolated` | `${CLAUDE_PLUGIN_ROOT}/config/skills/testing/unit-testing-patterns/SKILL.md` |
+| `flaky`, `race condition`, `async`, `intermittent fail` | `${CLAUDE_PLUGIN_ROOT}/config/skills/testing/fixing-flaky-tests/SKILL.md` |
 
 ## Output Format
 

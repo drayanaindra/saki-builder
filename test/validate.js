@@ -162,6 +162,23 @@ function scanRefs (rel) {
 for (const sp of skillPaths) scanRefs(sp.replace(/^\.\//, ''))
 for (const ap of agentPaths) scanRefs(ap.replace(/^\.\//, ''))
 
+// --- 5b. Gateway routes must resolve: every config/skills/<cat>/<skill>/SKILL.md a gateway
+// points at must exist (the gateway-* skills route to library skills BY PATH). ------------
+for (const sp of skillPaths) {
+  const base = sp.replace(/^\.\//, '')
+  for (const d of listDir(base)) {
+    if (!d.isDirectory() || !d.name.startsWith('gateway-')) continue
+    const gw = path.join(base, d.name, 'SKILL.md')
+    if (!fs.existsSync(path.join(ROOT, gw))) continue
+    const txt = fs.readFileSync(path.join(ROOT, gw), 'utf8')
+    const routeRe = /config\/skills\/[a-z0-9/_-]+\/SKILL\.md/g
+    let m
+    while ((m = routeRe.exec(txt))) {
+      if (!fs.existsSync(path.join(ROOT, m[0]))) err(`${gw}: routes to missing skill ${m[0]}`)
+    }
+  }
+}
+
 // --- 6. Soft: stray claude-config (until Phase-4 rename) -------------------
 // (warn-only; counted, not enumerated, to keep output tight)
 let leak = 0

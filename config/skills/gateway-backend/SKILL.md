@@ -18,15 +18,13 @@ Read the task description and match against these patterns:
 
 | Intent Keywords | Load Skill |
 |---|---|
-| `tdd`, `test-driven`, `red-green`, `failing test first` | `skills/library/backend/developing-with-tdd/SKILL.md` |
-| `debug`, `diagnose`, `trace`, `investigate`, `root cause` | `skills/library/backend/debugging-systematically/SKILL.md` |
-| `auth`, `jwt`, `oauth`, `session`, `token`, `login` | `skills/library/backend/implementing-auth/SKILL.md` |
-| `middleware`, `interceptor`, `pipeline`, `chain` | `skills/library/backend/writing-middleware/SKILL.md` |
-| `cache`, `redis`, `memcache`, `invalidate` | `skills/library/backend/caching-strategies/SKILL.md` |
-| `queue`, `worker`, `job`, `background task`, `async` | `skills/library/backend/async-job-queues/SKILL.md` |
-| `websocket`, `realtime`, `socket.io`, `sse` | `skills/library/backend/realtime-connections/SKILL.md` |
-| `error handling`, `exception`, `retry`, `circuit breaker` | `skills/library/backend/error-handling-patterns/SKILL.md` |
-| `rate limit`, `throttle`, `ddos` | `skills/library/security/rate-limiting/SKILL.md` |
+| `tdd`, `test-driven`, `red-green`, `failing test first` | `${CLAUDE_PLUGIN_ROOT}/config/skills/backend/developing-with-tdd/SKILL.md` |
+| `debug`, `diagnose`, `trace`, `investigate`, `root cause` | `${CLAUDE_PLUGIN_ROOT}/config/skills/backend/debugging-systematically/SKILL.md` |
+| `error handling`, `exception`, `retry`, `circuit breaker` | `${CLAUDE_PLUGIN_ROOT}/config/skills/backend/error-handling-patterns/SKILL.md` |
+| `rate limit`, `throttle`, `ddos` | `${CLAUDE_PLUGIN_ROOT}/config/skills/security/rate-limiting/SKILL.md` |
+| `code health`, `lint`, `typecheck`, `health score`, `tech debt` | `${CLAUDE_PLUGIN_ROOT}/config/skills/backend/assessing-code-health/SKILL.md` |
+| `resilience`, `edge cases`, `i18n`, `text overflow`, `robustness` | `${CLAUDE_PLUGIN_ROOT}/config/skills/backend/hardening-resilience/SKILL.md` |
+| `security audit`, `owasp`, `secrets`, `dependency risk`, `vulnerability` | `${CLAUDE_PLUGIN_ROOT}/config/skills/security/auditing-security/SKILL.md` |
 
 ## Output Format
 

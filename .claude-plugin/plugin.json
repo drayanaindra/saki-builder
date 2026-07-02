@@ -1,7 +1,7 @@
 {
   "name": "saki-builder",
   "displayName": "SAKI Builder",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A personal-scale shared toolkit for Claude Code: research→plan→build→qa→review skills, adversarial reviewers, domain agents, safety hooks, an execution protocol, and a split learning loop (team baseline + private overlay). Complements ed-harness (which owns team coordination). Run /saki-builder:init to tailor a project.",
   "author": {
     "name": "Solve Education",
