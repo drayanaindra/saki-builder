@@ -127,6 +127,17 @@ explicit `--slice=N` may scope the manifest to one slice, and it is then labelle
 the file and in the Completion Output — never the default. **Do not start rendering (Step 3+) until the
 manifest is written.**
 
+**No-UI PRD branch (`/saki-builder:proto` is still the freeze gate).** If the finished PRD produces **no
+user-visible screen** — every slice is pure infra/backend with no route and no outcome/confirmation/
+notification screen a user ever sees (no §15 inventory, no user-visible surface on any slice) — there is
+nothing to preview. Do **NOT** fabricate screens. Skip **Gate 2 and Steps 2.5–8 entirely** (a backend PRD
+needs no design system, so Gate 2's STOP must not fire here) and go straight to **Step 8.5 (Lock the PRD)**:
+here `/saki-builder:proto` serves only as the **explicit freeze gate** before build. Tell the
+human plainly — *"This PRD has no user-visible screens — nothing to preview; running proto now freezes the
+requirements for build"* — and on their confirmation write the lock with `ui:none`. This keeps
+`/saki-builder:proto` the single lock writer for **every** PRD, so `/saki-builder:build` (which hard-refuses an
+unlocked PRD) has one consistent gate regardless of whether the feature has UI.
+
 ---
 
 ## GATE 2 — Design-system detection (BLOCKING — the honesty gate)
@@ -974,11 +985,42 @@ that run is stamped `PARTIAL` everywhere so it can never be mistaken for full co
 
 ---
 
+## Step 8.5 — Lock the PRD (the explicit freeze before `/saki-builder:build`)
+
+This is the **terminal act of the PRD phase**: with the UI/UX approved (Step 7) and the journey fully
+captured (Coverage Gate passed), **freeze the requirements** so `/saki-builder:build` — which hard-refuses an
+unlocked PRD — can proceed to `/saki-builder:rplan`. `/saki-builder:proto` is the **single lock writer**: a UI PRD
+locks here after approval; a no-UI PRD (GATE 1 branch) jumps straight here on the human's confirmation.
+Do **not** lock a `PARTIAL` (`--slice=N`) run — a partial preview hasn't approved the whole journey; print
+`Not locking — PARTIAL run (--slice). Re-run /saki-builder:proto with no --slice to lock.` and skip this step.
+
+Write the lock into the PRD file (the one loaded in GATE 1):
+1. **Header marker** — add, in the PRD's top comment block, on its own line:
+   `<!-- prd-locked: <@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/ -->`  (`ui:none` for a no-UI PRD).
+   `<@approver>` = the PRD header `Owner` if set, else `@<git config user.name>`, else `unassigned`;
+   `<YYYY-MM-DD>` = `date +%F`. The **absence** of this marker is what `/saki-builder:build` blocks on, so writing
+   it is what unblocks the build — never emit it before the human has approved (Step 7 / the no-UI confirm).
+2. **Header Status** — set the header field to `**Status:** Locked`.
+3. **§15 reference** — in §15 Screens & UI Reference, append `**UI approved:** tasks/proto-<slug>/ · <date>`
+   so the locked artifact points at this approved gallery. If §15 is absent on a UI PRD (an older PRD that
+   didn't persist its screens), create it from the Screen Manifest first. Skip step 3 for a no-UI PRD.
+
+Then announce it plainly:
+```
+🔒 PRD LOCKED — requirements frozen (Status: Locked · ui:tasks/proto-<slug>/).
+   /saki-builder:build tasks/prd-<slug>.md can now proceed (it refuses an unlocked PRD).
+```
+The lock is `/saki-builder:proto`'s one write-back into the PRD — it **never** edits scope, criteria, or rules
+(that stays `/saki-builder:prd`); it only stamps the freeze marker + the design reference.
+
+---
+
 ## Completion Output
 
 ```
 --- /saki-builder:proto COMPLETE ---
 PRD: <prd-file>
+PRD status: 🔒 Locked — <@approver> · <date>  (requirements frozen; ui:tasks/proto-<slug>/ | none)   [or: not locked — PARTIAL --slice run]
 Design system: <Found | Partial(<which half>) | scaffolded>
 
 Design System Gap Analysis:
@@ -1013,7 +1055,7 @@ Next actions:
 > Open the Preview ↗ in Pipeline Studio (the static page-overview gallery)
 > Open the exported Figma file to review/edit the layers (if Step 6c ran)
 > Review tasks/proto-<slug>/index.md and confirm the look
-> /saki-builder:build tasks/<prd-file>  (promotes these components into real implementation — design system already updated)
+> /saki-builder:build tasks/<prd-file>  (the PRD is now 🔒 Locked — build proceeds; promotes these components into real implementation, design system already updated)
 ```
 (The static `preview.html` is what the Studio opens — no marker line is needed. The `preview.json`
 manifest of 5e is optional/legacy and ignored by the current Studio; only mention it if you wrote one.)
@@ -1101,6 +1143,11 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 - **Figma export is additive & honest (6c).** Only when the Figma MCP is connected; prefer Tier A
   editable layers, fall back to Tier B screenshots when no browser/capture path is available, and always state
   which tier you produced. Never a hard dependency; never the canonical deliverable for `/saki-builder:build`.
+- **Proto is the lock gate (Step 8.5).** On approval (Step 7) — or, for a no-UI PRD, on the human's freeze
+  confirmation — `/saki-builder:proto` writes `Status: Locked` + `<!-- prd-locked: … -->` into the PRD: the explicit
+  freeze `/saki-builder:build` enforces before `/saki-builder:rplan`. It is the **single lock writer** for every PRD.
+  It stamps only the freeze marker + the §15 UI reference — never scope, criteria, or rules (that stays
+  `/saki-builder:prd`). Never lock a `PARTIAL` (`--slice`) run.
 
 ## Script
 

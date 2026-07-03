@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: Pull a roadmap epic into active development — the disciplined entry point for feature work. `/pickup E<n>` reads the epic from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: E<n>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the epic Planned→In-progress; escapes to Blocked if the review can't reach a shippable PRD. Running /saki-builder:proto E<n> afterwards is the approval — there is no separate approve step. Usage — /saki-builder:pickup E<n>.
+description: Pull a roadmap epic into active development — the disciplined entry point for feature work. `/pickup E<n>` reads the epic from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: E<n>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the epic Planned→In-progress; escapes to Blocked if the review can't reach a shippable PRD. Running /saki-builder:proto E<n> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Usage — /saki-builder:pickup E<n>.
 ---
 
 # Pick up an epic → write & review its PRD to green (ready for proto)
@@ -17,11 +17,11 @@ runs the **front half** of the product flow: seed `/saki-builder:prd` from the e
   → resolve E3 from tasks/roadmap.md   (flip Planned → In-progress)
   → /saki-builder:prd   (seeded by the epic; PRD stamped `Epic: E3`)
   → loop /saki-builder:prd-review until SHIP · READY   (≤3 rounds; escape to Blocked if it can't)
-  → STOP — PRD green & ready. Run /saki-builder:proto E3 (running it IS the approval).
+  → STOP — PRD green & ready. Run /saki-builder:proto E3 (it designs the UI/UX and LOCKS the PRD).
 ```
 
-The single human gate is at proto — **running `/saki-builder:proto E<n>` is the approval**; `/saki-builder:pickup`
-writes no approval flag and never advances into proto itself.
+The single human gate is at proto — **running `/saki-builder:proto E<n>` designs the UI/UX and locks the PRD**
+(the explicit freeze before build); `/saki-builder:pickup` writes no lock flag and never advances into proto itself.
 
 ---
 
@@ -133,8 +133,9 @@ buildable-now (unbuilt dep, slice-1-blocking open Q, unaccepted bet); it is NOT 
 Loop (autonomous — you are the PRD author here). Record `verdict` + `readiness` + `phase1` each round:
 
 - **Phase 1 FAILED, or Verdict REVISE, or Readiness NOT READY on a FIXABLE blocker** → apply the review's
-  prescribed fixes to the PRD (rewrite vague criteria, add the prescribed failure/edge criteria, fix orphan
-  slices, add kill criteria, resolve a §12 open Q, close a fixable readiness blocker), bump
+  prescribed fixes to the PRD (rewrite vague criteria, add the prescribed failure/edge criteria, add the
+  slice's `Assumes:` line for prescribed hidden work — or promote load-bearing hidden work to its own
+  slice, fix orphan slices, add kill criteria, resolve a §12 open Q, close a fixable readiness blocker), bump
   `review.rounds`, add to `review.blockers_fixed`, and re-run `prd-review`. **Cap at 3 rounds.**
 - **Escape to the human as BLOCKED** — do NOT loop forever, do NOT fabricate grounding — when the review
   can't be authored to green:
@@ -155,10 +156,11 @@ Key design note: the review loop lives HERE in the orchestrator (`/saki-builder:
 
 ---
 
-## Phase 3 — Ready for proto (terminal success — NO approval flag)
+## Phase 3 — Ready for proto (terminal success — NO lock flag written here)
 
-The PRD is green. `/saki-builder:pickup` stops here. It writes **no** `prd-approved` flag — running
-`/saki-builder:proto E<n>` is itself the approval (the single human gate). The epic stays `In-progress`.
+The PRD is green. `/saki-builder:pickup` stops here. It writes **no** lock flag — running `/saki-builder:proto E<n>`
+designs the UI/UX and **locks** the PRD (`Status: Locked` + `<!-- prd-locked -->`, freezing requirements), the
+single human gate before build. The epic stays `In-progress`.
 
 Ensure `phase:"proto-ready"` and the state file is written, then print:
 
@@ -167,8 +169,8 @@ PICKUP_READY: <slug> — review SHIP · READY · R rounds · B blockers fixed
 
 ✅ PRD green & ready for proto: tasks/prd-<slug>.md   (Epic: E<n>)
    Review record: tasks/prd-<slug>-review.md
-   Run /saki-builder:proto E<n> when ready — running it IS your approval to proceed.
-   (then /saki-builder:build E<n> to ship it)
+   Run /saki-builder:proto E<n> when ready — it designs the UI/UX and LOCKS the PRD (freezes requirements).
+   (then /saki-builder:build E<n> to ship it — build refuses an unlocked PRD)
 ```
 
 `PICKUP_READY` (own line) is the terminal success sentinel. The `pickup-completion-gate.sh` Stop hook
@@ -183,7 +185,7 @@ ALLOWS the stop at `phase:"proto-ready"` — ending the turn here is correct and
 - **The gate is structural.** No epic id → no run. There is no cold-intent feature path — that is the whole
   point of the disciplined workflow.
 - **One human gate, at proto.** `/saki-builder:pickup` never advances into proto; running `/saki-builder:proto E<n>`
-  is the approval. Never auto-run `/saki-builder:proto` from here.
+  designs the UI/UX and **locks** the PRD (the freeze before build). Never auto-run `/saki-builder:proto` from here.
 - **Never fabricate grounding, never infinite-loop.** The only stops are: green (`proto-ready`), or a review
   that can't reach green (`DISCOVERY-FIRST`, an unbuilt dep / unaccepted bet, or non-convergence → `blocked`).
 - **Single source of truth for behaviour.** Invoke `prd` / `prd-review`; do not re-implement them. The epic

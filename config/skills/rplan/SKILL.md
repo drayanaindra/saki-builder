@@ -66,9 +66,14 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
 
 - **Ingest the source PRD slice FIRST (if this task came from `/saki-builder:prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
   - the slice's **acceptance criteria** → seed the plan's Success Criteria
+  - the slice's **`Assumes:`** line (if present) → seed the plan's implementation steps + **Migration Checklist** (the hidden work — migration/backfill/index/flag/permission/rollback — `/saki-builder:prd-review` surfaced and `/saki-builder:prd` stated; do NOT re-derive it)
   - the **§5 outcome IDs** it serves → keep each Success Criterion's `→ 5.x` link
-  - the **outcome-tied kill criterion** and **appetite** → into the plan header (Step 2 / template)
+  - the **outcome-tied kill criterion** (§6) and the **feature appetite band** (§6/header — `small|medium|large`) → into the plan header (Step 2 / template). The band is the *feature-wide* recut ceiling; derive THIS plan's own appetite (`~N agent tasks`) from the slice's size (its acceptance-criteria count — ≤5 ≈ one agent iteration per INVEST), not from the band directly.
   - any `⚠ DISCOVERY-RISK` banner → record as a plan-level UNKNOWN with a resolution strategy
+  - **Lock check:** if the source PRD carries no `<!-- prd-locked: … -->` marker, note it in the plan header
+    as `Source PRD: NOT LOCKED — requirements may still change`. Inside `/saki-builder:build` this never happens
+    (build's Gate 1.5 hard-blocks an unlocked PRD *before* rplan runs); a **standalone** `/saki-builder:rplan`
+    stays lenient — plan against it, but flag that the freeze (`/saki-builder:proto`'s lock) hasn't run yet.
   If there is no source PRD (standalone `/saki-builder:rplan`), note "no source PRD" and continue.
 - **Persona check:** after PRD ingestion, check if `.claude/personas/*.md` exists. If it does,
   read the relevant persona(s) and carry forward into the plan:
@@ -105,7 +110,7 @@ Fill in the plan template with:
 - **User Role Coverage matrix** — who can do what after this change
 - **Plan Wiring section** — full call chain from UI → API → Service → DB for each role
 - **Migration Checklist** — every schema change listed with its migration file
-- **Appetite & Kill-if (inherited from the source PRD slice via Step 1)** — `Appetite: ~N agent tasks`; `Kill-if: [§5 metric] crosses [threshold]`. If the plan's step count exceeds the appetite, flag a recut **before** presenting.
+- **Appetite & Kill-if (inherited via Step 1)** — `Appetite: ~N agent tasks` (derived from this slice's criteria count; must sit within the PRD's feature appetite band from §6/header); `Kill-if: [§5 metric] crosses [threshold]`. If the plan's step count exceeds the appetite, flag a recut **before** presenting.
 
 ### 2.5. User Flow Spec (user-facing tasks only)
 

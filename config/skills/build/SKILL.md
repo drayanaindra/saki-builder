@@ -6,9 +6,9 @@ description: Autonomously execute a finished PRD end-to-end. Reads the PRD's ver
 # Autonomous PRD Executor
 
 You are operating in **TRUST MODE** — fully autonomous execution. The PRD has already
-been written and reviewed (via `/saki-builder:prd`) and the user has pre-authorized this flow. Your
-single goal: **ship every vertical slice in the PRD, fully tested, with no outstanding
-issues.** Do not stop until that is true.
+been written, reviewed (via `/saki-builder:prd` → `/saki-builder:prd-review`), and **Locked** (via
+`/saki-builder:proto`, Gate 1.5), and the user has pre-authorized this flow. Your single goal: **ship every
+vertical slice in the PRD, fully tested, with no outstanding issues.** Do not stop until that is true.
 
 This command is the one-shot equivalent of running, by hand, for each slice:
 
@@ -143,6 +143,33 @@ real data + state + tests + backend wiring) instead of re-picking from scratch �
 already approved. As part of the slice that promotes a `proto-preview/<slice>` preview, **delete
 that throwaway preview route/story and revert any `/proto-preview` middleware bypass** (neither may
 ship). If no proto notes exist, build the UI normally.
+
+---
+
+## GATE 1.5: Lock check — requirements must be frozen (hard stop if unlocked)
+
+`/saki-builder:build` runs only against a **Locked** PRD — the requirements are frozen before any slice
+reaches `/saki-builder:rplan`. Grep the PRD (loaded in Gate 1) for the lock marker:
+
+```bash
+grep -qE '^<!-- prd-locked:' "<prd-path>" && echo LOCKED || echo UNLOCKED
+```
+
+If the marker is **absent**, **STOP** — do not plan, do not touch code:
+```
+HARD STOP — PRD NOT LOCKED
+Requirements aren't frozen; /saki-builder:build won't hand unfrozen scope to /saki-builder:rplan.
+Lock it first:  /saki-builder:proto <E<n> | prd-file.md>
+  — designs + approves the UI, then writes Status: Locked (a no-UI PRD is frozen there too).
+Then re-run /saki-builder:build.
+```
+
+This is the gate that enforces **"lock Product Requirement before hand off to rplan."** It is **not** a
+confirmation prompt (TRUST MODE holds) — it is a *precondition*: the lock is written by a human-gated step
+(`/saki-builder:proto`) **before** build, so build itself never pauses to ask. A Locked PRD is by definition
+Approved + review-green (the lock is the last gate of the PRD phase), so no separate approval check is needed
+here. `--slice` PARTIAL proto runs do not lock, so a build after one still correctly hard-stops until a full
+`/saki-builder:proto` locks the whole journey.
 
 ---
 
@@ -352,9 +379,10 @@ Next actions:
 
 ## Rules
 
-- **No questions.** The only hard stops are: missing PRD (Gate 1), an ABSOLUTE NO-GO, or a slice
-  that genuinely cannot be made green. Unresolved `before slice N` open questions are auto-resolved
-  (Per-Slice Loop, step 0), never blocked on.
+- **No questions.** The only hard stops are: missing PRD (Gate 1), an **unlocked PRD** (Gate 1.5),
+  an ABSOLUTE NO-GO, or a slice that genuinely cannot be made green. Unresolved `before slice N` open
+  questions are auto-resolved (Per-Slice Loop, step 0), never blocked on. The lock stop is a precondition,
+  not a prompt — resolve it by running `/saki-builder:proto` first, never by asking the user mid-build.
 - **PRD is the source of truth.** Scope = its slices; success = its acceptance criteria;
   boundaries = its non-goals. Never re-elicit scope from the user.
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.
