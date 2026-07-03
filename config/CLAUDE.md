@@ -34,15 +34,22 @@ Do NOT execute until: Confidence ≥ 90%, Unknowns ≤ 3, human approves.
 
 ## Pre-merge Gate (BLOCKING)
 
-Before `git push` to main: **SonarQube quality gate must be PASSED**.
+Before `git push` to main, two PreToolUse:Bash hooks must both pass:
 
-Enforced automatically by `sonar-gate.sh` (PreToolUse:Bash hook). If blocked:
+**1. SonarQube quality gate must be PASSED** — `sonar-gate.sh`. If blocked:
 
 1. `/sonarqube:sonar-quality-gate` — see which conditions are failing
 2. `/sonarqube:sonar-list-issues` — see blocking issues
 3. Fix, re-run analysis, verify gate is PASSED, then push
 
-To bypass (intentional, documented reason only): run `git push` manually outside Claude Code.
+**2. Test coverage must be > 80%** — `coverage-gate.sh` (strict: exactly 80.0% blocks).
+Reads the last coverage report an earlier test run / `/qa` produced (Jest/Vitest
+`coverage-summary.json`, Cobertura `coverage.xml`, `lcov.info`, or Go `coverage.out`)
+and blocks the push unless total coverage is strictly above the floor. Threshold is
+`COVERAGE_MIN` (default 80). No report found → warns and allows (set `COVERAGE_STRICT=1`
+to require one). If blocked: `/qa` to add tests and re-check the floor, then push.
+
+To bypass either (intentional, documented reason only): run `git push` manually outside Claude Code.
 
 ## Clean Code Standards (write-time, SonarQube)
 

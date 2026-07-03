@@ -31,6 +31,10 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/coverage-gate.sh\""
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/format-staged.sh\"",
             "timeout": 30
           }

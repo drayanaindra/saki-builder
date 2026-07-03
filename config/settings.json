@@ -97,6 +97,10 @@
           },
           {
             "type": "command",
+            "command": "~/.claude/hooks/coverage-gate.sh"
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/format-staged.sh",
             "timeout": 30
           }
