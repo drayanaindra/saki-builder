@@ -383,11 +383,20 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   cleanly, after all content, at every viewport.
 - **Isolation:** preview files live only under the `proto-preview` namespace (or Storybook) so they
   are trivially deletable and can never reach production.
+- **Typecheck/lint the harness FIRST (cheap pre-render catch):** before serving, run the project's
+  typechecker/linter over the generated `proto-preview/*` files (`tsc --noEmit`, `eslint <files>`, or the
+  repo's own script). A used-but-not-imported symbol or a type error is a runtime crash that renders the
+  error boundary (real, observed: `useState` used without importing it → `ReferenceError` on every render).
+  Catching it here costs one command; missing it costs a whole gallery of captured error frames.
 - **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
   :PORT` shows it, cwd matches), reuse it — hot-reload picks up the new route; no boot needed.
-  Otherwise start it. Then **verify the route actually serves** (`curl` it: expect HTTP 200, grep
-  for your banner text, and check there's no `Failed to compile` / error overlay) before
-  screenshotting — do not assume it came up, and never screenshot an error page (return to 5a/5c).
+  Otherwise start it. Then smoke-test the route with `curl` (expect HTTP 200, no `Failed to compile`).
+  **Treat `curl` as a smoke test only, NOT the render gate:** curl sees the *SSR HTML*, so a CLIENT-side
+  throw (a missing provider/import that crashes on hydration) still returns 200 with the SSR banner while
+  the browser shows the error boundary — a green curl on a broken page. The **authoritative** render check
+  is the headless capture's per-frame hard gate (6a): it requires the `__PROTO__` sentinel in the LIVE DOM
+  and fails on any `pageerror` / error boundary. Do not assume the route came up; never screenshot an error
+  page (return to 5a/5c).
 
 ### 5e. (Legacy / optional) Write the live-preview manifest
 
@@ -479,14 +488,24 @@ const pct = (b,W,H) => b && { x:+(b.x/W*100).toFixed(2), y:+(b.y/H*100).toFixed(
 mkdirSync(OUT, { recursive:true })
 const browser = await chromium.launch()
 const hotspots = {}                                          // slug -> { to, label, desktop:{}, mobile:{} }
+const FAILED = []                                            // frames that crashed/blanked — must NOT be screenshotted
 for (const [vp,[W,H]] of Object.entries(VIEWPORTS)) {
   const ctx = await browser.newContext({ viewport:{width:W,height:H}, deviceScaleFactor:2 })
-  const page = await ctx.newPage(); const errs = []
-  page.on('pageerror', e => errs.push(`[${vp}] ${e.message}`))
+  const page = await ctx.newPage()
+  let pageErr = null
+  page.on('pageerror', e => { pageErr = e.message })         // a CLIENT-side throw during render (missing import/provider)
   for (const s of SCREENS) {
     for (const [state, suffix] of Object.entries(s.states)) {
+      pageErr = null
       await page.goto(BASE + suffix, { waitUntil:'networkidle' })
-      await page.waitForSelector('text=__PROTO__', { timeout:8000 }).catch(()=>{})   // render sentinel (5d)
+      // HARD render gate — NEVER screenshot a crashed/blank render (the "error page captured N×" false-green).
+      // The sentinel must be in the LIVE DOM (not just SSR HTML — a client throw slips past a curl of the SSR).
+      const rendered = await page.waitForSelector('text=__PROTO__', { timeout:8000 }).then(()=>true).catch(()=>false)
+      const boundary = await page.locator("text=/couldn['’]t load|Application error|__next_error__|Unhandled Runtime Error/i").count()
+      if (!rendered || pageErr || boundary) {                // fail the frame, do NOT capture it
+        FAILED.push(`${s.slug}-${state}-${vp}: ${pageErr || (boundary ? 'error boundary rendered' : 'no __PROTO__ sentinel in DOM')}`)
+        continue                                             // fix 5a (providers) / 5c (auth), then re-run
+      }
       await page.waitForTimeout(400)
       await page.screenshot({ path:`${OUT}/${s.slug}-${state}-${vp}.png` })
     }
@@ -498,19 +517,27 @@ for (const [vp,[W,H]] of Object.entries(VIEWPORTS)) {
       hotspots[s.slug] = Object.assign(hotspots[s.slug]||{ to:s.anchor.to, label:s.anchor.label }, { [vp]: pct(box,W,H) })
     }
   }
-  if (errs.length) console.error('PAGE ERRORS:\n'+errs.join('\n'))   // never screenshot an error page — fix 5a/5c
   await ctx.close()
 }
 await browser.close()
 writeFileSync(`${OUT}/hotspots.json`, JSON.stringify(hotspots, null, 2))
+if (FAILED.length) {                                          // ANY crashed frame ⇒ capture FAILED; never proceed to the gallery
+  console.error('CAPTURE FAILED — these frames did not render (fix providers 5a / auth 5c, never ship an error frame):\n' + FAILED.join('\n'))
+  process.exit(1)                                            // non-zero exit halts the run BEFORE the Coverage Gate / gallery
+}
 console.log('captured screenshots + hotspots.json')
 ```
 
-Confirm the PNGs exist and `hotspots.json` is non-empty (and no `PAGE ERRORS` printed — those mean a
-provider/compile failure: fix 5a/5c, never ship an error frame). If a shot fails, retry once; then split
-by what failed: a failed non-page **state** shot (loading/error) may be noted in `index.md`, but a failed
-**page** (whole-screen) frame is a **Coverage-Gate failure** — fix it and re-capture, never note-and-skip
-a screen. Then write `index.md` leading with the journey-ordered page frames + the fidelity contract.
+**The capture script HARD-FAILS (non-zero exit + `CAPTURE FAILED`) on any frame that crashed, rendered the
+error boundary, or lacked the `__PROTO__` sentinel in the LIVE DOM — a crashed render is NEVER
+screenshotted.** So a clean (zero) exit means every attempted frame genuinely rendered; that is the
+authoritative render check (not the 5d curl, which only sees SSR HTML and misses a client-side throw). If
+it prints `CAPTURE FAILED`, STOP and do not proceed to the gallery: the named frames hit a provider (5a) or
+auth (5c) failure — fix and re-run. (This is the exact "error page captured N× as identical frames"
+false-green the gate exists to prevent.) For a failed non-page **state** shot (loading/error) you may note
+it in `index.md`; a failed **page** (whole-screen) frame is a **Coverage-Gate failure** — fix it and
+re-capture, never note-and-skip a screen. Then write `index.md` leading with the journey-ordered page
+frames + the fidelity contract.
 
 **Mobile-fidelity check (BLOCKING — the mobile frame must be a real mobile layout, not a squished desktop).**
 Proto renders the project's REAL components, so a non-responsive component yields a genuinely broken mobile
@@ -904,10 +931,17 @@ DESK=$(ls "$S"/*-page-desktop.png 2>/dev/null | wc -l | tr -d ' ')   # screens c
 MOB=$(ls "$S"/*-page-mobile.png  2>/dev/null | wc -l | tr -d ' ')    # screens captured (mobile)
 GALLERY=$(grep -c 'title:' "$S/preview.html")               # screens in the gallery
 echo "manifest=$MANIFEST desktop=$DESK mobile=$MOB gallery=$GALLERY"
+# DISTINCTNESS — presence is NOT correctness. Byte-identical page frames = a non-varying / crashed render
+# (the "same error page captured N× and the gate still passed" false-green). Portable hash: Linux md5sum | macOS md5 -q.
+hash1(){ command -v md5sum >/dev/null && md5sum "$1" | awk '{print $1}' || md5 -q "$1"; }
+DISTINCT=$(for f in "$S"/*-page-desktop.png; do hash1 "$f"; done | sort -u | wc -l | tr -d ' ')
+echo "distinct-desktop-page-frames=$DISTINCT   (must equal manifest when manifest>1)"
 ```
 
-**All four counts must be equal.** If `desktop < manifest` (or `mobile`/`gallery` < manifest), the run is
-INCOMPLETE — a screen was skipped. This is a HARD STOP, never a note in `index.md`:
+**All four counts must be equal, AND the page frames must be DISTINCT.** Two independent hard checks:
+
+1. **Coverage** — if `desktop < manifest` (or `mobile`/`gallery` < manifest), the run is INCOMPLETE — a
+   screen was skipped. HARD STOP, never a note in `index.md`:
 ```
 HARD STOP — PROTO INCOMPLETE
 Manifest requires N screens; only M captured (desktop=…, mobile=…, gallery=…).
@@ -916,6 +950,22 @@ Missing: <list the manifest rows that have no page frame>.
 capture, then re-run the Coverage Gate. Do NOT emit the Completion Output while any manifested screen is
 uncaptured.
 ```
+
+2. **Distinctness / fidelity** — with `manifest > 1`, if `DISTINCT < manifest` the page frames are not all
+   different: two screens rendered byte-identically, which almost always means a **non-varying render or an
+   error page captured for every screen** (real, observed: a missing import crashed the harness → the same
+   Next error boundary was screenshotted for all screens, yet all files existed so a presence-only gate
+   PASSED). HARD STOP — presence is not correctness:
+```
+HARD STOP — PROTO FRAMES NOT DISTINCT
+manifest=N but only DISTINCT=K unique desktop page frames — some screens rendered identically.
+Likely cause: the render didn't vary per screen, OR an error page was captured for every screen (check for
+a Next.js error boundary; re-run the 6a capture, which now hard-fails on a missing __PROTO__ sentinel / a
+pageerror / an error boundary — a clean capture exit is required). Fix the harness (5a/5c), re-capture,
+re-run the Coverage Gate. Do NOT emit the Completion Output while any two page frames are byte-identical.
+```
+(If two screens are legitimately near-identical, they are the same screen — merge them in the manifest;
+the gate is right to flag it.)
 
 **Screens are all-or-fail; only states are individual.** A genuinely-unreachable *state* (loading/error)
 on a *present* screen may still be noted-and-omitted per Step 3. A missing *screen* is never acceptable —
@@ -999,6 +1049,9 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Bare preview route that throws on a missing provider | Step 5a — detect + wrap in mock providers, or use Storybook |
 | Booting real auth/DB to render a preview | Mock the session/locale/data-layer; never hit live auth |
 | Screenshotting a compile-error / error page | Fix the provider (5a) first; never capture an error as the "preview" |
+| Swallowing the `__PROTO__` sentinel (`waitForSelector(...).catch(()=>{})`) then screenshotting anyway | HARD-gate it (6a): the sentinel must be in the LIVE DOM; a missing sentinel / a `pageerror` / an error boundary FAILS the frame (skip it) and the capture exits non-zero — a crashed render is never captured |
+| Coverage Gate passing on N present-but-byte-identical frames (an error page captured for every screen) | Assert DISTINCTNESS + no error boundary (Coverage Gate): `DISTINCT < manifest` ⇒ HARD STOP. Presence ≠ correctness |
+| Trusting a `curl` 200 of SSR HTML as the render check | `curl` is a smoke test only — a CLIENT-side throw passes it while the browser shows the error boundary; the live-DOM sentinel gate (6a) is authoritative, and typecheck/lint the harness (5d) before capture |
 | Declaring done without verifying the server serves | `lsof`/curl the route before screenshotting |
 | Rendering the slice in a void / bare canvas instead of the real page | Full-shell composition (5b#1) — import the real layout/shell and render the slice inside it |
 | State-matrix-only gallery with no journey flow | Build the Figma-flow gallery (6b): a click-through Flow + a journey-ordered Overview; per-screen states are a toggle, never a bare matrix |
@@ -1025,10 +1078,13 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
   backend-slice outcome screens), the connective entry/success screens between them, and every reachable
   state per screen. A no-arg run covers the whole PRD; `--slice=N` and omitting a state are explicit,
   justified narrowings, never the implicit default.
-- **Coverage is gated, not asserted.** GATE 1 writes a Screen Manifest of every screen the finished PRD
-  produces; the **Coverage Gate** (before Completion) hard-stops unless every manifested screen has a
-  captured frame at both viewports. Every screen, no curation, no negotiation — a missing screen fails the
-  run. Screens are all-or-fail; only individual states may be reasoned about (Step 3).
+- **Coverage is gated, not asserted — and presence is not correctness.** GATE 1 writes a Screen Manifest of
+  every screen the finished PRD produces; the **Coverage Gate** (before Completion) hard-stops unless every
+  manifested screen has a captured frame at both viewports **AND the page frames are DISTINCT** (byte-identical
+  frames = a non-varying/crashed render, e.g. an error page captured for every screen). The capture itself
+  (6a) hard-fails on a missing `__PROTO__` sentinel in the live DOM / a `pageerror` / an error boundary, so a
+  crashed render is never screenshotted. Every screen, no curation, no negotiation — a missing OR duplicated
+  screen fails the run. Screens are all-or-fail; only individual states may be reasoned about (Step 3).
 - **Real components or stop.** Gate 2 is blocking — a faithful preview without a real design system
   is a contradiction; say so rather than fabricate.
 - **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get
