@@ -1,6 +1,6 @@
 ---
 name: prd-review
-description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-surface gaps list (undefined load-bearing DB · API · architecture · UI/UX surfaces) — surfacing gaps and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score.
+description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score.
 ---
 
 # PRD Review — Structural Scan + Adversarial Judge Panel + Pair-Review Blind-Spot Pass
@@ -288,31 +288,45 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
    a gap; likewise an omitted §13 or §15 (a no-UI PRD has no screens section). Absent-because-none ≠ missing
    — do not raise a false NOT-READY on it. **Readiness never requires the lock:** `/saki-builder:prd-review` runs
    *before* the `/saki-builder:proto` lock (it is how the PRD reaches green), so an unlocked PRD is expected, never a gap.
-8. **Technical-surface gaps & handoff (visibility, not design).** A **gaps-only** list: emit a row **only**
-   for a layer with an *undefined load-bearing* surface — one the slices/rules imply but the PRD never
-   specifies. A fully-specified or absent layer is omitted (or `none`); this is not a full inventory.
-   **Derived faithfully from the PRD — every entry cited, nothing invented**:
+8. **Technical contract check & residual-gaps handoff (verify what's stated, flag what's missing — never design).**
+   The PRD now carries a **§16 Technical Contract (thin)** — the DB/API/architecture *shape* `/saki-builder:prd`
+   authored (entities · endpoint purposes · one architecture decision), each row REUSE (`path:line`) or NEW and
+   serving an `8.x · 5.x`. Two jobs:
 
-   | Layer | Undefined load-bearing surface (cited) | Handoff |
-   |-------|----------------------------------------|---------|
-   | DB / data | tables/fields/migrations/indexes the slices+rules imply but leave unspecified | → `/saki-builder:rplan` (DB) |
-   | API / integration | endpoints / payloads / error contracts implied but unspecified | → `/saki-builder:rplan` (API) |
-   | Architecture | components · data flow · external deps (§13/§14) · slice sequencing left open | → `/saki-builder:rplan` |
+   **(a) VERIFY §16** (when the feature has a backend surface — a UI-only PRD correctly omits it):
+   - **Present** — §16 exists, OR is a correct `No backend surface — UI-only change.` omission.
+   - **Cited** — every row is REUSE with a real `path:line` OR tagged `NEW`; no fabricated/uncited row.
+   - **Traceable** — every row serves a real §8 slice / §5 outcome (no speculative surface — YAGNI).
+   - **Coherent** — no slice/rule implies a load-bearing surface that §16 omits; no §16 row references a
+     non-existent slice/outcome. §16 must stay *shape* — a row carrying column/field names, a full request/
+     response payload, or a migration file has overstepped into `/saki-builder:rplan`'s lane (flag it, don't
+     bless it).
+   A failure of (a) — §16 missing on a backend feature · an uncited row · an untraceable row · §16↔slice
+   incoherence · a row that overstepped into full design — is a `REVISE` finding (see step 9). You check the
+   contract's **existence, grounding, and coherence** — you do NOT author or complete it.
+
+   **(b) FLAG residual gaps** §16 does NOT cover — a **gaps-only** list, one row per *undefined load-bearing*
+   surface the slices/rules imply but §16 (and the PRD) leaves open. Hand off; do not design. Every entry cited:
+
+   | Layer | Undefined load-bearing surface §16 leaves open (cited) | Handoff |
+   |-------|--------------------------------------------------------|---------|
+   | DB / data | tables/fields/migrations/indexes implied but absent from §16 | → `/saki-builder:rplan` (DB) |
+   | API / integration | endpoints / payloads / error contracts implied but absent from §16 | → `/saki-builder:rplan` (API) |
+   | Architecture | components · data flow · external deps (§13/§14) · sequencing §16 leaves open | → `/saki-builder:rplan` |
    | UI / UX | screens/states the PRD names (§15 inventory / §8 / §9) but leaves **undesigned** | → `/saki-builder:proto` (designs + locks) |
 
-   **You surface + flag + hand off; you do NOT design.** No fabricated schema/endpoint/architecture/UI —
-   detailed DB/API/arch is `/saki-builder:rplan`'s lane, UI is `/saki-builder:proto`'s. An undefined
-   load-bearing contract that blocks slice 1 is ALSO a Readiness gap (step 7 #2/#3). One line per gap; a
-   layer with no undefined surface is simply omitted. An **omitted §13/§14/§15** (no constraints / no deps /
-   no UI) is not a gap. The "contract stated?" column is dropped by design — nothing downstream reads it; only
-   the *gap* (undefined load-bearing surface) carries handoff value.
+   **You verify + flag + hand off; you do NOT design.** No fabricated schema/endpoint/architecture/UI —
+   detailed DB/API/arch is `/saki-builder:rplan`'s lane (it *hardens* §16 into full design), UI is
+   `/saki-builder:proto`'s. An undefined load-bearing contract that blocks slice 1 is ALSO a Readiness gap
+   (step 7 #2/#3). One line per gap; a layer with no undefined surface is simply omitted. An **omitted
+   §13/§14/§15/§16** (no constraints / no deps / no UI / no backend surface) is not a gap.
 9. **Emit the verdict signal — NOT a precise score** (the judge is non-deterministic; a decimal would be
    false precision):
 
    | Signal | Condition |
    |--------|-----------|
    | `DISCOVERY-FIRST` | premise laundered, OR evidence floor failed, OR the load-bearing assumption is unvalidated with no spike (Readiness #4 unmet) |
-   | `REVISE` | any BLOCK or HIGH stands, **OR any state-changing/`🔒` slice is missing a prescribed failure criterion or has hidden work not yet stated as an `Assumes:` line / dedicated slice, OR Readiness is NOT READY on a fixable blocker** — regardless of that finding's severity |
+   | `REVISE` | any BLOCK or HIGH stands, **OR any state-changing/`🔒` slice is missing a prescribed failure criterion or has hidden work not yet stated as an `Assumes:` line / dedicated slice, OR §16 fails the contract check (missing on a backend feature · an uncited/untraceable row · §16↔slice incoherence · a row overstepped into full design), OR Readiness is NOT READY on a fixable blocker** — regardless of that finding's severity |
    | `SHIP` | no BLOCK/HIGH; **every state-changing/`🔒` slice's failure surface is covered**; only MED/LOW polish remains |
 
    Print a **coverage line**: `Failure-surface: N/M state-changing slices fully covered · K hidden-work items surfaced.` A gap here holds `REVISE` even when the premise is clean. **Readiness is a distinct axis:** a `SHIP`-quality PRD that is not startable prints `SHIP · NOT READY` and Phase 4 points at the blocker, not `/saki-builder:rplan`.
@@ -339,7 +353,7 @@ Disposition: Open        (Open | Fixed | Won't-fix: <reason> | Deferred: <trigge
 
 ## Implementation-reality checklist   (newly-surfaced R#s + pre-existing [manual] ACs + the [auto] list for /saki-builder:qa)
 ## Readiness (Definition of Ready)    (the 5-item table + Readiness verdict)
-## Technical-surface gaps & handoff   (undefined load-bearing surfaces only → /saki-builder:rplan · /saki-builder:proto)
+## Technical contract (§16) check & residual gaps   (verify stated · flag residual → /saki-builder:rplan · /saki-builder:proto)
 ## Unverifiable claims                (grounding TODOs, not defects)
 ```
 
@@ -363,8 +377,9 @@ IMPLEMENTATION-REALITY CHECKLIST (the headline — caught before manual test, no
     ☐ [slice] Given … When … Then … — expected signal: […]   [manual]
   (full ledger + the [auto] criteria for /saki-builder:qa are in the review file)
 
-TECHNICAL-SURFACE GAPS (undefined load-bearing surfaces — flagged, not designed; omit a layer with none):
-  DB:    <undefined surface, cited> → /saki-builder:rplan
+TECHNICAL CONTRACT (§16 verify) + RESIDUAL GAPS (flagged, not designed; omit a layer with none):
+  §16:   present | omitted(UI-only) · rows cited? · slice-coherent?   [REVISE if missing on a backend feature · uncited/untraceable row · incoherent · overstepped into full design]
+  DB:    <residual surface §16 leaves open, cited> → /saki-builder:rplan
   API:   <…> → /saki-builder:rplan
   Arch:  <…> → /saki-builder:rplan
   UI/UX: <…> → /saki-builder:proto
@@ -434,10 +449,13 @@ grounded → ③ prescribe, don't lecture.**
 - **Readiness is a DISTINCT axis from the verdict** — the verdict judges soundness, readiness judges
   buildability-now. A `SHIP`-quality PRD can be `NOT READY` (unbuilt dep, slice-1-blocking open Q,
   unaccepted bet). Each readiness blocker cites an `R#`/section; it never re-derives quality.
-- **The technical-surface gaps list surfaces + flags + hands off — it NEVER designs.** It is gaps-only
-  (undefined load-bearing surfaces), not a full inventory; no fabricated schema/endpoint/architecture/UI;
-  every entry cites PRD text. Detailed DB/API/arch is `/saki-builder:rplan`'s lane, UI is
-  `/saki-builder:proto`'s. Overstepping is both a faithfulness and a scope violation.
+- **The technical-contract check verifies the §16 thin contract, then flags residual gaps — it NEVER designs.**
+  Job (a) checks §16 exists · is cited (REUSE `path:line` / NEW) · is slice-coherent · stayed *shape* (a row
+  with column names / full payloads / a migration file overstepped — flag it, don't complete it). Job (b) is
+  gaps-only (undefined load-bearing surfaces §16 leaves open), not a full inventory; no fabricated
+  schema/endpoint/architecture/UI; every entry cites PRD text. Detailed DB/API/arch is `/saki-builder:rplan`'s
+  lane (it hardens §16), UI is `/saki-builder:proto`'s. Authoring or completing the contract — not just
+  flagging its gaps — is both a faithfulness and a scope violation.
 - **The review file is a trackable record:** every finding gets a stable `R#` + `Disposition`; a re-run
   reconciles against the prior file (Step 0.5) and never renumbers a retired ID. The `Reviewer`/`Status`
   header is team metadata — advisory, ignorable by a solo builder.
