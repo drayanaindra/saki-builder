@@ -1,6 +1,6 @@
 ---
 name: build
-description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /saki-builder:build <prd-file.md>.
+description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → (security audit on security-relevant slices) on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /saki-builder:build <prd-file.md>.
 ---
 
 # Autonomous PRD Executor
@@ -13,7 +13,7 @@ vertical slice in the PRD, fully tested, with no outstanding issues.** Do not st
 This command is the one-shot equivalent of running, by hand, for each slice:
 
 ```
-/saki-builder:rplan  →  /saki-builder:rplan-review (only if needed)  →  /saki-builder:approved  →  /saki-builder:qa  →  /saki-builder:reviewer
+/saki-builder:rplan  →  /saki-builder:rplan-review (only if needed)  →  /saki-builder:approved  →  /saki-builder:qa  →  /saki-builder:reviewer  →  security audit (security-relevant slices only)
 ```
 
 …then verifying the whole thing end-to-end.
@@ -26,9 +26,9 @@ You are in TRUST MODE. This means:
 - **NEVER ask "Do you want to proceed?"** or any variation. Make the call, log it, continue.
 - **Do NOT wait for plan approval.** `/saki-builder:rplan` normally stops for a human; here you
   auto-approve any plan that clears the confidence bar and proceed to `/saki-builder:approved` yourself.
-- Agent-based sub-skills that are part of this flow (`/saki-builder:rplan-review`, `/saki-builder:reviewer`) are
-  permitted — they are how slices get reviewed. Just never pause for user confirmation
-  around them.
+- Agent-based sub-skills that are part of this flow (`/saki-builder:rplan-review`, `/saki-builder:reviewer`,
+  and the `security-review` audit) are permitted — they are how slices get reviewed. Just never pause
+  for user confirmation around them.
 - The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an ABSOLUTE NO-GO (below),
   or a slice that cannot be made green after repeated honest attempts. An unresolved `before slice
   N` open question is **not** a stop — `/saki-builder:build` auto-resolves it (Per-Slice Loop, step 0) and
@@ -45,7 +45,8 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 `/goal`). So this skill enforces its **own** persistence — behave as if a goal were set:
 
 - **Completion signal.** You are done ONLY when every slice in the PRD is green
-  (`/saki-builder:qa` passes **and** `/saki-builder:reviewer` is clean) **and** the e2e suite passes. At that point,
+  (`/saki-builder:qa` passes, `/saki-builder:reviewer` is clean, **and** any security audit a
+  security-relevant slice required is clean) **and** the e2e suite passes. At that point,
   and only then, print `PRD_BUILD_COMPLETE`. Never print it early.
 - **Do not hand control back** until you either print `PRD_BUILD_COMPLETE` or hit a real
   hard stop (missing PRD, NO-GO, honestly-blocked slice). If a turn runs long, keep going —
@@ -62,12 +63,14 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
       "steps": { "rplan":    { "status": "done", "artifact": "tasks/<...>-slice1-plan.md" },
                  "approved": { "status": "done", "commit": "<sha>" },
                  "qa":       { "status": "done" },
-                 "reviewer": { "status": "done" } } } ] }
+                 "reviewer": { "status": "done" },
+                 "security": { "status": "done|n/a" } } } ] }
   ```
   Rules: set `artifact` = the slice's plan file when rplan finishes; `commit` = the step's commit
   SHA when approved commits (use `commitPolicy:"none"` if this build does not commit per step — the
-  studio then uses slice-level resume). Set `slices[n].status:"done"` only at step 6 (qa green +
-  reviewer clean). **Best-effort + safe:** a missing/partial manifest must degrade to a normal full
+  studio then uses slice-level resume). The `security` step is `"n/a"` on a slice with no security
+  surface; set `slices[n].status:"done"` only at step 6 (qa green + reviewer clean + the security
+  audit clean-or-`n/a`). **Best-effort + safe:** a missing/partial manifest must degrade to a normal full
   run — never block on it. The studio trusts a step only when its artifact verifies (plan file
   exists / commit resolves), so an inaccurate manifest costs at worst a redo, never a skipped step.
 - **Loop guard.** If the same slice fails the same way ~3 times, stop hammering it: write
@@ -96,6 +99,11 @@ Usage: `/saki-builder:build <E<n> | prd-file.md>` (filler words are fine, e.g. `
 `### E<n>`, and resolve its `**Child PRD:**` link to `tasks/prd-<slug>.md`. If `E<n>` has no Child PRD yet
 (its value is `—`), **STOP**: `E<n> has no PRD yet — run /saki-builder:pickup E<n> first`. Remember the `E<n>`
 so the Completion Output can flip its roadmap status to `Shipped`.
+
+> **Note — PRD-path launches still flip the epic.** The studio board (and a hand-typed
+> `/saki-builder:build tasks/prd-<slug>.md`) invokes this skill with the **PRD path**, not `E<n>`. Do NOT
+> assume "no `E<n>` argument ⇒ no epic to flip": the Completion Output reverse-maps the built PRD back to
+> its epic via the roadmap's `**Child PRD:**` field, so the `Shipped` flip fires on either launch path.
 
 Otherwise extract the PRD path from the arguments: take the token ending in `.md` (or matching
 `prd-*`). Locate the file by checking, in order: `tasks/<name>`, `./<name>`, the path as
@@ -202,7 +210,8 @@ restarting:
 2. **Else read on-disk state yourself.** Parse `tasks/.build-<prd-slug>-state.json` if present (else
    the markdown scratchpad): skip every slice whose `status:"done"` AND whose `approved` commit
    resolves; within the first unfinished slice, skip `rplan` if its plan file exists and `approved`
-   if its commit resolves; always re-run `qa` + `reviewer`.
+   if its commit resolves; always re-run `qa`, `reviewer`, and (for security-relevant slices) the
+   security audit.
 3. **Print** `RESUMING: <N-1> slices complete, starting at slice N step <step>` (or `STARTING FRESH`
    when nothing is complete), then enter the loop.
 
@@ -321,12 +330,66 @@ Invoke the `reviewer` skill on the slice's diff. If it reports **blocking** issu
 (correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/saki-builder:qa`
 and `/saki-builder:reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
 
+### 5.5. Security audit — *security-relevant slices only*
+Gate this step: run it **only when the slice touches a security surface** — auth / session, money /
+payment, PII, a new public or external-facing endpoint, file upload, crypto, raw SQL / shell, or any
+untrusted external input. For a pure-UI, copy, or internal-refactor slice, **skip** it, log
+`SECURITY: slice N — skipped (no security surface)`, and go to step 6. (Skipping keeps the audit off
+the ~80% of slices where it is dead weight.)
+
+When it applies, audit the **same pinned committed diff** the reviewer used (`git diff BASE..HEAD`,
+never the working tree):
+- **Primary** — invoke the global `security-review` skill (Skill tool, `skill: security-review`) on
+  that diff. It hunts the classes a generic review under-weights: broken authz / IDOR, missing
+  tenant isolation, a missing auth guard on the new route, mass-assignment, hardcoded secrets,
+  injection, SSRF.
+- **Fallback** (if `security-review` isn't installed in this project) — do NOT hard-stop: run a
+  fresh-context Agent pass over the diff using the reviewer's Security checklist, and lean on the
+  SonarQube security gate (hotspots + `sonar-dependency-risks` for CVEs) that already runs at the
+  Pre-merge Gate before push.
+
+A security **HIGH is blocking** — same bar as a violated `🔒 INVARIANT`. **Auto-resolve it, no human
+touch** (TRUST MODE holds for security too — never emit `NEEDS_DECISION` for a finding; that gate is
+only for `[human]`-tagged forks). Classify each blocking finding by depth and route it to the
+**shallowest** skill that closes it (cheapest fix first, escalate only when the shallow fix can't hold):
+
+1. **Implementation-level** (default — missing auth guard, unvalidated input, string-concat SQL,
+   hardcoded secret, missing ownership / tenant check in a handler): fix via `/saki-builder:approved`
+   under TDD — add a failing test that *reproduces the hole* first, then close it. Re-enter at step 4.
+2. **Design-level** (the flaw is in the plan, not the code — no tenant-isolation model, wrong auth
+   boundary, a data model that structurally leaks): a point-fix won't hold — **re-plan the slice from
+   step 1 `/saki-builder:rplan`**, carrying the finding in as an explicit requirement/assumption, then
+   `/saki-builder:rplan-review` (the slice is now HIGH-risk) → `/saki-builder:approved`.
+   **If the fix reshapes the UI** (changes a screen, field, or flow the user sees — e.g. drops a
+   leaking field, inserts a step-up-auth / confirm screen), the approved proto for that screen is now
+   stale: re-render it autonomously with `/saki-builder:proto --slice=N`, update
+   `tasks/proto-<slug>-notes.md`, and annotate the changed requirement in the PRD in place
+   (`✅ RESOLVED (auto, security) — <what changed> — <why>`). Do NOT pause for human UI sign-off
+   (TRUST MODE) and do NOT unlock the PRD — it stays Locked; you're amending one screen under the same
+   auto-decision rule as step 0b. Record it in the Completion Output's auto-resolved block for
+   post-hoc human review.
+3. **Dependency-CVE**: bump / replace the dependency in-slice; if it can't be resolved in-slice, log
+   it — the SonarQube `sonar-dependency-risks` gate at the Pre-merge Gate is the hard backstop before push.
+
+After any route, **re-run the tail** — `/saki-builder:qa` → `/saki-builder:reviewer` → this audit —
+and loop until all three are clean. A fix may never cross a **Non-Goal**, a `🔒 INVARIANT`, or an
+**ABSOLUTE NO-GO** (the step-0b guardrails still bind); if the only way to close the finding is one of
+those, that — not the finding — is the genuine block. MED / LOW: fix if cheap, else log and move on.
+
+**Honest backstop (never fake-green).** If a HIGH survives ~3 same-failure fix rounds (the loop
+guard), do NOT weaken the test, suppress the finding, or mark the slice done — output
+`BLOCKED: slice N — <security finding>` and move to independent later slices. A security hole is the
+one thing that must never be silenced to pass. **Stay terse:** log each route as ONE line —
+`SECURITY: slice N — <finding> → <approved|rplan|dep-bump>` — not a narration, and re-run the audit to
+*actual* clean before step 6, never assert it.
+
 ### 6. Mark done, advance
 Log `SLICE [N] ✓ — <title>` with a one-line note (commits, files, test result), then move
 to the next slice.
 
-**Loop until issue-free:** a slice is "done" only when `/saki-builder:qa` is fully green **and**
-`/saki-builder:reviewer` has no blocking findings. If you cannot get a slice green after repeated honest
+**Loop until issue-free:** a slice is "done" only when `/saki-builder:qa` is fully green, **and**
+`/saki-builder:reviewer` has no blocking findings, **and** — if the slice was security-relevant — the
+step-5.5 security audit is clean. If you cannot get a slice green after repeated honest
 attempts, stop and report exactly what's blocking — do not fake completion or weaken tests
 to pass.
 
@@ -351,23 +414,32 @@ If **no e2e suite exists**, do NOT silently pass. Report:
 
 ## Completion Output
 
-When every slice is green, reviewed, and e2e passes: **if this build was started from an epic (`E<n>`),
-flip that epic to `Shipped` in `tasks/roadmap.md`** — set its `**Status:**` to `Shipped` and `**Updated:**`
-to today (`date +%F`). The roadmap lifecycle closes here (Planned → In-progress → Shipped). Then output:
+When every slice is green, reviewed, and e2e passes, **flip the built PRD's epic to `Shipped` in
+`tasks/roadmap.md`** (if one exists). Identify the epic by **either** launch path:
+- **Epic-id launch** — the remembered `E<n>` from the Input step.
+- **PRD-path launch** (the studio board and hand-typed `/saki-builder:build tasks/prd-<slug>.md`) — reverse-map:
+  scan `tasks/roadmap.md` for the `### E<n>` block whose `**Child PRD:**` **basename** matches the built
+  PRD's basename (compare filenames only — roadmap stores a bare `prd-<slug>.md`, the build arg may be an
+  absolute or `tasks/`-relative path).
+
+If a matching epic is found and it is not already `Shipped`, set its `**Status:**` to `Shipped` and
+`**Updated:**` to today (`date +%F`) — the roadmap lifecycle closes here (Planned → In-progress → Shipped).
+If **no** epic references this PRD (a standalone PRD build), skip silently — there is nothing to flip. Then output:
 
 ```
 --- /saki-builder:build COMPLETE ---
 PRD: <prd-file>
 Branch: feature/<name>
 Slices: [N/N] done
-  1. <title> ✓  (qa: pass, review: clean)
+  1. <title> ✓  (qa: pass, review: clean, sec: clean|n/a)
   2. <title> ✓  ...
 E2E: <pass | no suite found>
 PRD_BUILD_COMPLETE
 
 Auto-resolved decisions (review & override if any are wrong):
   slice N — <question> → <decision>  (<one-line why>)
-  …  (omit this block if no open questions needed resolving)
+  slice N — security UI reshape: <what changed on screen> → re-proto'd  (<why>)
+  …  (omit this block if nothing needed auto-resolving)
 
 Next actions:
 > Review the branch diff and open a PR
@@ -387,7 +459,7 @@ Next actions:
   boundaries = its non-goals. Never re-elicit scope from the user.
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.
 - **Single source of truth for behavior.** Invoke `rplan` / `rplan-review` / `approved` /
-  `qa` / `reviewer`; do not re-implement their logic here.
+  `qa` / `reviewer` / `security-review`; do not re-implement their logic here.
 - **Never fake green.** Don't weaken or delete tests to pass `/saki-builder:qa` or e2e. A blocked slice
   is reported honestly.
 - **Clean-code standard, always.** Every slice is written to the SonarQube clean-code standard —

@@ -6,7 +6,7 @@
 // internal references (/rplan, /prd, /build, …) in skill + agent bodies to /saki-builder:<name>,
 // but ONLY for names that are actually OUR skills (top-level dirs in config/skills). External
 // commands (/code-review, /security-review, /simplify, /verify, /init, /review, /clear) are not
-// in that set, so they are left bare automatically — same policy ed-harness uses.
+// in that set, so they are left bare automatically.
 //
 // Guards against false hits:
 //   - lookbehind (?<![\w:./~*-]) — the slash must not be inside a path (skills/rplan, ./sync.sh,

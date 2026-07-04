@@ -45,7 +45,6 @@
       "NotebookEdit"
     ]
   },
-  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -155,7 +154,8 @@
     "security-guidance@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "data-engineering@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true
+    "playwright@claude-plugins-official": true,
+    "saki-builder@saki-builder": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -164,13 +164,18 @@
         "repo": "anthropics/claude-plugins-official"
       }
     },
-    "solveed-harness": {
+    "saki-builder": {
       "source": {
-        "source": "git",
-        "url": "https://gitlab.solveeducation.org/solveed/ed-harness.git"
+        "source": "directory",
+        "path": "/Users/indrayana/claude-config"
       }
     }
   },
+  "env": {
+    "COVERAGE_MIN": "80"
+  },
   "effortLevel": "xhigh",
-  "skipWorkflowUsageWarning": true
+  "skipWorkflowUsageWarning": true,
+  "theme": "dark",
+  "model": "claude-sonnet-4-6"
 }

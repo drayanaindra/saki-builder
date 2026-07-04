@@ -2,11 +2,11 @@
 
 A Claude Code **plugin** — a shared, personal-scale toolkit of planning/build/review skills, domain
 agents, safety hooks, an always-on execution protocol, and a split learning loop. Everyone installs
-the same vetted tools and works solo with them; team coordination lives in **ed-harness**.
+the same vetted tools and works solo with them.
 
 **Install (no clone):**
 ```
-> /plugin marketplace add https://gitlab.solveeducation.org/solveed/saki-builder.git
+> /plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
 > /plugin install saki-builder@saki-builder
 ```
 Then start a new session. Teammate guide: **[docs/HOW-TO.md](docs/HOW-TO.md)**. Every command is
@@ -69,14 +69,14 @@ Click **Fork** on GitLab. This gives you your own copy to customize.
 ### 2. Install on any machine
 
 ```bash
-curl -fsSL https://gitlab.com/drayanaindra/claude-config/-/raw/main/get.sh | \
-  REPO_URL=git@gitlab.com:drayanaindra/claude-config.git bash
+curl -fsSL https://gitlab.com/drayanaindra/saki-builder/-/raw/main/get.sh | \
+  REPO_URL=git@gitlab.com:drayanaindra/saki-builder.git bash
 ```
 
 Or clone manually:
 
 ```bash
-git clone git@gitlab.com:drayanaindra/claude-config.git ~/claude-config
+git clone git@gitlab.com:drayanaindra/saki-builder.git ~/claude-config
 chmod +x ~/claude-config/*.sh && ~/claude-config/install.sh
 ```
 

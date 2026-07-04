@@ -18,6 +18,8 @@ settings.local.json
 
 # Claude Code ephemeral data (stays local per machine)
 projects/
+.harness/
+scratch/
 debug/
 file-history/
 telemetry/

@@ -3,12 +3,12 @@
 saki-builder is a Claude Code **plugin**: a shared, vetted toolkit of planning/build/review skills,
 domain agents, safety hooks, an always-on execution protocol, and a split learning loop. It's
 **personal-scale** — everyone gets the same tools and works solo with them. Team coordination
-(tracking, ownership, intake) lives in **ed-harness**, not here.
+(tracking, ownership, intake) is out of scope here.
 
 ## Install (no clone)
 
 ```
-> /plugin marketplace add https://gitlab.solveeducation.org/solveed/saki-builder.git
+> /plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
 > /plugin install saki-builder@saki-builder
 ```
 

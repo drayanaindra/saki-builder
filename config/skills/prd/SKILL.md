@@ -45,8 +45,8 @@ This means:
 - What the human sees and approves is **plain-English points only** (5 core + appetite + any bet risk).
 - The saved file contains the full technical structure for downstream skill consumption, plus a
   **team-shareable header + Decision Log** — so the same PRD works for a solo builder (ignore the
-  header) and a team that reviews and evolves it. Team *coordination* stays out of scope (that's
-  ed-harness); this is a team-grade *artifact*, not a team workflow.
+  header) and a team that reviews and evolves it. Team *coordination* stays out of scope; this is a
+  team-grade *artifact*, not a team workflow.
 
 ---
 

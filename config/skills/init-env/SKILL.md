@@ -38,10 +38,12 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
   > 5. Self-commit — Step 14 below (`git add` only the created paths + `commit --no-verify`).
   >
   > **Deliberately SKIP in headless mode** (heavier / better done interactively later; and the hooks
-  > would interfere with the autonomous build that runs right after): `.claude/settings.json` hooks
-  > (Step 4), `docs/project-context.md` (Step 3), `.claude/hooks/` scripts (Step 8), skill overrides
-  > (Step 9), Playwright infra (Step 10), the product roadmap (Step 11b). The operator can run
-  > `/saki-builder:init-env` interactively later to add these.
+  > would interfere with the autonomous build that runs right after): git-provider auth (Step 1b —
+  > login needs a human), the design engine (Step 1c — needs a human choice + the Figma MCP),
+  > `.claude/settings.json` hooks (Step 4), `docs/project-context.md` (Step 3),
+  > `.claude/hooks/` scripts (Step 8), skill overrides (Step 9), Playwright infra (Step 10), the
+  > product roadmap (Step 11b). The operator can run `/saki-builder:init-env` interactively later to
+  > add these.
 
 ## Process
 
@@ -56,6 +58,53 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      paths / hook scripts / agents won't resolve here): back it up FIRST —
      `ts=$(date +%Y%m%d-%H%M%S); mv .claude ".claude.bak-$ts"; [ -f CLAUDE.md ] && mv CLAUDE.md "CLAUDE.md.bak-$ts"` —
      then scaffold fresh below. Never overwrite a foreign `.claude/` in place.
+
+1b. **Set up git-provider access** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
+    Full MR/PR/commit/review access needs the repo's provider CLI installed and authenticated. Run
+    the read-only detector from the repo root and act on its `status`:
+    ```bash
+    ~/.claude/hooks/repo-auth-setup.sh
+    ```
+    It classifies the git remote's host → provider CLI (`*github*` → `gh`, `*gitlab*` → `glab`,
+    including self-hosted like `gitlab.example.com`) and reports install + auth state:
+
+    | status | do this |
+    |--------|---------|
+    | `READY` | ✓ note "authed to HOST as ACCOUNT"; confirm access with the printed `glab mr list` / `gh pr list`, then continue |
+    | `NEEDS_INSTALL` | tell the user to run the printed `action` themselves (e.g. `! brew install glab`), then re-run the detector |
+    | `NEEDS_LOGIN` | tell the user to run the printed `action` themselves (e.g. `! glab auth login --hostname HOST`) — the token MUST NOT pass through chat (secrets rule) — then re-run to confirm `READY` |
+    | `NO_REMOTE` (fresh project) | ask which provider they want (GitHub / GitLab / a self-hosted host); install the CLI if missing, have them `! <cli> auth login`, then re-check with the chosen host: `~/.claude/hooks/repo-auth-setup.sh . <host>`. Offer `git remote add origin <url>` if they have the URL. |
+    | `UNKNOWN_HOST` | ask whether HOST is GitHub or GitLab, then treat it as that provider and re-check |
+
+    **Never** run `auth login` yourself and **never** accept a pasted token — the user completes the
+    interactive login in their own terminal via the `!` prefix; the detector is read-only and only
+    tells you the exact command. An MCP-based git-provider server is an optional advanced alternative,
+    but the CLI already covers MR/commit/review — defer MCP unless the user asks for it.
+
+1c. **Choose + record the design engine** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
+    `/saki-builder:proto` can preview a PRD two ways — **native** (render the project's real design system
+    into an HTML gallery; the canonical path `/saki-builder:build` reads) or **figma** (use a connected
+    Figma design as the SOURCE via the Figma MCP, routed by seat capability). Record the project's choice
+    so proto routes on it:
+    ```bash
+    ~/.claude/hooks/design-engine-setup.sh detect
+    ```
+    Then ask the user **native or figma** (default **native** — always available, no external dependency):
+    - **native** → `~/.claude/hooks/design-engine-setup.sh record --engine native`
+    - **figma** → verify the live Figma MCP + seat by calling the Figma MCP **`whoami`** tool (a bash hook
+      cannot see the MCP — you MUST call the tool yourself):
+      - **Not connected** → tell the user to connect the Figma MCP (Figma desktop app running, or the
+        first-party Figma plugin authed), then re-check. If they can't connect now, record `native` and
+        note they can re-run this step later.
+      - **Connected** → read the seat and map it → capability: `view`/`dev` → **read** (design-to-code
+        only); `edit`/`editor`/`full`/`design` → **write** (read + can also export to canvas); unknown →
+        **read** (conservative). Ask for the Figma **source file URL** proto should read from, then record:
+        ```bash
+        ~/.claude/hooks/design-engine-setup.sh record --engine figma \
+          --seat <seat> --capability <read|write> --source "<figma-file-url>" --handle "<whoami handle>"
+        ```
+    `whoami` returns only a handle + seat tier (not secrets), so nothing sensitive passes through chat. The
+    record lands at `.claude/design-engine.json`; `/saki-builder:proto` Step 0 reads it and routes.
 
 2. **Create project CLAUDE.md** (lean, <100 lines):
    - Project identity and business context

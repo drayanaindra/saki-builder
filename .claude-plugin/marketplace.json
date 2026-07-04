@@ -1,9 +1,9 @@
 {
   "name": "saki-builder",
-  "description": "Solve Education internal Claude Code marketplace — the SAKI Builder personal-scale toolkit.",
+  "description": "Claude Code marketplace — the SAKI Builder personal-scale toolkit.",
   "owner": {
-    "name": "Solve Education",
-    "url": "https://gitlab.solveeducation.org/solveed"
+    "name": "drayanaindra",
+    "url": "https://gitlab.com/drayanaindra"
   },
   "plugins": [
     {

@@ -17,7 +17,7 @@ if (process.env.SAKI_UPDATE_CHECK_DISABLE === '1') process.exit(0)
 
 const UPDATE_CMD = '/plugin marketplace update saki-builder && /plugin update saki-builder@saki-builder'
 const API = process.env.SAKI_UPDATE_API ||
-  'https://gitlab.solveeducation.org/api/v4/projects/solveed%2Fsaki-builder/repository/files/.claude-plugin%2Fplugin.json/raw?ref=main'
+  'https://gitlab.com/api/v4/projects/drayanaindra%2Fsaki-builder/repository/files/.claude-plugin%2Fplugin.json/raw?ref=main'
 const TIMEOUT = Number(process.env.SAKI_UPDATE_TIMEOUT_MS || 4000)
 
 const ok = () => process.exit(0) // fail-open

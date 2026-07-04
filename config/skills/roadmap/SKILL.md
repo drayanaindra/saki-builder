@@ -8,7 +8,7 @@ description: View or initialise the product roadmap — the single team-shareabl
 `tasks/roadmap.md` is the **single source of what the product is building and in what order**. It is a
 **product-strategy artifact** (what / why / order / status) — NOT a coordination tool. It deliberately
 carries **no** sprint numbers, assignees-as-schedule, velocity, or due dates (team *coordination* is
-ed-harness's job). A solo builder writes just Goal + User flow and ignores the header fields; a team fills
+out of scope). A solo builder writes just Goal + User flow and ignores the header fields; a team fills
 Owner/Status/Updated and reviews the same file.
 
 The roadmap is the **disciplined entry point**: `/saki-builder:pickup E<n>` will only start a feature that
@@ -109,5 +109,5 @@ product name (default: the repo/directory name if the human doesn't answer).
 - Never add or edit an epic's *content* here — that is `/saki-builder:epic`'s job (add) and the workflow verbs'
   job (status flips). This skill only **views** and **scaffolds**.
 - Never overwrite an existing `tasks/roadmap.md` on `init`.
-- Keep the artifact a strategy document: if asked to add scheduling/assignment/velocity fields, decline and
-  point to ed-harness for coordination — the roadmap answers *what/why/order*, not *who/when*.
+- Keep the artifact a strategy document: if asked to add scheduling/assignment/velocity fields, decline —
+  the roadmap answers *what/why/order*, not *who/when* (coordination is out of scope).

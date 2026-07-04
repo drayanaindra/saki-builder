@@ -62,6 +62,31 @@ editable layers, run a full `/saki-builder:proto` on the Figma-connected machine
 
 ---
 
+## Step 0 — Design engine (read the recorded choice, then route)
+
+Before loading the PRD, read the project's recorded **design engine** — it decides whether this preview
+is rendered **natively** (the canonical path) or seeded from a **Figma** source. Run from the repo root:
+```bash
+~/.claude/hooks/design-engine-setup.sh detect
+```
+Route on `engine`, adding a **live** Figma check when the record says `figma`. **Invariant: the native HTML
+gallery is ALWAYS the canonical deliverable `/saki-builder:build` reads — Figma never becomes build's
+source (honesty rail). Figma, when selected, only *seeds* the native render and/or receives an export.**
+
+| recorded `engine` | live check | how this run behaves → resolved mode |
+|---|---|---|
+| `native`, or `status: NONE` (no record) | — | proceed exactly as below — native render → gallery. Step 6c export keeps its normal optional-when-connected behavior. → **`native`** |
+| `figma` | call the Figma MCP **`whoami`** — it FAILS / MCP absent here | **fall back to native** for this run; note once: *"design engine is figma but the Figma MCP isn't reachable here — rendered native; run `/saki-builder:proto --figma-only <gallery>` on a Figma-connected machine to export."* → **`native`** |
+| `figma` | `whoami` OK, `figma_capability: read` (View/Dev seat) + `figma_source` set | **design-to-code reference**: still render natively, but seed each screen from the Figma source (Step 5's figma-reference note). Skip the Step 6c write-export — the seat can't write; note it. → **`figma-read`** |
+| `figma` | `whoami` OK, `figma_capability: write` | design-to-code reference (when a `figma_source` is set) **and** run the Step 6c export normally. → **`figma-write`** |
+
+Carry the **resolved mode** (`native` / `figma-read` / `figma-write`) forward — Steps 5 and 6c read it.
+**The live check always wins over the record**: recorded `figma` but MCP down → `native`; recorded
+capability `write` but the live seat is now read-only → `figma-read`. Note the downgrade; never fail the
+run over an engine mismatch. A `--figma-only` run ignores Step 0 (it is an export-only path by definition).
+
+---
+
 ## GATE 1 — Load the PRD (hard stop if missing)
 
 Read the PRD. If it cannot be found/read, **STOP**:
@@ -181,6 +206,60 @@ Never silently invent a component set — that is the exact failure this gate ex
 
 ---
 
+## Step 2.4 — Existing-implementation inventory (reuse-first grounding — BLOCKING frame)
+
+**The most common proto failure is a "design-wise correct" render that does NOT look like the existing
+app** — the agent self-initiates a fresh design of the navbar / sidebar / feature screen instead of
+**composing the real, already-implemented components**. This step exists to flip the frame from
+*"design the screens"* to *"assemble the actual app"*. Run it BEFORE the gap analysis (2.5).
+
+**Think like the designer at their desk: look at the real page first, then reason about the delta.** A
+senior designer doesn't start from the spec — they open the *existing* app, see what already ships, and
+only then ask three questions per screen: **(a) where does a component need to be *added*?** **(b) which
+existing component needs to *scale* (a variant)?** **(c) how does the user *interact* here, and does the
+current component set support that interaction?** Those three questions ARE the gap analysis (2.5) — 2.4 is
+the "look first" that must precede them. So for any screen that **modifies an existing page**, capture that
+page's **current-state screenshot** as the visual baseline you design the delta against (a brand-new screen
+with no predecessor skips this — there is nothing to look at yet).
+
+Gate 2 detected the design *system* (primitives + shell) and the *app shell import path*. That is not
+enough: a journey usually reuses **existing feature-level implementation** too — a page already built, a
+card / table / list-row / form / detail view that ships in the real app today. Inventory it:
+
+1. **Shell** — confirm the ACTUAL navbar / sidebar / header component import paths (from Gate 2). These
+   are imported verbatim; they are never re-drawn.
+2. **Per screen in the journey** — grep the real feature area for already-implemented components/screens
+   this screen reuses. Search where the app keeps features, not just the design system:
+   `src/features/**`, `app/**` (route/page components), `src/components/**` **beyond** `ui/`, `modules/**`,
+   `pages/**`. Match by the screen's nouns (the entity, the list, the detail) and by the nav destination.
+3. **Read what you find** — open each candidate to confirm it renders the surface this screen needs
+   (don't match on filename alone).
+
+Write a **Reuse Map** to `tasks/proto-<prd-slug>/reuse-map.md`, one row per screen:
+
+```
+Reuse Map — <prd-slug>
+──────────────────────────────────────────────────────────────────
+screen                 building block            classification   import path
+Products (list)        AppShell (nav+sidebar)    EXISTING         @/components/layout/AppShell
+Products (list)        ProductTable              EXISTING         @/features/products/ProductTable
+Products (list)        Button, Badge             PRIMITIVE        design-system (Gate 2)
+New Product (form)      ProductForm               NEW              — (spec in 2.5)
+```
+
+- **EXISTING** → the component/screen is already implemented → **import & compose VERBATIM.** Proto NEVER
+  re-approximates an EXISTING component into a "design-wise correct but different" version. The fidelity
+  target is the **existing app's look**, not a fresh design of it.
+- **PRIMITIVE** → a design-system primitive (Gate 2) → use as-is.
+- **NEW** → no equivalent exists → flows to Step 2.5 for a spec. **Only genuinely-absent surfaces.**
+
+**Reuse-first is the rule, not a preference:** if a screen is largely already implemented, proto's job is
+to mount the real implementation with mock data — not to redesign it. Do NOT send an EXISTING component to
+the 2.5 gap analysis; the gap analysis is only for what the app does not yet have. The provenance check
+(5d) later verifies the render actually imported every EXISTING/shell row here.
+
+---
+
 ## Step 2.5 — Design System Gap Analysis (always runs after Gate 2)
 
 **Scope rule — library vs. custom layer (critical for MUI/Chakra/Mantine/Ant Design projects):**
@@ -199,11 +278,39 @@ Storybook story files — components found there are NOT in the design system. A
 proto harness files for any named exports NOT in `src/components/` — each is a candidate ❌ Missing
 that survived the last run un-codified.
 
-Classify each custom component:
+Classify each custom component **against the Step 2.4 Reuse Map** — gap analysis is only for what the app
+does NOT yet have:
 
-- ✅ **Exists** — found in `src/components/` (or the Gate 2 library path), use as-is
+- ✅ **Exists** — found in the Gate 2 library path **OR the Step 2.4 Reuse Map (an already-implemented
+  shell / feature component)** → **import & use VERBATIM**, never re-spec or re-approximate it. An EXISTING
+  Reuse-Map row is out of scope for this analysis; it is composed, not designed.
 - ⚠️ **Variant needed** — base component exists but lacks a required style variant or semantic token
-- ❌ **Missing** — no equivalent in `src/components/` or the npm library
+- ❌ **Missing** — no equivalent in `src/components/`, the npm library, or the Reuse Map (genuinely new)
+- 🔶 **Needs design change** — the existing design/pattern can't host this screen *well* with a variant or
+  a single new component: the journey needs the app **shell/nav restructured**, a page's **layout paradigm
+  changed**, a **pattern the design system doesn't have**, or a fix that **ripples across >1 screen**. The
+  rung above ❌ — reach it only when adding a component isn't enough (escalation below).
+
+**Guard — do not spec-and-rebuild something already implemented.** Before writing any ⚠️/❌ spec, confirm
+it isn't an EXISTING row in the Reuse Map. Re-creating an implemented navbar/sidebar/feature component as
+a "new" spec is the exact self-initiated-build failure this gate must prevent.
+
+**The cost ladder — climb only as high as the screen forces you (concise + faithful).** Reuse (✅) < scale
+(⚠️) < add (❌) < propose a design change (🔶). Each rung is more expensive and less faithful than the one
+below, so pick the LOWEST rung that works and add the minimum — never jump to a new component when a variant
+does, never redesign when a component does. Judge each screen's needed **interaction** here too: a component
+that renders the right pixels but can't support the interaction the journey needs is a ⚠️ (scale it), not a ✅.
+
+**🔶 escalation — propose, don't force-fit, and don't silently redesign.** Judge the change by size:
+- **SMALL** (local to one screen, absorbable as a variant/component) → it isn't really 🔶; resolve it as
+  ⚠️/❌ and note it.
+- **BIG** (shell/nav, a page's layout paradigm, a net-new pattern, or a ripple across >1 screen) → **STOP and
+  PROPOSE**: write a 4–6 line design-change proposal — *what the existing design constrains · the option(s) ·
+  the rough cost · the screens affected* — and PAUSE for the human, exactly like the Step 2.5 confirm below.
+  Never force the journey into a design that can't hold it; never self-initiate a big redesign without
+  sign-off. If the approved change alters **scope** (new features/screens, not just layout/pattern), that is a
+  **PRD concern** — point back to `/saki-builder:prd` to reconcile (GATE 1's two-way rule), then re-run proto. A
+  layout/pattern/component change that stays within the PRD's scope proceeds here (built in Step 2.6).
 
 **For ⚠️ variants — library project branching rule:**
 - If the variant is **purely stylistic** (a color set, a size, a border tweak) on a single library
@@ -257,17 +364,52 @@ Proposed additions:
    A11y: presentational; action inherits Button a11y
 ```
 
-**Pause here and ask for confirmation** before rendering:
-> "These component specs will be rendered as proposed designs in the prototype and, after your
-> approval in Step 7, codified into the design system before `/saki-builder:build` runs. Confirm to proceed,
-> or adjust any spec now."
+**Pause here and ask for confirmation** — this now gates real code, not just a render:
+> "These specs will be **codified into the real design system next (Step 2.6), then rendered as the real
+> components** — so what you approve in Step 7 is the real component, not an approximation. Confirm the
+> specs to proceed, or adjust any now. This is the cheapest correction point — before any real code is
+> written."
 
-Do NOT proceed to Step 3 until the user confirms (or silently adjusts and re-presents if the
-user requests a change). This is the cheapest point to catch a wrong component direction —
-before any rendering happens.
+Do NOT proceed to Step 2.6 / rendering until the user confirms (or silently adjusts and re-presents if the
+user requests a change). This is the cheapest point to catch a wrong component direction — before any real
+design-system code is written.
 
 If all components exist (no ⚠️/❌ entries), state "No design system extensions needed" and
 proceed to Step 3 without a pause.
+
+---
+
+## Step 2.6 — Codify confirmed additions into the real design system (BEFORE rendering)
+
+> **Add first, then design with it — the designer's order.** A designer adds a component to the library,
+> then places instances; they don't sketch a throwaway and rebuild it. So the moment the Step 2.5 specs are
+> confirmed, build them for **real** — before Step 5 renders — so the proto composes real components
+> everywhere (EXISTING from 2.4 + these NEW/⚠️ ones) and the Step 7 approval is on the real thing. This
+> closes the old fidelity gap (a human approved an *approximation* of a NEW component that `/saki-builder:build` then
+> rebuilt differently) and removes the build-it-twice duplication.
+
+Apply each confirmed ⚠️/❌ from Step 2.5 using the resolution path its spec already named — now, pre-render:
+- **⚠️ variant (stylistic, single primitive)** → add to the theme file (`components.MuiX.variants` /
+  `styleOverrides`, `extendTheme`, Tailwind `@theme` / config, or `:root` CSS vars — the project's format
+  detected in 2.5). No wrapper file for a purely stylistic variant.
+- **⚠️ variant (multi-primitive / logic)** or **❌ missing** → a new component file at the Gate-2 location
+  (`src/components/…`), presentational only (no data / no logic), consuming tokens via the project's detected
+  mechanism, exported from the barrel if one exists, following the existing prop / naming / file conventions.
+- **Tokens first** → add only the approved tokens in the project's format; extend existing scales, never
+  duplicate or add speculative ones.
+- **Update `design.md`** — add the new component(s) with a one-line entry matching the existing style.
+- **Write `tasks/proto-<prd-slug>/design-system-updates.md`** (project's actual token format):
+  ```
+  Design System Updates — <prd-slug>
+  ═══════════════════════════════════
+  New component files:      - SaasBar (src/components/SaasBar.tsx)
+  Theme overrides added:    - components.MuiChip.variants: status color set (success/warning/error)
+  Token additions:          - tokens.status.review: '#a371f7'  (or --color-status-review: #a371f7)
+  ```
+
+**Gate:** typecheck the new components/tokens before Step 5 — they are imported next, so a broken one crashes
+every frame. Codify only ✅-confirmed ⚠️/❌ — **never a 🔶** (a big design change is escalated in 2.5 for
+sign-off, not built here). If 2.5 found no ⚠️/❌, state "No additions to codify" and continue to Step 3.
 
 ---
 
@@ -307,9 +449,25 @@ preview that lies.
 
 ## Step 5 — Render in a throwaway harness that composes the REAL shell
 
-Mount the screens using the project's **real** components + tokens (from Gate 2), **inside the real
-app shell** (nav/header/sidebar), with mock data only — **no fetching, no backend, no state logic**.
-The goal is a preview that looks like the *actual page*, not an isolated component on a blank canvas.
+Mount the screens by **composing the real, already-implemented components** — the app shell
+(nav/header/sidebar) AND every **EXISTING** feature component in the Step 2.4 Reuse Map — plus the
+Gate 2 primitives + tokens, with mock data only — **no fetching, no backend, no state logic**. **Import
+the actual implemented components; never hand-write a re-creation of them.** The goal is a preview that
+looks like the **existing app**, not a fresh design of it and not an isolated component on a blank canvas.
+A "design-wise correct" render that doesn't match the shipped implementation is a failure, not an
+approximation — reuse the real component instead (Step 2.4). Every component is now **real**: EXISTING ones
+from the 2.4 Reuse Map, and the NEW/⚠️ ones just codified in **Step 2.6**, all imported by their real
+design-system paths. **Nothing is approximated** — there is no bespoke stand-in for a NEW component anymore
+(2.6 built it), so the Step 7 approval lands on the real component.
+
+**Figma-reference (only when Step 0 resolved to `figma-read` / `figma-write`).** Before mounting each
+screen, pull its design intent from the recorded `figma_source` via the Figma MCP read tools —
+`get_design_context` (layout, spacing, component names, tokens) and `get_screenshot` (the visual target)
+for the matching frame. Use it to **guide the native render** (which components, order, spacing, copy),
+mapping Figma layers onto the project's REAL design-system components from Gate 2 — never hand-copy pixels
+or invent components the design system lacks. The output is still the native gallery; Figma is the
+reference, not the deliverable. If a screen has no matching Figma frame, render it natively from the PRD as
+usual and note the gap. In `native` mode, skip this entirely.
 
 ### 5a. Provider/context detection (do this BEFORE mounting — the #1 render failure)
 
@@ -340,10 +498,12 @@ the real page will look** — the more it composes the real app shell, the more 
 
 1. **Full-shell composition** (PREFERRED) — create the throwaway preview under
    `app/proto-preview/<slice>/page.tsx` (Next) or a `proto-preview` route (Vite/Remix), and have it
-   **import the app's real layout/shell from Gate 2 (nav, header, sidebar) and render the slice
-   inside it**, wrapped in the 5a mock providers with mock data. The capture then looks like the
-   actual page — not a fragment in a void. ALSO create a routable **`/proto-preview` index** linking
-   each slice. Drive states via a query param (`?state=empty|loading|error`), or stack all states in
+   **import the app's real layout/shell from Gate 2 (nav, header, sidebar) AND the EXISTING feature
+   components from the Step 2.4 Reuse Map, and render the slice inside them**, wrapped in the 5a mock
+   providers with mock data. Import the real components by their recorded paths — do not re-draw a
+   navbar/sidebar/feature component the app already ships. The capture then looks like the
+   actual page — not a fragment in a void, and not a redesign of it. ALSO create a routable
+   **`/proto-preview` index** linking each slice. Drive states via a query param (`?state=empty|loading|error`), or stack all states in
    one labelled page.
    - **Next App Router gotcha:** do NOT name the folder with a leading underscore (`_proto`,
      `__proto`). Underscore-prefixed folders are **private** / non-routed → the route 404s. Use a
@@ -399,6 +559,23 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   repo's own script). A used-but-not-imported symbol or a type error is a runtime crash that renders the
   error boundary (real, observed: `useState` used without importing it → `ReferenceError` on every render).
   Catching it here costs one command; missing it costs a whole gallery of captured error frames.
+- **Provenance check FIRST (BLOCKING — proves the render reuses the real implementation):** before
+  serving, grep the generated `proto-preview/*` files and confirm they **`import` the real app shell AND
+  every EXISTING feature component named in the Step 2.4 Reuse Map**, by their recorded import paths.
+  Mechanical — for each EXISTING/shell row, its recorded import path must appear as an import somewhere
+  in the harness:
+  ```bash
+  # run once per EXISTING/shell row; empty result ⇒ that real component was NOT imported ⇒ HARD-STOP
+  grep -Rl "<recorded-import-path>" app/proto-preview src/proto-preview 2>/dev/null
+  ```
+  If a screen the Reuse Map marked **EXISTING** was instead rendered from bespoke markup (the recorded
+  path is not imported anywhere in its harness file), **HARD-STOP: "re-approximated an implemented
+  component — import `<path>` instead."** Fix the harness to import the real component, then continue.
+  This is the check that stops a "design-wise correct but not the existing app" render before it is ever
+  captured — presence of a designed screen is not proof it reused the real implementation.
+  **Extend the same check to every NEW row:** Step 2.6 made it real, so its design-system import path must
+  ALSO appear in the harness — a NEW component rendered from bespoke stand-in markup instead of its codified
+  file is the same failure (**import `<path>` instead**). After 2.6 there are no approximations to render.
 - **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
   :PORT` shows it, cwd matches), reuse it — hot-reload picks up the new route; no boot needed.
   Otherwise start it. Then smoke-test the route with `curl` (expect HTTP 200, no `Failed to compile`).
@@ -735,6 +912,14 @@ the old third-party plugin-bridge (`cursor-talk-to-figma`); the first-party serv
 so the bridge is unnecessary. Write-to-canvas is a Figma **beta** (currently free, slated to become
 usage-based paid) — that's another reason it stays optional, never a hard dependency.
 
+**Also respect the resolved design-engine mode (Step 0).** If the mode is **`figma-read`** (a View/Dev
+seat that can read but not write), the write-to-canvas tools will fail — **skip the export with a noted
+reduction in `index.md`** ("Figma export skipped — seat is read-only; use an editor/dev seat to export")
+rather than attempting a call that errors. **`figma-write`** proceeds with the export below. A plain
+`native` / `--figma-only` run doesn't resolve a seat capability (Step 0 only calls `whoami` for the figma
+engine), so it keeps 6c's original try-when-connected behavior — if a read-only seat blocks the write, the
+Verify step below records the reduction rather than dropping it silently.
+
 **Where this runs — headless/VPS reality (path A, the default).** The desktop Figma MCP (`127.0.0.1:3845`)
 is **local-only**, and a headless `claude -p` run (how Pipeline Studio and a VPS spawn proto) **can't
 complete interactive OAuth** — so on a VPS/Studio run the Figma MCP is normally absent and this step **skips
@@ -828,77 +1013,38 @@ Three gotchas this guards — **all hit in a real test**, do not "simplify" them
 Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 
 > 1. "Does this match what you expected the end user to see — or adjust before `/saki-builder:build`?"
-> 2. "After seeing the rendered result, do you want to revise any component spec approved in Step 2.5?
->    (You confirmed names, variants, and tokens before rendering — this is your last chance to adjust
->    before Step 7.5 writes them to real files.)"
+> 2. "Now that you're seeing the real components rendered, do you want to revise any of them? (You
+>    confirmed the specs in 2.5 and Step 2.6 already built them as real design-system components — a change
+>    now is a tweak to the real component, applied in Step 7.5.)"
 
-Iterate on **look and specs only** (component choice, layout, copy, spacing, states shown, token
-names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto
-— say so and point back.
+Iterate on **look and components only** (component choice, layout, copy, spacing, states shown, token
+names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto — say so
+and point back. If the user wants a *big* structural change the existing design can't hold, that is a 🔶
+(Step 2.5 escalation) — surface it as a design-change proposal, don't force it in here.
 
-**Both questions must be approved before proceeding.** If the user approves look but wants a spec
-change, revise the component spec, update the approximation in the proto-preview, re-screenshot
-the affected frames, and present again. Do NOT proceed to Step 7.5 until both are green.
+**Both questions must be approved before proceeding.** If the user approves the journey but wants a
+component change, **edit the real component** (it already lives in the design system from 2.6), re-screenshot
+the affected frames, and present again. Do NOT proceed past Step 7.5 until both are green.
 
 ---
 
-## Step 7.5 — Design System Update (runs after approval, BEFORE `/saki-builder:build`)
+## Step 7.5 — Finalize the components after visual approval
 
-For each ⚠️ / ❌ component approved in Step 7, apply the resolution path from the Step 2.5 spec:
+The components are already **real** — Step 2.6 built them before rendering — so this step is now light:
+apply any visual tweak the human asked for in Step 7 to the **real** component (not an approximation), then
+re-verify. If Step 7 produced no change requests, this step is a no-op; the design system is already in its
+final state.
 
-**⚠️ Variant needed — theme override path (library projects: MUI/Chakra/Mantine/Ant Design):**
-- Add the style variant to the theme file (`theme.ts`, `extendTheme`, etc.) via
-  `components.MuiX.variants` / `components.MuiX.styleOverrides` (MUI) or the equivalent
-- Do NOT create a wrapper file for a purely stylistic variant — theme overrides are the idiomatic
-  path and keep the library's `sx`/palette integration intact
-- Create a wrapper file ONLY when the variant combines multiple primitives or contains logic
+- **Apply Step-7 tweaks** to the real component / theme file using the same resolution paths as Step 2.6
+  (theme override for a purely stylistic variant, the component file otherwise). Update `design.md` and
+  `tasks/proto-<prd-slug>/design-system-updates.md` if the change added or renamed anything.
+- **Verify** the adjusted component still renders in the `proto-preview` route — `curl` returns HTTP 200
+  with the `__PROTO__` sentinel — and re-screenshot only the affected frames.
 
-**❌ Missing — new component file:**
-- Create at the correct location per Gate 2 detection + project conventions
-  (e.g. `src/components/SaasBar.tsx`, `src/components/ui/empty-state.tsx`)
-- Consume tokens using the project's detected mechanism:
-  - MUI: import `tokens` from the theme file and reference `tokens.status.*`; or use the `sx` prop
-    with `theme.palette.*` — do NOT use `var(--token-name)` CSS vars unless the project defines them
-  - Tailwind: use utility classes matching the `@theme` / `tailwind.config.*` entries
-  - CSS custom properties: use `var(--token-name)` against properties in `globals.css`/`:root`
-- Export from the barrel index (`src/components/ui/index.ts`) if the project uses one
-- Follow the same file structure, prop interface style, and export pattern as existing components
-- Keep it presentational (no data fetching, no business logic)
-
-**All approved changes — add tokens first:**
-- Add new tokens to the token file using the project's format (see Step 2.5 token spec):
-  - MUI TS tokens object → add to the `tokens` const in `theme.ts`
-  - Tailwind CSS v4 → add to `@theme {}` in globals
-  - Tailwind CSS v3 → add to `theme.extend` in `tailwind.config.*`
-  - CSS custom properties → add to `:root` in globals
-  Only tokens from the approved spec — no speculative additions
-
-- **Update `design.md`** — add the new component(s) to the relevant section (Feedback, Layout,
-  Forms, etc.) with a one-line description matching the existing entries' style
-
-- **Write `tasks/proto-<prd-slug>/design-system-updates.md`** (use the project's actual token format):
-  ```
-  Design System Updates — <prd-slug>
-  ═══════════════════════════════════
-  New component files:
-  - SaasBar (src/components/SaasBar.tsx)
-  - EmptyState (src/components/EmptyState.tsx)
-
-  Theme overrides added (theme.ts / extendTheme / etc.):
-  - components.MuiChip.variants: status color set (success, warning, error, neutral)
-
-  Token additions (<format: theme.ts tokens object | tailwind config | globals.css>):
-  - tokens.status.review: '#a371f7'   [MUI example]
-  - (or) --color-status-review: #a371f7  [CSS var example]
-  ```
-
-**Verify** the new components render without error in the `proto-preview` route — replace the
-approximation imports with the real components and confirm `curl` still returns HTTP 200 with
-the `__PROTO__` sentinel. Do NOT re-screenshot unless something looks different.
-
-Only after this step is complete does `/saki-builder:build` run. Write this as a hard dependency in the
-handoff notes (Step 8): "Design system was updated per `design-system-updates.md`. `/saki-builder:build` MUST
-use these real components — do NOT re-invent them."
+`/saki-builder:build` then promotes these real presentational components (mock data → real data + state + tests +
+backend wiring); it does NOT re-invent them. Write that as a hard dependency in the handoff notes (Step 8):
+"Design system was updated per `design-system-updates.md` (built in Step 2.6, finalized in 7.5). `/saki-builder:build`
+MUST use these real components — do NOT re-invent them."
 
 ---
 
@@ -1027,9 +1173,10 @@ Design System Gap Analysis:
   ✅ Existing (N components used as-is)
   ⚠️ Extended (M variants added)  →  see design-system-updates.md
   ❌ New (K components created)   →  see design-system-updates.md
+  🔶 Design change (P)  →  [proposed — paused for sign-off | approved & applied | none]
   (or: No extensions needed — all components already existed)
 
-Design system updated: tasks/proto-<slug>/design-system-updates.md
+Design system updated: tasks/proto-<slug>/design-system-updates.md  (built in Step 2.6, before render)
   Added: <list of new component files>
   Tokens: <list of new token names, or "none">
 
@@ -1038,6 +1185,7 @@ Journey previewed: entry → [N user-visible steps] → success   (continuous, n
   2. ...
   (connective screens — login / landing / result / success — marked [glue])
 Screen manifest: tasks/proto-<slug>/screen-manifest.md   (canonical list of every screen)
+Reuse Map: tasks/proto-<slug>/reuse-map.md   (existing shell + feature components imported verbatim · new = specced)
 Coverage Gate: PASSED — N/N manifested screens captured at both viewports   (or: PARTIAL — --slice=N)
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
 HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
@@ -1075,8 +1223,11 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Creating a wrapper file for a ⚠️ purely stylistic MUI/Chakra variant | Theme overrides (`components.MuiX.variants`) are the correct path — new files only for multi-primitive composites |
 | Writing `var(--token-name)` in component files for an MUI project | MUI tokens live in `theme.ts` — consume via `tokens.status.*` or `theme.palette.*`, not CSS vars the project never defined |
 | Adding CSS custom properties to a TS tokens object (`theme.ts`) | Match the project's token format exactly (see Step 2.5 token format detection) |
-| Letting `/saki-builder:build` re-invent components instead of using Step 7.5 additions | Design system update (7.5) runs before /saki-builder:build; handoff notes must name the real component files |
-| Running Step 7.5 without verifying new components render in proto-preview | Replace approximation imports → curl → confirm __PROTO__ sentinel still present |
+| Letting `/saki-builder:build` re-invent components instead of using the Step 2.6 additions | Design system update runs in Step 2.6 (before render), finalized in 7.5; handoff notes must name the real component files |
+| Rendering an *approximation* of a NEW component and codifying it only after approval | Codify confirmed ⚠️/❌ in **Step 2.6 BEFORE render** — proto composes the real component and Step 7 approves the real thing (the old approximate-first order let a human approve a stand-in that /saki-builder:build then rebuilt differently) |
+| Force-fitting a journey the existing design can't host, or self-initiating a big redesign | 🔶 escalation (2.5) — SMALL absorbs as ⚠️/❌; BIG **stops and PROPOSES** a design change for human sign-off; a scope change routes back to /saki-builder:prd |
+| Designing the delta from the component grep without ever looking at the existing page | Capture the current-state screenshot of any modified page first (2.4) — designers look before they design |
+| Jumping to a new component when a variant would do (or a redesign when a component would do) | Climb the cost ladder to the lowest rung that works — reuse < scale < add < propose (2.5) |
 | Inventing components when no design system exists | Gate 2 STOP — offer scaffold / mock / skip |
 | Lorem-perfect data hiding overflow & density | Long strings + many rows + an empty case |
 | Wiring real backend / data fetching / state logic | Mock only — that work is `/saki-builder:build` |
@@ -1096,6 +1247,8 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Trusting a `curl` 200 of SSR HTML as the render check | `curl` is a smoke test only — a CLIENT-side throw passes it while the browser shows the error boundary; the live-DOM sentinel gate (6a) is authoritative, and typecheck/lint the harness (5d) before capture |
 | Declaring done without verifying the server serves | `lsof`/curl the route before screenshotting |
 | Rendering the slice in a void / bare canvas instead of the real page | Full-shell composition (5b#1) — import the real layout/shell and render the slice inside it |
+| Re-approximating an already-implemented navbar/sidebar/feature component into a "design-wise correct" but *different* look (self-initiating a fresh design of the screen) | Reuse-first grounding — inventory the existing implementation (Step 2.4 Reuse Map), import & compose the real components verbatim, and prove it with the 5d provenance check. The preview must look like the *existing app*, not a redesign of it |
+| Sending an already-implemented component to the 2.5 gap analysis as "new" | Check the Reuse Map first — EXISTING rows are imported, only genuinely-absent surfaces get a 2.5 spec |
 | State-matrix-only gallery with no journey flow | Build the Figma-flow gallery (6b): a click-through Flow + a journey-ordered Overview; per-screen states are a toggle, never a bare matrix |
 | Plain static PNG list (no hotspots / no flow) when the journey is known | Wire 6a-bis hotspots so clicking the real control advances screen→screen — that is the Figma-prototype feel |
 | `<iframe srcdoc>` DOM gallery (renders unstyled in Studio — no dev server persists) | Embed the 6a PNG screenshots via relative `<img src>` (6b) — already-rendered, needs no server |
@@ -1129,10 +1282,23 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
   screen fails the run. Screens are all-or-fail; only individual states may be reasoned about (Step 3).
 - **Real components or stop.** Gate 2 is blocking — a faithful preview without a real design system
   is a contradiction; say so rather than fabricate.
-- **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get
-  a spec, user confirmation, and are codified into the real design system (Step 7.5) **before**
-  `/saki-builder:build` runs — never during it. Be consistent: new components follow existing naming, token
-  scales, and prop conventions exactly.
+- **Reuse the real implementation, don't redesign it.** Existing implemented shell + feature components
+  are inventoried (Step 2.4 Reuse Map) and **imported verbatim** — proto composes the actual app, so the
+  preview looks like the *existing app*, never a "design-wise correct but different" fresh design of it.
+  Only genuinely-absent surfaces are specced (2.5), and the 5d **provenance check** proves every
+  EXISTING/shell row was actually imported before any frame is captured.
+- **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get a spec,
+  user confirmation, and are codified into the real design system in **Step 2.6 — before the proto is even
+  rendered**, so the preview shows real components, never approximations (finalized after visual approval in
+  7.5); never during `/saki-builder:build`. Be consistent: new components follow existing naming, token scales, and
+  prop conventions exactly.
+- **Climb the cost ladder, add the minimum (the designer's discipline).** Reuse an existing component (✅) <
+  scale one (⚠️ variant) < add a new one (❌) < propose a design change (🔶). Look at the existing page first
+  (2.4), pick the LOWEST rung that works, and add only what the screen forces — judging the needed
+  interaction, not just the pixels. **Add first, then design with it:** confirmed additions are built for
+  real in Step 2.6 *before* rendering. A 🔶 that is *big* (shell/nav, a page's layout paradigm, a net-new
+  pattern, or a >1-screen ripple) is **proposed and paused for a human**, never force-fit or silently
+  redesigned; a change that alters scope routes back to `/saki-builder:prd`.
 - **Throwaway but shell-faithful.** The preview **composes the real app shell** (5b#1) for page
   fidelity, yet lands only under the `proto-preview` namespace (or Storybook, the fallback), marked
   disposable, with a cleanup contract handed to `/saki-builder:build`.
