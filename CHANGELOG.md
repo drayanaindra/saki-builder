@@ -2,6 +2,22 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.6.0 — 2026-07-05
+
+- **Thin technical contract at PRD stage (`§16`)** — `/prd` now authors a lightweight **Technical Contract
+  (§16)**: the load-bearing DB/API/architecture *shape* the slices imply (entities · endpoint purposes ·
+  one architecture decision), grounded in the existing Step 0.7 Tier-1 code scan — each row is REUSE
+  (cites real code `path:line`) or NEW, and must serve an `8.x · 5.x` slice/outcome (YAGNI). It is *shape,
+  not design* — no column names, payloads, or migration files (that stays `/rplan`). Omit-if-none for
+  UI-only features. Gate-scored (evidence · YAGNI · altitude).
+- **`/prd-review` verifies the contract, no longer just flags gaps** — its technical-surface step now
+  VERIFIES §16 (present · cited · slice-coherent · still shape) and raises `REVISE` on a miss, THEN flags
+  the residual undefined surfaces it doesn't cover. Still never designs.
+- **`/rplan` ingests §16 as the shape to harden** — Step 1 seeds Plan Wiring + schema/endpoint design from
+  §16 (a `NEW` row is a create-target, a `REUSE` row an anchor to verify), deepening the shape into full
+  columns/structs/migrations rather than re-deriving it. Thin-at-PRD / deep-at-rplan keeps one source of
+  truth per depth (no drift).
+
 ## 0.5.1 — 2026-07-04
 
 - **`/prd` now pins Opus** — added a Step 0 model switch mirroring `/rplan`, so PRD authoring runs on
