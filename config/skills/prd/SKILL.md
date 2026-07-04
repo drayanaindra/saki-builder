@@ -27,6 +27,27 @@ inputs:
     required: false
 ---
 
+## Step 0: Switch model to Opus
+
+Run this bash command first before doing anything else:
+
+```bash
+python3 -c "
+import json, pathlib
+p = pathlib.Path.home() / '.claude' / 'settings.json'
+s = json.loads(p.read_text())
+s['model'] = 'opus'  # alias — resolves to the best available Opus; never goes stale
+p.write_text(json.dumps(s, indent=2))
+print('Model set to opus (alias -> latest Opus)')
+"
+```
+
+Then confirm with: `Model: OPUS | Status: Reading`
+
+> This pins the model to Opus for PRD authoring and does **not** auto-restore afterward — `/saki-builder:rplan` keeps it on Opus for planning, and `/saki-builder:approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+
+---
+
 ## Context
 
 You are acting as a product analyst for project {{project_name}} ({{project_type}}). Stack: {{stack}}.

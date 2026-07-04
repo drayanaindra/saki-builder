@@ -2,6 +2,13 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.5.1 — 2026-07-04
+
+- **`/prd` now pins Opus** — added a Step 0 model switch mirroring `/rplan`, so PRD authoring runs on
+  the `opus` alias (no auto-restore; `/rplan` keeps Opus, `/approved` switches to Sonnet). Closes the
+  gap where `/prd` inherited whatever session model was active. `/prd-review` and `/rplan-review` stay
+  model-agnostic by design (fresh-context second opinion; their work runs in subagents).
+
 ## 0.5.0 — 2026-07-04
 
 Epic-anchored workflow, stronger gates, and first marketplace publish.
