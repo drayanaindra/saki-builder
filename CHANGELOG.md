@@ -2,6 +2,24 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.5.0 — 2026-07-04
+
+Epic-anchored workflow, stronger gates, and first marketplace publish.
+
+- **Epic-anchored stepwise workflow** — `/roadmap` → `/epic` → `/pickup E<n>` → `/proto E<n>` →
+  `/build E<n>` replaces the retired autonomous `/pipeline`; every feature traces to a roadmap epic.
+- **`/rplan-review`** — 8 parallel domain experts + a non-negotiable ≥80% coverage floor.
+- **`/prd` + `/prd-review`** — shape-first PRD, strengthened adversarial review, explicit PRD lock at proto.
+- **`/wrap`** — now a full Definition-of-Done gate (build · tests · coverage ≥80% · security · migrations ·
+  SonarQube) *before* commit/push, then converge-to-clean.
+- **Pre-push coverage gate** — `coverage-gate.sh` blocks pushes to the protected branch below 80%.
+- **`/reviewer`** — blocking secret-scan gate (Step 1.5) runs before the LLM review.
+- **`/proto`** — auto-proceeds at Step 2.5 (no pause; auto-codifies missing tokens/components into the
+  real design system at Step 2.6, review backstop at Step 7b); capture hard-gates crashed renders +
+  distinctness gate.
+- **Published the marketplace to GitLab** — `.claude-plugin/marketplace.json` now lands on `main`, so
+  `/plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git` resolves.
+
 ## 0.4.1 — 2026-07-02
 
 Fix — gateway routing tables.
