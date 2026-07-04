@@ -12,8 +12,12 @@ the same vetted tools and works solo with them.
 Then start a new session. Teammate guide: **[docs/HOW-TO.md](docs/HOW-TO.md)**. Every command is
 namespaced `/saki-builder:<name>` (e.g. `/saki-builder:rplan`). Update with `/saki-builder:update`.
 
+> **The three names** (all currently distinct): the git **repo** is `saki-builder` (dir `claude-config`
+> on disk), the **marketplace** is `saketek`, and the **plugin** is `saki-builder` — hence the install
+> slug `saki-builder@saketek` (`<plugin>@<marketplace>`) and the `/saki-builder:` command namespace.
+>
 > The legacy clone + `./install.sh` symlink flow below still works (owner/dev), but the plugin is the
-> primary path. The repo directory is named `claude-config` on disk; the plugin/brand is `saki-builder`.
+> primary path.
 
 ## What's Inside
 
