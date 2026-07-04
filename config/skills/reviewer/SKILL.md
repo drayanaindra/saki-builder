@@ -23,6 +23,52 @@ git diff "$BASE..HEAD" --name-only
 
 If reviewing uncommitted changes intentionally (e.g. pre-commit local review), use `HEAD` and warn the reviewer in the prompt: *"NOTE: this diff is uncommitted-vs-HEAD; treat working-tree state as the diff itself, not as the source of truth for unrelated files."*
 
+## Step 1.5: Secret scan (BLOCKING — runs before the LLM review)
+
+An LLM reviewer misses hardcoded credentials often enough that this must be a **deterministic gate**,
+not a checklist item. Scan the **added lines only** (`^+`, never `+++` headers) of the committed diff
+for credential patterns. This runs first because a leaked secret is a HIGH that blocks the commit
+regardless of what the rest of the review finds.
+
+**Never print a matched secret value into chat** (it would land in history/transcripts — see the
+Secrets rule in CLAUDE.md). Report only `file:line` + which rule matched. If a real secret is found,
+the fix is: remove it, move to an env var / secret manager, AND rotate it (committing = compromised,
+even if unpushed and later amended — assume it leaked).
+
+```bash
+BASE="$(git merge-base HEAD main 2>/dev/null || git merge-base HEAD origin/main 2>/dev/null || echo HEAD~1)"
+
+# Added lines only, scanned against high-signal credential patterns. Map any hit back to its
+# file:line via the full diff from Step 1 (grep here shows the offending line, not its number).
+git diff "$BASE..HEAD" -U0 \
+| grep -E '^\+' \
+| grep -vE '^\+\+\+' \
+| grep -EiC0 \
+    -e 'AKIA[0-9A-Z]{16}' \
+    -e 'ASIA[0-9A-Z]{16}' \
+    -e 'gh[pousr]_[A-Za-z0-9]{30,}' \
+    -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
+    -e 'AIza[0-9A-Za-z_-]{35}' \
+    -e 'sk-(ant-)?[A-Za-z0-9_-]{20,}' \
+    -e 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}' \
+    -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+    -e '(api[_-]?key|secret|access[_-]?key|client[_-]?secret|auth[_-]?token|password|passwd|pwd)["'"'"']?\s*[:=]\s*["'"'"'][^"'"'"']{8,}' \
+  && echo "SECRETS: POSSIBLE MATCH — inspect above (do NOT paste the value into chat)" \
+  || echo "SECRETS: clean"
+```
+
+Triage each hit — a match is a **finding only if the value is a real live credential**. Discard as
+false positives (do NOT block on these):
+- `process.env.X`, `os.environ[...]`, `os.getenv(...)`, `config.get(...)` — references, not literals.
+- Obvious placeholders: `<your-token>`, `xxx`, `changeme`, `example`, `dummy`, `test`, `redacted`,
+  `${...}` interpolation, all-zeros/all-`x` strings.
+- Files that are meant to hold placeholders: `.env.example`, `*.sample`, fixtures/snapshots with
+  clearly fake values, docs showing the *shape* of a token.
+
+Anything left after triage is a **HIGH** and blocks the commit. Pass the surviving hits into the
+Step 3 review prompt as pre-found HIGH findings (by `file:line` + rule, never the value) so the
+reviewer's verdict already reflects them.
+
 ## Step 2: Detect reviewer agent
 
 Check if a project-specific reviewer agent exists:
@@ -62,6 +108,7 @@ checklist from Step 2 still applies.
 Use the Agent tool to launch a fresh-context reviewer with:
 - The full git diff from Step 1
 - The changed file paths
+- Any surviving secret-scan hits from Step 1.5 (as pre-found HIGH findings — `file:line` + rule, never the value)
 - The checklist from Step 2 (project-specific or global)
 - The selected house review patterns from Step 2.5 (if `patterns.md` exists)
 
@@ -71,6 +118,15 @@ You are a thorough code reviewer operating in a fresh context — no implementat
 
 Review the COMMITTED diff and changed files between [BASE] and HEAD. Apply the checklist strictly.
 Flag every issue with severity: HIGH (blocks commit) / MED (should fix) / LOW (suggestion).
+
+A deterministic secret scan already ran on this diff. Pre-found credential hits (if any) are listed
+below as HIGH — carry them into your Issues list. Independently, re-scan every ADDED line for any
+hardcoded credential the regex pass could have missed (bearer tokens, connection strings with inline
+passwords, base64'd creds, high-entropy literals assigned to secret-ish names). Any live credential
+committed to the repo is a HIGH — do NOT reproduce the secret value in your output; cite file:line
+and the kind of secret only.
+
+Pre-found secret hits: [list from Step 1.5, or "none"]
 
 IMPORTANT: Review only what's in the committed diff. If you read a file to check context,
 verify any claim against `git show <BASE>:<path>` and `git show HEAD:<path>` — do NOT cite
@@ -119,7 +175,10 @@ Used when no `.claude/agents/reviewer.md` exists.
 - [ ] No logic copied from the wrong branch/version
 
 **Security**
-- [ ] No secrets or credentials hardcoded
+- [ ] No secrets or credentials hardcoded (API keys, tokens, JWTs, passwords, private keys,
+      connection strings with inline passwords) — verified by the Step 1.5 secret scan AND a manual
+      re-scan of added lines. Any live credential in the diff is a HIGH.
+- [ ] Secrets sourced from env vars / secret manager, not literals; `.env`-style files gitignored
 - [ ] User input validated before use
 - [ ] No SQL string interpolation (use parameterized queries)
 - [ ] Auth checks present on every protected route/function
@@ -143,10 +202,14 @@ Used when no `.claude/agents/reviewer.md` exists.
 
 - **APPROVE** → suggest commit: `/commit` or `git commit`
 - **REQUEST CHANGES** → list HIGH items, fix before committing
+- **Any surviving secret-scan hit → automatic REQUEST CHANGES.** Remove the credential, move it to an
+  env var / secret manager, and rotate it (assume it leaked the moment it was committed) before commit.
 
 ## Rules
 
 - Never skip reading the diff — review without diff context is useless
+- Never skip the Step 1.5 secret scan — it is a BLOCKING gate; a hardcoded credential is always a HIGH
+- Never print a matched secret value into chat/output — cite `file:line` + rule only (CLAUDE.md Secrets rule)
 - Load house review patterns (Step 2.5) when `patterns.md` exists — they encode bug classes already
   caught here, and a fresh-context reviewer is blind to them otherwise. Select by stack; never paste
   the whole file.
