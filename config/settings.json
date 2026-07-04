@@ -1,4 +1,7 @@
 {
+  "env": {
+    "COVERAGE_MIN": "80"
+  },
   "permissions": {
     "allow": [
       "Bash(go test *)",
@@ -45,6 +48,7 @@
       "NotebookEdit"
     ]
   },
+  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -138,7 +142,7 @@
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/pipeline-completion-gate.sh",
+            "command": "~/.claude/hooks/pickup-completion-gate.sh",
             "timeout": 15
           }
         ]
@@ -164,18 +168,14 @@
         "repo": "anthropics/claude-plugins-official"
       }
     },
-    "saki-builder": {
+    "saketek": {
       "source": {
-        "source": "directory",
-        "path": "/Users/indrayana/claude-config"
+        "source": "git",
+        "url": "https://gitlab.com/drayanaindra/saki-builder.git"
       }
     }
   },
-  "env": {
-    "COVERAGE_MIN": "80"
-  },
   "effortLevel": "xhigh",
   "skipWorkflowUsageWarning": true,
-  "theme": "dark",
-  "model": "claude-sonnet-4-6"
+  "theme": "dark"
 }
