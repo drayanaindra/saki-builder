@@ -19,7 +19,7 @@ Find the most recently modified `*-plan.md` in the project root:
 ls -t $(pwd)/*-plan.md 2>/dev/null | head -1
 ```
 
-If no plan file found → stop: "No plan file found. Run /saki-builder:rplan first."
+If no plan file found → stop: "No plan file found. Run /saketek:rplan first."
 
 Read the plan. Log which file was selected:
 
@@ -375,14 +375,14 @@ git diff --name-only "$BASE"...HEAD -- '*.ts' '*.tsx' '*.js' '*.go' '*.py' | gre
 
 **Verdict (this is a real QA criterion — never SKIP):**
 - **PASS** (total ≥ floor AND every changed file ≥ floor) → record `COVERAGE: <pct>% ✓`, continue.
-- **FAIL** → RED. In `/saki-builder:build` / `/saki-builder:approved` (TDD) context, treat like any failing test: list the
+- **FAIL** → RED. In `/saketek:build` / `/saketek:approved` (TDD) context, treat like any failing test: list the
   lowest-covered files + uncovered lines, write the missing tests (Red→Green), re-run; do not proceed while
-  red. Standalone `/saki-builder:qa`: report `COVERAGE FAIL` + file list as a blocking result.
+  red. Standalone `/saketek:qa`: report `COVERAGE FAIL` + file list as a blocking result.
 - **No coverage tooling** → `COVERAGE: BLOCKED — no coverage tooling`, with the exact install line
   (`npm i -D @vitest/coverage-v8`, `pip install pytest-cov`, …). Never silently pass.
 
 **Fail-fast by default (the durable fix):** bake the floor into the test runner so plain `npm test` fails
-when coverage drops — `/saki-builder:init-env` scaffolds this and it is the real "by default" enforcement:
+when coverage drops — `/saketek:init-env` scaffolds this and it is the real "by default" enforcement:
 - Vitest → `test.coverage.thresholds = { lines: 80, functions: 80, branches: 80, statements: 80 }` (`vite.config.ts`)
 - Jest → `coverageThreshold: { global: { lines: 80, branches: 80, functions: 80, statements: 80 } }`
 - pytest → `--cov-fail-under=80` in `addopts`
@@ -636,4 +636,4 @@ Criteria with no expected outcome (add to plan):
 - If a criterion says "verify X works" with no specifics → derive the test from the plan wiring.
 - After reporting, update the plan file's Success Criteria checkboxes: `[ ]` → `[x]` for PASS, `[!]` for FAIL.
 - **Never hardcode project paths.** All paths derived from `$(pwd)`, `FRONTEND_ROOT`, `PROJECT_ROOT`.
-- **MCP Playwright tools are only for `/saki-builder:qa` and explicit debug sessions.** Do not invoke `mcp__playwright__*` tools during regular coding work. This keeps the "on-demand" contract even though the MCP server is always loaded at session start.
+- **MCP Playwright tools are only for `/saketek:qa` and explicit debug sessions.** Do not invoke `mcp__playwright__*` tools during regular coding work. This keeps the "on-demand" contract even though the MCP server is always loaded at session start.

@@ -1,6 +1,6 @@
 # Playwright QA Patterns
 
-Reference patterns for `/saki-builder:qa`-generated Playwright tests. Apply these in all generated specs.
+Reference patterns for `/saketek:qa`-generated Playwright tests. Apply these in all generated specs.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: approved
-description: Approve the current plan and switch model to Sonnet. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, metrics-triggered refactoring. Loads the plan's research context, reconciles plan↔code drift in place, and runs a Plan-Conformance Gate (every wiring chain verified against the diff) before /saki-builder:qa so implementation stays consistent with the approved design.
+description: Approve the current plan and switch model to Sonnet. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, metrics-triggered refactoring. Loads the plan's research context, reconciles plan↔code drift in place, and runs a Plan-Conformance Gate (every wiring chain verified against the diff) before /saketek:qa so implementation stays consistent with the approved design.
 user-invocable: true
 ---
 
@@ -30,7 +30,7 @@ Find the most recent `*-plan.md` in the project root. Read it. Extract:
 - The **Confidence Ledger** — index every entry by the step number it cites. Entries without a step number go in a "global" bucket.
 
 Then load the plan's companion files (same `[task]` slug):
-- **`[task]-context.md`** (the research findings `/saki-builder:rplan` pinned: existing models, schemas, file paths, patterns). If present, this is your **source of truth for existing code shape** — do NOT re-derive what it already documents (re-research wastes tokens and risks deriving a different shape than the plan assumed). If absent, note `⚠ no context file — will read code on demand` and proceed.
+- **`[task]-context.md`** (the research findings `/saketek:rplan` pinned: existing models, schemas, file paths, patterns). If present, this is your **source of truth for existing code shape** — do NOT re-derive what it already documents (re-research wastes tokens and risks deriving a different shape than the plan assumed). If absent, note `⚠ no context file — will read code on demand` and proceed.
 - **`[task]-flow.md`** (Gherkin behavior spec) if present — the implementation's observable behavior must match it.
 
 If the plan has no Test column (old-format plan), derive TDD mode per step:
@@ -41,7 +41,7 @@ If the plan has no Test column (old-format plan), derive TDD mode per step:
 If the plan has no Confidence Ledger, warn (do not block):
 ```
 ⚠ Plan has no Confidence Ledger — proceeding without per-step risk surfacing.
-  Recommend re-running /saki-builder:rplan to generate one before next implementation.
+  Recommend re-running /saketek:rplan to generate one before next implementation.
 ```
 
 ## Step 3: Confirm and begin
@@ -119,7 +119,7 @@ Emit the compact step line, move to the next step.
 
 ### Phase 7: Plan-Conformance Gate (consistency check)
 
-Before smoke/QA, verify the implementation matches the **approved** plan. This is the *"did we build what was approved"* gate — distinct from `/saki-builder:qa` (acceptance criteria) and `/saki-builder:reviewer` (correctness/security). It is the mechanism that makes implementation consistent after design approval.
+Before smoke/QA, verify the implementation matches the **approved** plan. This is the *"did we build what was approved"* gate — distinct from `/saketek:qa` (acceptance criteria) and `/saketek:reviewer` (correctness/security). It is the mechanism that makes implementation consistent after design approval.
 
 1. Take the plan's **Plan Wiring** call-chains (`Component → api.ts fn → METHOD /path → service.fn → Model.field`) and the **Steps** table.
 2. For each chain, grep the diff / codebase to confirm every named symbol exists **as wired**: the component, the api function, the route + method, the service function, the model field.
@@ -127,7 +127,7 @@ Before smoke/QA, verify the implementation matches the **approved** plan. This i
    - `✅ MATCHES` — every named symbol present and wired as planned.
    - `⚠ ADJUSTED` — deviates from the plan, but the plan was already reconciled in the Phase 3 drift-check (the plan line now describes what was built).
    - `✗ MISSING` — a named symbol is absent or wired differently and the plan was NOT updated. This is a real gap.
-4. For every `✗ MISSING`: either fix the code to match the plan, or — if the deviation was intentional — reconcile the plan line now (Phase 3 drift rule) so it reads `⚠ ADJUSTED`. **Do not proceed to `/saki-builder:qa` with an unexplained `✗`.**
+4. For every `✗ MISSING`: either fix the code to match the plan, or — if the deviation was intentional — reconcile the plan line now (Phase 3 drift rule) so it reads `⚠ ADJUSTED`. **Do not proceed to `/saketek:qa` with an unexplained `✗`.**
 
 Print:
 ```
@@ -138,7 +138,7 @@ All chains must be `✅` or `⚠` before continuing.
 
 ### Phase 8: Pre-QA Smoke Check
 
-Run the same env detection that `/saki-builder:qa` runs, so blockers surface here (with the implementer in context) instead of inside `/saki-builder:qa` (where they look like test failures):
+Run the same env detection that `/saketek:qa` runs, so blockers surface here (with the implementer in context) instead of inside `/saketek:qa` (where they look like test failures):
 
 ```bash
 # Frontend root (same logic as qa Step 1a)
@@ -159,7 +159,7 @@ if [ -n "$FRONTEND_ROOT" ]; then
 fi
 ```
 
-Print results. For any FAIL/DOWN/missing, surface the exact remediation command in the completion summary so the user can fix it before invoking `/saki-builder:qa`. Do NOT fix it automatically — env setup is the user's call.
+Print results. For any FAIL/DOWN/missing, surface the exact remediation command in the completion summary so the user can fix it before invoking `/saketek:qa`. Do NOT fix it automatically — env setup is the user's call.
 
 ### Completion summary
 
@@ -185,9 +185,9 @@ Pre-QA Smoke:
   Playwright browsers: [ok/missing/n/a]   [if missing: cd $FRONTEND_ROOT && npx playwright install chromium]
 
 Next actions:
-> /saki-builder:qa — run acceptance criteria verification
-> /saki-builder:reviewer — fresh-context code review
-> /saki-builder:retro — capture session learnings (if session > 30 min)
+> /saketek:qa — run acceptance criteria verification
+> /saketek:reviewer — fresh-context code review
+> /saketek:retro — capture session learnings (if session > 30 min)
 ```
 
 ---
@@ -204,7 +204,7 @@ Next actions:
 - **Load and trust `[task]-context.md`** — do NOT re-derive existing code shape (models, fields, signatures) it already documents; re-research wastes tokens and invites drift from the plan's assumptions
 - **Never call a symbol from memory** — grep/read to confirm it exists before first use (Phase 3 symbol pre-check). A hallucinated method name costs a full Red→fix cycle
 - **Keep the plan true** — any in-implementation deviation from a step's planned file/function/wiring must be reconciled back into the plan file (Phase 3 drift-check) so the contract never goes stale
-- **Plan-Conformance Gate must pass before `/saki-builder:qa`** — every Plan-Wiring chain `✅ MATCHES` or `⚠ ADJUSTED` (plan updated); never advance with an unexplained `✗ MISSING`
+- **Plan-Conformance Gate must pass before `/saketek:qa`** — every Plan-Wiring chain `✅ MATCHES` or `⚠ ADJUSTED` (plan updated); never advance with an unexplained `✗ MISSING`
 - **One compact line per step** — expand output only on failure or a notable event (RED-passes / stays-red / YAGNI cut / drift adjustment / commit); verbose ceremony per step dilutes signal and raises hallucination risk
 - If a step has no test specified and contains business logic → derive a test from the step's success criteria
 - If no active plan is found, ask: "Which plan should I implement?"

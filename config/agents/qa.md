@@ -27,7 +27,7 @@ ls -t *-plan.md 2>/dev/null | head -1
 
 Read it. Extract the **Success Criteria** section.
 
-If no plan file found → print `No plan file found. Create a plan with /saki-builder:rplan first.` and stop.
+If no plan file found → print `No plan file found. Create a plan with /saketek:rplan first.` and stop.
 
 Print:
 ```

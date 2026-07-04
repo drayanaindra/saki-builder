@@ -9,9 +9,9 @@ Two layers, so a whole team can learn without ever conflicting on one file.
 
 ## How it flows
 
-- `/saki-builder:reflect` promotes a lesson by **audience**: yours/experimental/project-local/< 3× → **personal overlay** (instant); cross-person + confirmed + portable → **team baseline** (opens an MR).
-- `/saki-builder:sync` shares team-baseline edits via a **branch + MR** — never a direct push to `main`. Personal-overlay writes are never synced (they aren't in the repo).
-- `/saki-builder:reviewer` and other pattern-consuming skills read **both** layers.
+- `/saketek:reflect` promotes a lesson by **audience**: yours/experimental/project-local/< 3× → **personal overlay** (instant); cross-person + confirmed + portable → **team baseline** (opens an MR).
+- `/saketek:sync` shares team-baseline edits via a **branch + MR** — never a direct push to `main`. Personal-overlay writes are never synced (they aren't in the repo).
+- `/saketek:reviewer` and other pattern-consuming skills read **both** layers.
 
 ## Why split
 

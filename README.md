@@ -7,10 +7,10 @@ the same vetted tools and works solo with them.
 **Install (no clone):**
 ```
 > /plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
-> /plugin install saki-builder@saki-builder
+> /plugin install saketek@saki-builder
 ```
 Then start a new session. Teammate guide: **[docs/HOW-TO.md](docs/HOW-TO.md)**. Every command is
-namespaced `/saki-builder:<name>` (e.g. `/saki-builder:rplan`). Update with `/saki-builder:update`.
+namespaced `/saketek:<name>` (e.g. `/saketek:rplan`). Update with `/saketek:update`.
 
 > The legacy clone + `./install.sh` symlink flow below still works (owner/dev), but the plugin is the
 > primary path. The repo directory is named `claude-config` on disk; the plugin/brand is `saki-builder`.

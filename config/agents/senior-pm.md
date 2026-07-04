@@ -63,9 +63,9 @@ If unclear: ask 1–3 sharp questions before producing anything.
 
 ## PRD
 
-Canonical schema lives in the `/saki-builder:prd` skill (`config/skills/prd/SKILL.md`) — invoke it when available. This template mirrors that schema for use when the skill isn't reachable (e.g., subagent context). Both must stay in sync.
+Canonical schema lives in the `/saketek:prd` skill (`config/skills/prd/SKILL.md`) — invoke it when available. This template mirrors that schema for use when the skill isn't reachable (e.g., subagent context). Both must stay in sync.
 
-The PRD is a *bridge* from product intent to the XP planning game (`/saki-builder:rplan` → `/saki-builder:approved` → `/saki-builder:qa`). It owns *what* vertical slices exist; `/saki-builder:rplan` owns *how* to execute each. Do NOT decompose slices into file-level tasks here — that is BDUF and short-circuits `/saki-builder:rplan`'s confidence gate.
+The PRD is a *bridge* from product intent to the XP planning game (`/saketek:rplan` → `/saketek:approved` → `/saketek:qa`). It owns *what* vertical slices exist; `/saketek:rplan` owns *how* to execute each. Do NOT decompose slices into file-level tasks here — that is BDUF and short-circuits `/saketek:rplan`'s confidence gate.
 
 **MUST sections** (required, in order):
 

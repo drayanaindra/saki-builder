@@ -6,7 +6,7 @@
 
 ## Objective
 
-When `/saki-builder:init-env` runs, ensure the repo has **full MR/PR/commit/review access**
+When `/saketek:init-env` runs, ensure the repo has **full MR/PR/commit/review access**
 through the correct git-provider CLI. Detect the provider from the git remote, then guide the
 user through install + login. For a fresh project (no remote), ask which provider to use.
 

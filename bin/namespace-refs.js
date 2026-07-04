@@ -2,15 +2,15 @@
 'use strict'
 // saki-builder — namespace internal skill references.
 //
-// Plugin skills/commands are invoked namespaced (/saki-builder:<name>). This rewrites BARE
-// internal references (/rplan, /prd, /build, …) in skill + agent bodies to /saki-builder:<name>,
+// Plugin skills/commands are invoked namespaced (/saketek:<name>). This rewrites BARE
+// internal references (/rplan, /prd, /build, …) in skill + agent bodies to /saketek:<name>,
 // but ONLY for names that are actually OUR skills (top-level dirs in config/skills). External
 // commands (/code-review, /security-review, /simplify, /verify, /init, /review, /clear) are not
 // in that set, so they are left bare automatically.
 //
 // Guards against false hits:
 //   - lookbehind (?<![\w:./~*-]) — the slash must not be inside a path (skills/rplan, ./sync.sh,
-//     ~/x, **/prd.md) or an already-namespaced ref (/saki-builder:rplan → "rplan" preceded by ':').
+//     ~/x, **/prd.md) or an already-namespaced ref (/saketek:rplan → "rplan" preceded by ':').
 //   - lookahead  (?![-\w/])  — the name must be whole and not a path segment (/rplan/template.md)
 //     or a longer skill (/prd never matches inside /prd-review).
 //
@@ -22,7 +22,7 @@ const path = require('path')
 
 const ROOT = path.resolve(__dirname, '..')
 const DRY = process.argv.includes('--dry')
-const PREFIX = 'saki-builder'
+const PREFIX = 'saketek'
 
 // OUR invocable skills = top-level dirs under config/skills (nested library skills are
 // user-invocable:false docs, never slash-invoked, so not namespace targets).

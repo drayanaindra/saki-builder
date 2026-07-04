@@ -12,7 +12,7 @@
 //   [hard] mcpServers pointer file exists and parses
 //   [hard] every plugin.json skills-path dir: each */SKILL.md has name+description frontmatter
 //   [hard] every plugin.json agents-path dir: each *.md has name+description frontmatter
-//   [hard] every `/saki-builder:<x>` reference resolves to a real skill/agent/command
+//   [hard] every `/saketek:<x>` reference resolves to a real skill/agent/command
 //   [warn] stray `claude-config` strings (until the Phase-4 rename lands)
 //   [warn] hooks.json referenced by plugin.json parses (if present)
 
@@ -81,7 +81,7 @@ if (plugin && fs.existsSync(path.join(ROOT, 'CHANGELOG.md'))) {
 }
 
 // --- 3. Skills: any dir containing SKILL.md is a skill (recursive) ---------
-// 1-level skills are slash-invocable (/saki-builder:<name>); deeper "library" skills are
+// 1-level skills are slash-invocable (/saketek:<name>); deeper "library" skills are
 // user-invocable:false docs the gateway-* skills load by path. Both must have valid frontmatter.
 // A category dir (e.g. config/skills/backend) has no SKILL.md itself but nests skills — not an error.
 const skillPaths = (plugin && plugin.skills) || ['./config/skills']
@@ -130,7 +130,7 @@ if (plugin && typeof plugin.hooks === 'string') {
   if (hj && typeof hj.hooks !== 'object') err(`${plugin.hooks}: missing "hooks" object`)
 }
 
-// --- 5. Reference resolution: every /saki-builder:<x> must resolve ---------
+// --- 5. Reference resolution: every /saketek:<x> must resolve ---------
 const cmdPaths = (plugin && plugin.commands) || ['./config/commands']
 const cmdNames = new Set()
 for (const cp of cmdPaths) {
@@ -140,14 +140,14 @@ for (const cp of cmdPaths) {
   }
 }
 const resolvable = new Set([...skillNames, ...agentNames, ...cmdNames])
-const refRe = /\/saki-builder:([a-z0-9][a-z0-9-]*)/g
+const refRe = /\/saketek:([a-z0-9][a-z0-9-]*)/g
 function scanFile (rel) {
   if (!rel.endsWith('.md')) return
   const txt = fs.readFileSync(path.join(ROOT, rel), 'utf8')
   refRe.lastIndex = 0
   let m
   while ((m = refRe.exec(txt))) {
-    if (!resolvable.has(m[1])) err(`unresolved reference /saki-builder:${m[1]} in ${rel}`)
+    if (!resolvable.has(m[1])) err(`unresolved reference /saketek:${m[1]} in ${rel}`)
   }
 }
 function scanRefs (rel) {

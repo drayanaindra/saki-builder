@@ -1,6 +1,6 @@
 ---
 name: pipeline
-description: RETIRED — the autonomous /pipeline has been replaced by the epic-anchored stepwise flow. Use /saki-builder:roadmap → /saki-builder:epic → /saki-builder:pickup E<n> → /saki-builder:proto E<n> → /saki-builder:build E<n> instead. This tombstone only redirects; the full former pipeline is recoverable from git history.
+description: RETIRED — the autonomous /pipeline has been replaced by the epic-anchored stepwise flow. Use /saketek:roadmap → /saketek:epic → /saketek:pickup E<n> → /saketek:proto E<n> → /saketek:build E<n> instead. This tombstone only redirects; the full former pipeline is recoverable from git history.
 ---
 
 # /pipeline — retired
@@ -11,14 +11,14 @@ where every feature traces to an epic on the roadmap and each command boundary i
 ## Use this instead
 
 ```
-/saki-builder:roadmap init      # scaffold the epic portfolio (once per project)
-/saki-builder:epic              # add an epic  (Goal · Job · User flow · Success signal)   [Planned]
-/saki-builder:pickup E<n>       # seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY)  [In-progress]
-/saki-builder:proto  E<n>       # UI preview — running it IS your PRD approval
-/saki-builder:build  E<n>       # autonomous slice-by-slice build → Shipped
+/saketek:roadmap init      # scaffold the epic portfolio (once per project)
+/saketek:epic              # add an epic  (Goal · Job · User flow · Success signal)   [Planned]
+/saketek:pickup E<n>       # seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY)  [In-progress]
+/saketek:proto  E<n>       # UI preview — running it IS your PRD approval
+/saketek:build  E<n>       # autonomous slice-by-slice build → Shipped
 ```
 
-Why: the stepwise flow makes the discipline **structural** — `/saki-builder:pickup` requires an epic, so there
+Why: the stepwise flow makes the discipline **structural** — `/saketek:pickup` requires an epic, so there
 is no cold-intent feature path — while keeping the same single human gate (at proto) without a
 self-surviving mega-run.
 
@@ -31,5 +31,5 @@ preserved in git history:
 git show <sha>:config/skills/pipeline/SKILL.md      # see: chore(saki-builder): finalize two-gate pipeline before retirement
 ```
 
-Its front half now lives in `/saki-builder:pickup`; its build half is the standalone `/saki-builder:build`;
+Its front half now lives in `/saketek:pickup`; its build half is the standalone `/saketek:build`;
 its front-half Stop hook was renamed to `config/hooks/pickup-completion-gate.sh`.

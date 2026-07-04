@@ -1,4 +1,7 @@
 {
+  "env": {
+    "COVERAGE_MIN": "80"
+  },
   "permissions": {
     "allow": [
       "Bash(go test *)",
@@ -45,6 +48,7 @@
       "NotebookEdit"
     ]
   },
+  "model": "claude-sonnet-4-6",
   "hooks": {
     "Notification": [
       {
@@ -155,7 +159,7 @@
     "commit-commands@claude-plugins-official": true,
     "data-engineering@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
-    "saki-builder@saki-builder": true
+    "saketek@saki-builder": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -166,16 +170,13 @@
     },
     "saki-builder": {
       "source": {
-        "source": "directory",
-        "path": "/Users/indrayana/claude-config"
+        "source": "git",
+        "path": "/Users/indrayana/claude-config",
+        "url": "https://gitlab.com/drayanaindra/saki-builder.git"
       }
     }
   },
-  "env": {
-    "COVERAGE_MIN": "80"
-  },
   "effortLevel": "xhigh",
   "skipWorkflowUsageWarning": true,
-  "theme": "dark",
-  "model": "claude-sonnet-4-6"
+  "theme": "dark"
 }

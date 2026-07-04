@@ -6,7 +6,7 @@ detailed references live in `config/docs/*` and are loaded on demand.
 
 ## Execution Protocol (BLOCKING)
 
-For non-trivial tasks: use `/saki-builder:rplan` before implementing (research → plan → confidence gate).
+For non-trivial tasks: use `/saketek:rplan` before implementing (research → plan → confidence gate).
 Trivial (typo, 1-line fix) → execute directly.
 
 1. NEVER implement without a structured plan first (unless trivial or the user says "skip workflow").
@@ -50,11 +50,11 @@ Completed: [1-line summary]
 Next actions:
 > [most logical next step]
 > [alternative]
-> /saki-builder:wrap (if the task touched git — converge to clean)
-> /saki-builder:retro (if the session was substantial)
+> /saketek:wrap (if the task touched git — converge to clean)
+> /saketek:retro (if the session was substantial)
 ```
 
 Be specific ("run `pytest tests/test_users.py`", not "test it"). Show the next uncompleted plan step if working from a plan.
 
 ---
-*Detailed references (on demand): `config/docs/execution-protocol-detail.md`, `config/docs/xp-principles.md`, the `/saki-builder:clean-code` skill. Optional local gates (SonarQube pre-merge, etc.) are project-configured, not part of this core.*
+*Detailed references (on demand): `config/docs/execution-protocol-detail.md`, `config/docs/xp-principles.md`, the `/saketek:clean-code` skill. Optional local gates (SonarQube pre-merge, etc.) are project-configured, not part of this core.*

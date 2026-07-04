@@ -22,7 +22,7 @@ print('Model set to opus (alias -> latest Opus)')
 
 Then confirm with: `Model: OPUS | Status: Planning`
 
-> This pins the model to Opus for planning and does **not** auto-restore afterward — `/saki-builder:approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+> This pins the model to Opus for planning and does **not** auto-restore afterward — `/saketek:approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
 
 ---
 
@@ -64,17 +64,17 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
 
 ### 1. Research Phase (read-only — NEVER skip)
 
-- **Ingest the source PRD slice FIRST (if this task came from `/saki-builder:prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
+- **Ingest the source PRD slice FIRST (if this task came from `/saketek:prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
   - the slice's **acceptance criteria** → seed the plan's Success Criteria
-  - the slice's **`Assumes:`** line (if present) → seed the plan's implementation steps + **Migration Checklist** (the hidden work — migration/backfill/index/flag/permission/rollback — `/saki-builder:prd-review` surfaced and `/saki-builder:prd` stated; do NOT re-derive it)
+  - the slice's **`Assumes:`** line (if present) → seed the plan's implementation steps + **Migration Checklist** (the hidden work — migration/backfill/index/flag/permission/rollback — `/saketek:prd-review` surfaced and `/saketek:prd` stated; do NOT re-derive it)
   - the **§5 outcome IDs** it serves → keep each Success Criterion's `→ 5.x` link
   - the **outcome-tied kill criterion** (§6) and the **feature appetite band** (§6/header — `small|medium|large`) → into the plan header (Step 2 / template). The band is the *feature-wide* recut ceiling; derive THIS plan's own appetite (`~N agent tasks`) from the slice's size (its acceptance-criteria count — ≤5 ≈ one agent iteration per INVEST), not from the band directly.
   - any `⚠ DISCOVERY-RISK` banner → record as a plan-level UNKNOWN with a resolution strategy
   - **Lock check:** if the source PRD carries no `<!-- prd-locked: … -->` marker, note it in the plan header
-    as `Source PRD: NOT LOCKED — requirements may still change`. Inside `/saki-builder:build` this never happens
-    (build's Gate 1.5 hard-blocks an unlocked PRD *before* rplan runs); a **standalone** `/saki-builder:rplan`
-    stays lenient — plan against it, but flag that the freeze (`/saki-builder:proto`'s lock) hasn't run yet.
-  If there is no source PRD (standalone `/saki-builder:rplan`), note "no source PRD" and continue.
+    as `Source PRD: NOT LOCKED — requirements may still change`. Inside `/saketek:build` this never happens
+    (build's Gate 1.5 hard-blocks an unlocked PRD *before* rplan runs); a **standalone** `/saketek:rplan`
+    stays lenient — plan against it, but flag that the freeze (`/saketek:proto`'s lock) hasn't run yet.
+  If there is no source PRD (standalone `/saketek:rplan`), note "no source PRD" and continue.
 - **Persona check:** after PRD ingestion, check if `.claude/personas/*.md` exists. If it does,
   read the relevant persona(s) and carry forward into the plan:
   - §3 Pain Points & §5 UI/UX Constraints → inform which error/empty states to cover in Step 2.5
@@ -116,7 +116,7 @@ Fill in the plan template with:
 
 **Skip** if the task is backend-only (no UI change, no endpoint a user/role directly hits through the app). Otherwise, write `[task]-flow.md` alongside the plan.
 
-Purpose: behavior checkpoint the user reads before approval to verify the plan will behave as expected. Also consumable by `/saki-builder:qa` to lift Playwright scenarios.
+Purpose: behavior checkpoint the user reads before approval to verify the plan will behave as expected. Also consumable by `/saketek:qa` to lift Playwright scenarios.
 
 Format: **Gherkin**, one `Feature:` block per role (Customer / Admin / Kasir / Warehouse / etc. — only roles that touch this feature). Do not merge roles.
 
@@ -274,7 +274,7 @@ A deduction not tied to any step (e.g., missing role) uses ×1.
 
 **Max unresolved unknowns before presenting:** 2.
 
-> Threshold rationale (vs `/saki-builder:prd`): `/saki-builder:rplan` presents at **≥96%** while `/saki-builder:prd` presents at **≥90%** — by design. A plan is one step from code and has a larger blast radius (a wrong file or migration ships a bug), so its bar sits higher than a product spec's.
+> Threshold rationale (vs `/saketek:prd`): `/saketek:rplan` presents at **≥96%** while `/saketek:prd` presents at **≥90%** — by design. A plan is one step from code and has a larger blast radius (a wrong file or migration ships a bug), so its bar sits higher than a product spec's.
 
 #### 4e. Honesty rules
 
@@ -296,12 +296,12 @@ Before showing the plan to the user, answer all of these:
 7. Is the Confidence Ledger present, and does every entry cite evidence (`path:line`, grep result, or step number)?
 
 If any answer is "No" → fix the plan before presenting.
-If #6 is "No" → STOP. Do not present. Return to user and ask for the example, or recommend `/saki-builder:shaping-requirements`. Do not invent the example.
+If #6 is "No" → STOP. Do not present. Return to user and ask for the example, or recommend `/saketek:shaping-requirements`. Do not invent the example.
 If #7 is "No" → the score is unsubstantiated. Build the ledger before presenting; do not round up to clear the gate.
 
 ### 6. Self-Review (built-in domain checks)
 
-**Run BEFORE presenting the plan. This replaces /saki-builder:rplan-review for LOW/MED risk plans.**
+**Run BEFORE presenting the plan. This replaces /saketek:rplan-review for LOW/MED risk plans.**
 
 Walk through the plan and check each item below. For each violation found, fix it in the plan immediately — do not just flag it.
 
@@ -319,7 +319,7 @@ Walk through the plan and check each item below. For each violation found, fix i
 | 8   | YAGNI violations    | For each new function/struct/file: (Q1) Is it in the current plan step? (Q2) Will code break without it now? (Q3) Same effort to add later? (Q4) Deferring creates breaking change? → If Q1=No or (Q2=No and Q4=No) → CUT IT. Common violations: premature interfaces with one impl, unused config options, pagination before data exists, factory patterns for single-use |
 | 9   | Missing TDD spec    | Any step with business logic that has no Test column entry → add test function name. Steps must specify: test name, what it asserts, TDD mode (Test-First / Test-Along / Test-After) |
 | 10  | Uncommittable steps | Any step marked Committable=No without naming which step completes it → fix. Adjacent uncommittable steps must be grouped as atomic commit |
-| 11  | Missing concrete example | The plan's `Concrete Example Output` section is empty, contains placeholder text ("TBD", "to be defined", "see ticket", "as discussed", "kamu yang tentukan", "n/a"), or only restates the problem statement → BLOCK. Stop self-review, return to user with: *"This plan needs a concrete example of the expected output before I can continue. Either paste an example, or run `/saki-builder:shaping-requirements` to define the problem shape first."* Do NOT attempt to fabricate the example yourself. |
+| 11  | Missing concrete example | The plan's `Concrete Example Output` section is empty, contains placeholder text ("TBD", "to be defined", "see ticket", "as discussed", "kamu yang tentukan", "n/a"), or only restates the problem statement → BLOCK. Stop self-review, return to user with: *"This plan needs a concrete example of the expected output before I can continue. Either paste an example, or run `/saketek:shaping-requirements` to define the problem shape first."* Do NOT attempt to fabricate the example yourself. |
 
 #### 6b. Project-Aware Checks (detect from project context)
 
@@ -363,7 +363,7 @@ If the spot-check finds blockers, fix them in the plan before presenting.
 
 #### 6d. Acceptance Criteria Hardening
 
-**Run after 6a–6c. Rewrites criteria in-place so `/saki-builder:qa` can run them as-is.**
+**Run after 6a–6c. Rewrites criteria in-place so `/saketek:qa` can run them as-is.**
 
 Read the Success Criteria section. For each criterion, it PASSES hardening only if it has ALL THREE:
 1. **Actor + Action** — who does what (`User calls POST /v1/endpoint`, `User clicks Submit button`)
@@ -371,7 +371,7 @@ Read the Success Criteria section. For each criterion, it PASSES hardening only 
 3. **Expected outcome** — exact result (`HTTP 201`, `{"status":"ok"}`, `"Success" toast visible`)
 
 **Classify each:**
-- `✅ HARDENED` — has all three, ready for `/saki-builder:qa`
+- `✅ HARDENED` — has all three, ready for `/saketek:qa`
 - `🔧 REWRITE` — missing test command or expected outcome
 - `🔲 MANUAL` — requires browser interaction, needs Playwright scenario or explicit manual steps
 
@@ -410,17 +410,17 @@ Update the Confidence Ledger to reflect what was fixed: remove resolved entries,
 
 #### Next Action Decision Tree
 
-Step 6 already performed self-review and (for HIGH risk) the combined-reviewer spot-check. `/saki-builder:rplan-review` is for HIGH-risk plans that benefit from parallel domain experts — it does NOT re-do Step 6's work. For LOW/MED, do not recommend `/saki-builder:rplan-review`; the gaps it would find are already covered by Step 6.
+Step 6 already performed self-review and (for HIGH risk) the combined-reviewer spot-check. `/saketek:rplan-review` is for HIGH-risk plans that benefit from parallel domain experts — it does NOT re-do Step 6's work. For LOW/MED, do not recommend `/saketek:rplan-review`; the gaps it would find are already covered by Step 6.
 
 ```
 If confidence >= 96% AND risk is LOW/MED:
-  → "Plan ready. /saki-builder:approved to start implementation."
+  → "Plan ready. /saketek:approved to start implementation."
 
 If confidence >= 96% AND risk is HIGH:
-  → "Plan ready (HIGH risk). Recommend /saki-builder:rplan-review for parallel domain expert review, or /saki-builder:approved if Step 6 spot-check is sufficient."
+  → "Plan ready (HIGH risk). Recommend /saketek:rplan-review for parallel domain expert review, or /saketek:approved if Step 6 spot-check is sufficient."
 
 If confidence 90-95%:
-  → "Confidence at [X]%. Gaps: [list cited ledger entries]. Fix the cited gaps and re-run /saki-builder:rplan — do NOT round up, do NOT escalate to /saki-builder:rplan-review to mask the gaps."
+  → "Confidence at [X]%. Gaps: [list cited ledger entries]. Fix the cited gaps and re-run /saketek:rplan — do NOT round up, do NOT escalate to /saketek:rplan-review to mask the gaps."
 
 If confidence < 90%:
   → "Confidence too low ([X]%). Need your input on: [specific questions]"
@@ -435,8 +435,8 @@ Risk: LOW / MED / HIGH
 Self-review: [N] issues found and fixed, [N] blockers remaining
 
 Recommendation: [one of the above]
-> /saki-builder:approved    — start implementation
-> /saki-builder:rplan-review — expert validation (recommended for HIGH risk)
+> /saketek:approved    — start implementation
+> /saketek:rplan-review — expert validation (recommended for HIGH risk)
 > [specific questions if confidence < 90%]
 ```
 
