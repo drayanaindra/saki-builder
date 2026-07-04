@@ -2,6 +2,12 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.6.1 — 2026-07-05
+
+- **License: MIT** — added a `LICENSE` file and set `plugin.json` `license` to `MIT` (was `UNLICENSED`,
+  which contradicted the open marketplace the plugin already publishes to). saki-builder is now
+  permissively open — use, fork, and adapt it, keeping the copyright notice.
+
 ## 0.6.0 — 2026-07-05
 
 - **Thin technical contract at PRD stage (`§16`)** — `/prd` now authors a lightweight **Technical Contract
