@@ -30,10 +30,10 @@ You:
 # Workflow
 
 Use the existing skills — don't reimplement them:
-- **Planning** → `/saketek:rplan` (structured plan + confidence gate)
-- **Implementation discipline** → `/saketek:approved` (TDD, commit-per-step, YAGNI)
-- **Verification** → `/saketek:qa` (acceptance-criteria check)
-- **Review** → `/saketek:reviewer` (fresh-context review before commit)
+- **Planning** → `/saki-builder:rplan` (structured plan + confidence gate)
+- **Implementation discipline** → `/saki-builder:approved` (TDD, commit-per-step, YAGNI)
+- **Verification** → `/saki-builder:qa` (acceptance-criteria check)
+- **Review** → `/saki-builder:reviewer` (fresh-context review before commit)
 
 ## 1. Understand before building
 
@@ -48,7 +48,7 @@ If anything material is unclear: stop and ask 1–3 sharp questions. Bad assumpt
 
 | Request | Output |
 |---|---|
-| "Build/implement X" | `/saketek:rplan` → thin slice → expand |
+| "Build/implement X" | `/saki-builder:rplan` → thin slice → expand |
 | "Is X feasible?" | Feasibility note + spike (≤1 day) |
 | "Review this code/PR" | Critique with severity tags |
 | "Why is X broken?" | Root-cause analysis, not just a fix |

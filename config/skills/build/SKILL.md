@@ -1,19 +1,19 @@
 ---
 name: build
-description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /saketek:rplan → (/saketek:rplan-review if needed) → /saketek:approved → /saketek:qa → /saketek:reviewer → (security audit on security-relevant slices) on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /saketek:build <prd-file.md>.
+description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → (security audit on security-relevant slices) on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /saki-builder:build <prd-file.md>.
 ---
 
 # Autonomous PRD Executor
 
 You are operating in **TRUST MODE** — fully autonomous execution. The PRD has already
-been written, reviewed (via `/saketek:prd` → `/saketek:prd-review`), and **Locked** (via
-`/saketek:proto`, Gate 1.5), and the user has pre-authorized this flow. Your single goal: **ship every
+been written, reviewed (via `/saki-builder:prd` → `/saki-builder:prd-review`), and **Locked** (via
+`/saki-builder:proto`, Gate 1.5), and the user has pre-authorized this flow. Your single goal: **ship every
 vertical slice in the PRD, fully tested, with no outstanding issues.** Do not stop until that is true.
 
 This command is the one-shot equivalent of running, by hand, for each slice:
 
 ```
-/saketek:rplan  →  /saketek:rplan-review (only if needed)  →  /saketek:approved  →  /saketek:qa  →  /saketek:reviewer  →  security audit (security-relevant slices only)
+/saki-builder:rplan  →  /saki-builder:rplan-review (only if needed)  →  /saki-builder:approved  →  /saki-builder:qa  →  /saki-builder:reviewer  →  security audit (security-relevant slices only)
 ```
 
 …then verifying the whole thing end-to-end.
@@ -24,14 +24,14 @@ This command is the one-shot equivalent of running, by hand, for each slice:
 
 You are in TRUST MODE. This means:
 - **NEVER ask "Do you want to proceed?"** or any variation. Make the call, log it, continue.
-- **Do NOT wait for plan approval.** `/saketek:rplan` normally stops for a human; here you
-  auto-approve any plan that clears the confidence bar and proceed to `/saketek:approved` yourself.
-- Agent-based sub-skills that are part of this flow (`/saketek:rplan-review`, `/saketek:reviewer`,
+- **Do NOT wait for plan approval.** `/saki-builder:rplan` normally stops for a human; here you
+  auto-approve any plan that clears the confidence bar and proceed to `/saki-builder:approved` yourself.
+- Agent-based sub-skills that are part of this flow (`/saki-builder:rplan-review`, `/saki-builder:reviewer`,
   and the `security-review` audit) are permitted — they are how slices get reviewed. Just never pause
   for user confirmation around them.
 - The **only** hard stops are: a missing/unreadable PRD file (Gate 1), an ABSOLUTE NO-GO (below),
   or a slice that cannot be made green after repeated honest attempts. An unresolved `before slice
-  N` open question is **not** a stop — `/saketek:build` auto-resolves it (Per-Slice Loop, step 0) and
+  N` open question is **not** a stop — `/saki-builder:build` auto-resolves it (Per-Slice Loop, step 0) and
   proceeds. **Exception:** a fork the PRD author tagged `[human]` is a deliberate, human-only
   decision — pause for it via the `NEEDS_DECISION:` gate (step 0a). That is a *resumable pause*, not
   a confirmation prompt: you emit the gate and end the turn; the studio collects the answer and
@@ -45,7 +45,7 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 `/goal`). So this skill enforces its **own** persistence — behave as if a goal were set:
 
 - **Completion signal.** You are done ONLY when every slice in the PRD is green
-  (`/saketek:qa` passes, `/saketek:reviewer` is clean, **and** any security audit a
+  (`/saki-builder:qa` passes, `/saki-builder:reviewer` is clean, **and** any security audit a
   security-relevant slice required is clean) **and** the e2e suite passes. At that point,
   and only then, print `PRD_BUILD_COMPLETE`. Never print it early.
 - **Do not hand control back** until you either print `PRD_BUILD_COMPLETE` or hit a real
@@ -80,34 +80,34 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 ### For guaranteed cross-turn autonomy, launch under /goal
 
 Because a skill can't self-activate `/goal`, the most autonomous way to start is for the
-**user** to type the wrapper (the engine is `/goal`, the orchestration is `/saketek:build`):
+**user** to type the wrapper (the engine is `/goal`, the orchestration is `/saki-builder:build`):
 
 ```
-/goal /saketek:build tasks/prd-<feature>.md — done when every slice passes /saketek:qa and /saketek:reviewer and the e2e suite is green
+/goal /saki-builder:build tasks/prd-<feature>.md — done when every slice passes /saki-builder:qa and /saki-builder:reviewer and the e2e suite is green
 ```
 
-Plain `/saketek:build tasks/prd-<feature>.md` still runs and self-iterates per the rules above; the
+Plain `/saki-builder:build tasks/prd-<feature>.md` still runs and self-iterates per the rules above; the
 `/goal` wrapper just makes the cross-turn persistence bulletproof.
 
 ---
 
 ## Input
 
-Usage: `/saketek:build <E<n> | prd-file.md>` (filler words are fine, e.g. `/saketek:build start build prd-wave-2.md`).
+Usage: `/saki-builder:build <E<n> | prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
 
 **Epic id (`E<n>`) — the disciplined path:** if the argument is an epic id, read `tasks/roadmap.md`, find
 `### E<n>`, and resolve its `**Child PRD:**` link to `tasks/prd-<slug>.md`. If `E<n>` has no Child PRD yet
-(its value is `—`), **STOP**: `E<n> has no PRD yet — run /saketek:pickup E<n> first`. Remember the `E<n>`
+(its value is `—`), **STOP**: `E<n> has no PRD yet — run /saki-builder:pickup E<n> first`. Remember the `E<n>`
 so the Completion Output can flip its roadmap status to `Shipped`.
 
 > **Note — PRD-path launches still flip the epic.** The studio board (and a hand-typed
-> `/saketek:build tasks/prd-<slug>.md`) invokes this skill with the **PRD path**, not `E<n>`. Do NOT
+> `/saki-builder:build tasks/prd-<slug>.md`) invokes this skill with the **PRD path**, not `E<n>`. Do NOT
 > assume "no `E<n>` argument ⇒ no epic to flip": the Completion Output reverse-maps the built PRD back to
 > its epic via the roadmap's `**Child PRD:**` field, so the `Shipped` flip fires on either launch path.
 
 Otherwise extract the PRD path from the arguments: take the token ending in `.md` (or matching
 `prd-*`). Locate the file by checking, in order: `tasks/<name>`, `./<name>`, the path as
-given. The `/saketek:prd` skill saves to `tasks/prd-<feature>.md`, so `tasks/` is the common case.
+given. The `/saki-builder:prd` skill saves to `tasks/prd-<feature>.md`, so `tasks/` is the common case.
 
 ---
 
@@ -117,7 +117,7 @@ Read the PRD file. If it cannot be found or read, **STOP** and output:
 ```
 HARD STOP — PRD NOT FOUND
 Looked for: tasks/<name>, ./<name>, <name>
-Pass a valid PRD path: /saketek:build <prd-file.md>
+Pass a valid PRD path: /saki-builder:build <prd-file.md>
 ```
 Do NOT invent a PRD or ask the user to paste one — this is the one input the command requires.
 
@@ -125,7 +125,7 @@ From the PRD, extract (match sections by **heading title**, not number — PRD s
 as sections are added):
 - **Vertical Slices** — the ordered, numbered list. Slices are forward-dependency-only, so
   **PRD order is execution order**. This is your work list.
-- **Acceptance Criteria per Slice** — these become each slice's `/saketek:qa` success criteria.
+- **Acceptance Criteria per Slice** — these become each slice's `/saki-builder:qa` success criteria.
 - **Business Rules & Invariants** (the *Business Rules & Invariants* section, if present) — the
   domain rules every slice must uphold. If it reads "none beyond CRUD", skip the rule checks in the
   loop below. Otherwise: each rule links to an acceptance criterion, and a criterion may cite
@@ -136,15 +136,15 @@ as sections are added):
 - **Open Questions** (the *Rabbit Holes & Open Questions* section) — each question with a
   `before slice N` deadline, and whether it carries a `✅ RESOLVED` marker. These are architectural
   forks that gate specific slices (see the Per-Slice Loop, step 0). Ignore `before launch | before
-  beta | before GA` deadlines — those are rollout decisions, outside `/saketek:build`'s scope.
+  beta | before GA` deadlines — those are rollout decisions, outside `/saki-builder:build`'s scope.
 
 Print the extracted slice list (numbered titles) and any **unresolved** `before slice N` gates so
 the run is auditable — these will be **auto-resolved** in the loop (step 0), not blocked on — then
 begin.
 
-### Optional: reuse a `/saketek:proto` preview if one exists
+### Optional: reuse a `/saki-builder:proto` preview if one exists
 
-If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/saketek:proto` first), read it. It records the
+If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/saki-builder:proto` first), read it. It records the
 **real design-system components + token references** chosen per screen, already validated visually.
 When implementing a user-facing slice, **promote** those presentational components (mock data →
 real data + state + tests + backend wiring) instead of re-picking from scratch — the look is
@@ -156,8 +156,8 @@ ship). If no proto notes exist, build the UI normally.
 
 ## GATE 1.5: Lock check — requirements must be frozen (hard stop if unlocked)
 
-`/saketek:build` runs only against a **Locked** PRD — the requirements are frozen before any slice
-reaches `/saketek:rplan`. Grep the PRD (loaded in Gate 1) for the lock marker:
+`/saki-builder:build` runs only against a **Locked** PRD — the requirements are frozen before any slice
+reaches `/saki-builder:rplan`. Grep the PRD (loaded in Gate 1) for the lock marker:
 
 ```bash
 grep -qE '^<!-- prd-locked:' "<prd-path>" && echo LOCKED || echo UNLOCKED
@@ -166,18 +166,18 @@ grep -qE '^<!-- prd-locked:' "<prd-path>" && echo LOCKED || echo UNLOCKED
 If the marker is **absent**, **STOP** — do not plan, do not touch code:
 ```
 HARD STOP — PRD NOT LOCKED
-Requirements aren't frozen; /saketek:build won't hand unfrozen scope to /saketek:rplan.
-Lock it first:  /saketek:proto <E<n> | prd-file.md>
+Requirements aren't frozen; /saki-builder:build won't hand unfrozen scope to /saki-builder:rplan.
+Lock it first:  /saki-builder:proto <E<n> | prd-file.md>
   — designs + approves the UI, then writes Status: Locked (a no-UI PRD is frozen there too).
-Then re-run /saketek:build.
+Then re-run /saki-builder:build.
 ```
 
 This is the gate that enforces **"lock Product Requirement before hand off to rplan."** It is **not** a
 confirmation prompt (TRUST MODE holds) — it is a *precondition*: the lock is written by a human-gated step
-(`/saketek:proto`) **before** build, so build itself never pauses to ask. A Locked PRD is by definition
+(`/saki-builder:proto`) **before** build, so build itself never pauses to ask. A Locked PRD is by definition
 Approved + review-green (the lock is the last gate of the PRD phase), so no separate approval check is needed
 here. `--slice` PARTIAL proto runs do not lock, so a build after one still correctly hard-stops until a full
-`/saketek:proto` locks the whole journey.
+`/saki-builder:proto` locks the whole journey.
 
 ---
 
@@ -236,7 +236,7 @@ If a slice would require one of the above, **STOP** that slice and output:
 ```
 HARD BLOCK — DB DESTRUCTIVE OPERATION DETECTED
 Slice [N]: [what was blocked]
-Forbidden in /saketek:build mode. Resolve manually with explicit human approval.
+Forbidden in /saki-builder:build mode. Resolve manually with explicit human approval.
 ```
 Then continue with the remaining independent slices.
 
@@ -266,11 +266,11 @@ NEEDS_DECISION: {"slice":N,"kind":"fork","question":"<the question, one line>","
   open-ended, pass `"options":[]` and the studio shows a free-text field.
 - Stop at the **first** such fork and end the turn — do not batch or proceed past it. The studio
   surfaces the picker, writes the operator's choice into the PRD as `✅ RESOLVED — <decision>`, and
-  re-drives `/saketek:build`, which then reads it like any resolved question. This is a pause, not a block:
+  re-drives `/saki-builder:build`, which then reads it like any resolved question. This is a pause, not a block:
   no `BLOCKED:`, no give-up — the build resumes the moment the human answers.
 
 **0b. Everything else — resolve it yourself and proceed** (the default; untagged forks). The goal is
-to ship the expectation, so a missing decision is something `/saketek:build` *makes*, not something it waits
+to ship the expectation, so a missing decision is something `/saki-builder:build` *makes*, not something it waits
 on. Resolve it with the first rule that applies:
 
 1. **Take the PRD's lean.** If the entry states a recommendation, default, or "leaning X" — use it.
@@ -289,27 +289,27 @@ Then **record the decision** so it is auditable and a human can override it late
 - Write it to the progress scratchpad and emit the marker line:
   `AUTO-RESOLVED: slice N — <question> → <decision>`.
 
-Carry the decision into step 1 (`/saketek:rplan`) as a stated assumption so the plan and its tests are
+Carry the decision into step 1 (`/saki-builder:rplan`) as a stated assumption so the plan and its tests are
 built on it.
 
-### 1. `/saketek:rplan` — plan the slice
+### 1. `/saki-builder:rplan` — plan the slice
 Invoke the `rplan` skill (Skill tool, `skill: rplan`) scoped to **this slice only**: its
 description plus its acceptance criteria, **and the Business Rules & Invariants in scope for it**
 (the rules its criteria link to, plus any `🔒 INVARIANT` the slice's writes could violate). The
 plan must be built to uphold them — call out each in-scope invariant so the implementation and its
-tests account for it. `/saketek:rplan` will research, build the plan, and score confidence. **Do not wait
+tests account for it. `/saki-builder:rplan` will research, build the plan, and score confidence. **Do not wait
 for approval** — read the resulting plan and its confidence score yourself.
 
-### 2. `/saketek:rplan-review` — *only if needed*
+### 2. `/saki-builder:rplan-review` — *only if needed*
 Run the `rplan-review` skill when any of these hold; otherwise skip straight to step 3:
-- `/saketek:rplan` confidence is below its 96% bar, **or**
+- `/saki-builder:rplan` confidence is below its 96% bar, **or**
 - the slice is HIGH risk (auth, DB migration, deletes, money, security boundary), **or**
 - the slice spans >2 modules or has >3 acceptance criteria.
 
-`/saketek:rplan-review` hardens the plan (criteria → test commands, domain-expert pass). After it,
+`/saki-builder:rplan-review` hardens the plan (criteria → test commands, domain-expert pass). After it,
 re-read the plan.
 
-### 3. `/saketek:approved` — implement
+### 3. `/saki-builder:approved` — implement
 **First load the `clean-code` skill** (Skill tool, `skill: clean-code`) so the slice is written to
 the SonarQube clean-code standard — the Pre-merge Gate grades the diff (Clean as You Code), so
 writing clean now avoids a gate failure later. Then invoke the `approved` skill to implement the
@@ -317,18 +317,18 @@ slice under XP discipline (TDD Red→Green→Refactor, commit-per-step, YAGNI). 
 here — invoke both without waiting for the user. (Re-load `clean-code` every slice; this keeps it in
 context even if a context clear happened between slices.)
 
-### 4. `/saketek:qa` — test against acceptance criteria + in-scope invariants
+### 4. `/saki-builder:qa` — test against acceptance criteria + in-scope invariants
 Invoke the `qa` skill. It runs **this slice's** acceptance criteria as real tests; every
 criterion must pass. **Also verify each in-scope Business Rule** — and for a `🔒 INVARIANT`,
 assert it holds under concurrency / partial failure where the stack allows (e.g. a race or
 double-fire test), not just the happy path, since a passing acceptance criterion does not prove an
-invariant holds. If any criterion or invariant check fails → fix in place and re-run `/saketek:qa`. Do not
+invariant holds. If any criterion or invariant check fails → fix in place and re-run `/saki-builder:qa`. Do not
 proceed while red.
 
-### 5. `/saketek:reviewer` — fresh-context review
+### 5. `/saki-builder:reviewer` — fresh-context review
 Invoke the `reviewer` skill on the slice's diff. If it reports **blocking** issues
-(correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/saketek:qa`
-and `/saketek:reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
+(correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/saki-builder:qa`
+and `/saki-builder:reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
 
 ### 5.5. Security audit — *security-relevant slices only*
 Gate this step: run it **only when the slice touches a security surface** — auth / session, money /
@@ -354,15 +354,15 @@ only for `[human]`-tagged forks). Classify each blocking finding by depth and ro
 **shallowest** skill that closes it (cheapest fix first, escalate only when the shallow fix can't hold):
 
 1. **Implementation-level** (default — missing auth guard, unvalidated input, string-concat SQL,
-   hardcoded secret, missing ownership / tenant check in a handler): fix via `/saketek:approved`
+   hardcoded secret, missing ownership / tenant check in a handler): fix via `/saki-builder:approved`
    under TDD — add a failing test that *reproduces the hole* first, then close it. Re-enter at step 4.
 2. **Design-level** (the flaw is in the plan, not the code — no tenant-isolation model, wrong auth
    boundary, a data model that structurally leaks): a point-fix won't hold — **re-plan the slice from
-   step 1 `/saketek:rplan`**, carrying the finding in as an explicit requirement/assumption, then
-   `/saketek:rplan-review` (the slice is now HIGH-risk) → `/saketek:approved`.
+   step 1 `/saki-builder:rplan`**, carrying the finding in as an explicit requirement/assumption, then
+   `/saki-builder:rplan-review` (the slice is now HIGH-risk) → `/saki-builder:approved`.
    **If the fix reshapes the UI** (changes a screen, field, or flow the user sees — e.g. drops a
    leaking field, inserts a step-up-auth / confirm screen), the approved proto for that screen is now
-   stale: re-render it autonomously with `/saketek:proto --slice=N`, update
+   stale: re-render it autonomously with `/saki-builder:proto --slice=N`, update
    `tasks/proto-<slug>-notes.md`, and annotate the changed requirement in the PRD in place
    (`✅ RESOLVED (auto, security) — <what changed> — <why>`). Do NOT pause for human UI sign-off
    (TRUST MODE) and do NOT unlock the PRD — it stays Locked; you're amending one screen under the same
@@ -371,7 +371,7 @@ only for `[human]`-tagged forks). Classify each blocking finding by depth and ro
 3. **Dependency-CVE**: bump / replace the dependency in-slice; if it can't be resolved in-slice, log
    it — the SonarQube `sonar-dependency-risks` gate at the Pre-merge Gate is the hard backstop before push.
 
-After any route, **re-run the tail** — `/saketek:qa` → `/saketek:reviewer` → this audit —
+After any route, **re-run the tail** — `/saki-builder:qa` → `/saki-builder:reviewer` → this audit —
 and loop until all three are clean. A fix may never cross a **Non-Goal**, a `🔒 INVARIANT`, or an
 **ABSOLUTE NO-GO** (the step-0b guardrails still bind); if the only way to close the finding is one of
 those, that — not the finding — is the genuine block. MED / LOW: fix if cheap, else log and move on.
@@ -387,8 +387,8 @@ one thing that must never be silenced to pass. **Stay terse:** log each route as
 Log `SLICE [N] ✓ — <title>` with a one-line note (commits, files, test result), then move
 to the next slice.
 
-**Loop until issue-free:** a slice is "done" only when `/saketek:qa` is fully green, **and**
-`/saketek:reviewer` has no blocking findings, **and** — if the slice was security-relevant — the
+**Loop until issue-free:** a slice is "done" only when `/saki-builder:qa` is fully green, **and**
+`/saki-builder:reviewer` has no blocking findings, **and** — if the slice was security-relevant — the
 step-5.5 security audit is clean. If you cannot get a slice green after repeated honest
 attempts, stop and report exactly what's blocking — do not fake completion or weaken tests
 to pass.
@@ -405,10 +405,10 @@ e2e is green. Detect and run whichever applies (check `package.json` scripts / c
 - the project's own e2e command if defined elsewhere
 
 If e2e fails → treat it as a blocking issue: trace it to the offending slice, fix, re-run
-`/saketek:qa` for that slice, then re-run e2e. Repeat until green.
+`/saki-builder:qa` for that slice, then re-run e2e. Repeat until green.
 
 If **no e2e suite exists**, do NOT silently pass. Report:
-`⚠ NO E2E SUITE FOUND — slice-level /saketek:qa passed, but no end-to-end coverage exists.`
+`⚠ NO E2E SUITE FOUND — slice-level /saki-builder:qa passed, but no end-to-end coverage exists.`
 
 ---
 
@@ -417,7 +417,7 @@ If **no e2e suite exists**, do NOT silently pass. Report:
 When every slice is green, reviewed, and e2e passes, **flip the built PRD's epic to `Shipped` in
 `tasks/roadmap.md`** (if one exists). Identify the epic by **either** launch path:
 - **Epic-id launch** — the remembered `E<n>` from the Input step.
-- **PRD-path launch** (the studio board and hand-typed `/saketek:build tasks/prd-<slug>.md`) — reverse-map:
+- **PRD-path launch** (the studio board and hand-typed `/saki-builder:build tasks/prd-<slug>.md`) — reverse-map:
   scan `tasks/roadmap.md` for the `### E<n>` block whose `**Child PRD:**` **basename** matches the built
   PRD's basename (compare filenames only — roadmap stores a bare `prd-<slug>.md`, the build arg may be an
   absolute or `tasks/`-relative path).
@@ -427,7 +427,7 @@ If a matching epic is found and it is not already `Shipped`, set its `**Status:*
 If **no** epic references this PRD (a standalone PRD build), skip silently — there is nothing to flip. Then output:
 
 ```
---- /saketek:build COMPLETE ---
+--- /saki-builder:build COMPLETE ---
 PRD: <prd-file>
 Branch: feature/<name>
 Slices: [N/N] done
@@ -454,13 +454,13 @@ Next actions:
 - **No questions.** The only hard stops are: missing PRD (Gate 1), an **unlocked PRD** (Gate 1.5),
   an ABSOLUTE NO-GO, or a slice that genuinely cannot be made green. Unresolved `before slice N` open
   questions are auto-resolved (Per-Slice Loop, step 0), never blocked on. The lock stop is a precondition,
-  not a prompt — resolve it by running `/saketek:proto` first, never by asking the user mid-build.
+  not a prompt — resolve it by running `/saki-builder:proto` first, never by asking the user mid-build.
 - **PRD is the source of truth.** Scope = its slices; success = its acceptance criteria;
   boundaries = its non-goals. Never re-elicit scope from the user.
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.
 - **Single source of truth for behavior.** Invoke `rplan` / `rplan-review` / `approved` /
   `qa` / `reviewer` / `security-review`; do not re-implement their logic here.
-- **Never fake green.** Don't weaken or delete tests to pass `/saketek:qa` or e2e. A blocked slice
+- **Never fake green.** Don't weaken or delete tests to pass `/saki-builder:qa` or e2e. A blocked slice
   is reported honestly.
 - **Clean-code standard, always.** Every slice is written to the SonarQube clean-code standard —
   load the `clean-code` skill before implementing (step 3) so each diff clears the Pre-merge Gate

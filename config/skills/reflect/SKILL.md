@@ -64,7 +64,7 @@ Review accumulated learnings and promote confirmed patterns.
 
 6. **Sync the team baseline** (only if you edited the repo's `memory/`):
    - Personal-overlay writes need NO sync — `~/.claude/memory/patterns-personal.md` lives on your machine, never in the repo, and is injected each session.
-   - Team-baseline edits go through review: run `/saketek:sync`, which commits them on a branch and opens (or points you at) an MR — **never a direct push to `main`**. That MR is the governance gate that keeps the shared baseline curated.
+   - Team-baseline edits go through review: run `/saki-builder:sync`, which commits them on a branch and opens (or points you at) an MR — **never a direct push to `main`**. That MR is the governance gate that keeps the shared baseline curated.
 
 ## Rules
 

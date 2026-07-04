@@ -1,6 +1,6 @@
 ---
 name: rplan-review
-description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Leads on implementation reality (each step's failure paths + the build work it implies but omits), grounds every finding to a cited step and verifies blockers against the code before they count, and requires experts to prescribe the exact plan edit. Gates on failure-surface completeness. Blocks on missing sections. Run after /saketek:rplan before /saketek:approved.
+description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Leads on implementation reality (each step's failure paths + the build work it implies but omits), grounds every finding to a cited step and verifies blockers against the code before they count, and requires experts to prescribe the exact plan edit. Gates on failure-surface completeness. Blocks on missing sections. Run after /saki-builder:rplan before /saki-builder:approved.
 user-invocable: false
 ---
 
@@ -64,7 +64,7 @@ The plan author must rewrite the plan. These gaps cannot be resolved by answerin
 Missing/incomplete:
   ❌ [section]: [specific gap]
 
-Action: Fill missing sections → re-run /saketek:rplan-review
+Action: Fill missing sections → re-run /saki-builder:rplan-review
 
 REVIEW STOPPED.
 ```
@@ -75,7 +75,7 @@ Do NOT proceed to Phase 2 if Phase 1 failed.
 
 ## Phase 1.5: Verify Criteria Hardening (no rewriting)
 
-**`/saketek:rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
+**`/saki-builder:rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
 
 Read the Success Criteria section. For each criterion, check it has ALL THREE:
 1. **Actor + Action** — who does what
@@ -84,21 +84,21 @@ Read the Success Criteria section. For each criterion, check it has ALL THREE:
 
 **If every criterion has all three (or is explicitly `🔲 MANUAL` with numbered steps + Playwright stub):**
 ```
-PHASE 1.5 PASSED — criteria already hardened by /saketek:rplan 6d
+PHASE 1.5 PASSED — criteria already hardened by /saki-builder:rplan 6d
 ```
 
 **If any criterion is missing fields:**
 ```
 PHASE 1.5 FAILED — criteria not hardened
 
-The plan must run /saketek:rplan Step 6d hardening before review.
+The plan must run /saki-builder:rplan Step 6d hardening before review.
 Unhardened: [list of criterion IDs and what's missing]
 
-Action: Re-run /saketek:rplan to harden criteria → re-run /saketek:rplan-review
+Action: Re-run /saki-builder:rplan to harden criteria → re-run /saki-builder:rplan-review
 REVIEW STOPPED.
 ```
 
-Do NOT rewrite criteria here. That is `/saketek:rplan`'s job; rewriting in two places drifts.
+Do NOT rewrite criteria here. That is `/saki-builder:rplan`'s job; rewriting in two places drifts.
 
 ---
 
@@ -329,19 +329,19 @@ Merge all expert findings:
 1. **Discard uncited findings.** A blocker or warning that doesn't quote a step # / section is dropped — state how many were discarded. (Experts pad to look thorough; an uncited finding is unverifiable by definition.)
 2. **Verify every BLOCKER against the actual code/plan line before it enters the ledger.** Subagents misread patterns and flag correct APIs as bugs (CLAUDE.md core rule #4). Read the cited `path:line` yourself; a blocker that doesn't survive verification is downgraded or dropped, with a one-line note. **Best-effort when the repo isn't on disk:** if the plan's checkout isn't available, mark such blockers `PLAUSIBLE (unverified — repo absent)` rather than confirming or dropping them.
 3. **Deduplicate** — same issue flagged by multiple experts counts once
-4. **Classify** — Blocker (must fix before /saketek:approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
+4. **Classify** — Blocker (must fix before /saki-builder:approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
 5. **Extend the Confidence Ledger — do NOT overwrite the score with a formula.**
 
-   For each blocker, append a new ledger entry to the plan file using the existing format from `/saketek:rplan` Step 4:
+   For each blocker, append a new ledger entry to the plan file using the existing format from `/saki-builder:rplan` Step 4:
    - Cite evidence (`path:line`, the expert that found it, the step number it ties to)
-   - Use the standard deduction from `/saketek:rplan` Step 4b (closest match, e.g. missing auth → "missing user role coverage" -3, vague step -5)
+   - Use the standard deduction from `/saki-builder:rplan` Step 4b (closest match, e.g. missing auth → "missing user role coverage" -3, vague step -5)
    - Apply the risk multiplier of the step the issue ties to (×1, ×1.5, ×2 per Step 4c)
 
    For each warning, append a ledger entry with `-1` (uncited warnings invalid), or skip if non-actionable.
 
    **Recompute the score** = `100 − sum(ledger)`. The score lives entirely in the ledger; ad-hoc per-expert `+/-N%` adjustments are NOT applied separately.
 
-   If the plan has no ledger (i.e. it was scored without one), state: "PHASE 3 ABORTED — plan has no Confidence Ledger. Re-run /saketek:rplan to score with ledger first."
+   If the plan has no ledger (i.e. it was scored without one), state: "PHASE 3 ABORTED — plan has no Confidence Ledger. Re-run /saki-builder:rplan to score with ledger first."
 
 Print synthesis:
 
@@ -352,7 +352,7 @@ Domains reviewed: [Backend / Frontend / UI/UX / Database / Security / Architectu
 Uncited findings discarded: [N]  ·  Blockers verified against code: [N kept / N dropped]
 Failure-surface: [N]/[M] state-changing steps with failure path covered · [K] implied-work gaps found
 
-Blockers (must fix before /saketek:approved — each cites a step # and prescribes the fix):
+Blockers (must fix before /saki-builder:approved — each cites a step # and prescribes the fix):
   ❌ [B1] [domain] §step: [description] → FIX: [exact plan edit: step + file + function/criterion]
   ❌ [B2] [domain] §step: [description] → FIX: [...]
 
@@ -365,7 +365,7 @@ Confidence: [initial]% → [final]%
 **If blockers exist:**
 ```
 PHASE 3 FAILED — blockers found
-Fix all ❌ blockers in the plan file, then re-run /saketek:rplan-review.
+Fix all ❌ blockers in the plan file, then re-run /saki-builder:rplan-review.
 ```
 
 **If no blockers, confidence > 96%:**
@@ -378,7 +378,7 @@ Proceeding to Phase 4.
 ```
 PHASE 3 PARTIAL — no blockers but confidence [X]% ≤ 96%
 Resolve warnings or add more detail to reach 96%.
-Re-run /saketek:rplan-review after updating the plan.
+Re-run /saki-builder:rplan-review after updating the plan.
 ```
 
 ---
@@ -420,7 +420,7 @@ Warnings found: [N]
 Verdict:
   ✅ APPROVED FOR IMPLEMENTATION
      All phases passed. Confidence [X]% > 96%.
-     Next: /saketek:approved
+     Next: /saki-builder:approved
 
   OR
 
@@ -428,7 +428,7 @@ Verdict:
      [Phase N] failed:
      - [blocker 1]
      - [blocker 2]
-     Next: Fix blockers → re-run /saketek:rplan-review
+     Next: Fix blockers → re-run /saki-builder:rplan-review
 ```
 
 ---
@@ -456,4 +456,4 @@ This is the **general version**. For project-specific domain experts (language, 
 .claude/skills/rplan-review/SKILL.md
 ```
 That file overrides this one and should contain agents tuned to the project's stack and conventions.
-Run `/saketek:init-env` to scaffold the project-specific override automatically.
+Run `/saki-builder:init-env` to scaffold the project-specific override automatically.

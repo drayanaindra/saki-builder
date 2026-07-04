@@ -9,7 +9,7 @@ domain agents, safety hooks, an always-on execution protocol, and a split learni
 
 ```
 > /plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
-> /plugin install saketek@saki-builder
+> /plugin install saki-builder@saketek
 ```
 
 Start a new session so the commands load. That's it — no repo clone, no `install.sh`, no symlinks.
@@ -17,17 +17,17 @@ Start a new session so the commands load. That's it — no repo clone, no `insta
 **Update** any time (pull-based — a new version doesn't reach you until you pull it):
 
 ```
-> /saketek:update            # reports where you stand + the exact commands
-> /plugin marketplace update saki-builder && /plugin update saketek@saki-builder
+> /saki-builder:update            # reports where you stand + the exact commands
+> /plugin marketplace update saketek && /plugin update saki-builder@saketek
 ```
 
 A SessionStart hook also nudges you when you're behind (fail-open; never blocks).
 
 ## What you get
 
-- **Every command is namespaced** `/saketek:<name>` — e.g. `/saketek:rplan`,
-  `/saketek:build`, `/saketek:prd`, `/saketek:qa`, `/saketek:reviewer`,
-  `/saketek:wrap`. Run `/help` to see them all.
+- **Every command is namespaced** `/saki-builder:<name>` — e.g. `/saki-builder:rplan`,
+  `/saki-builder:build`, `/saki-builder:prd`, `/saki-builder:qa`, `/saki-builder:reviewer`,
+  `/saki-builder:wrap`. Run `/help` to see them all.
 - **Always-on rules** — a SessionStart hook injects the execution protocol (plan-first, confidence
   gate ≥90%, risk tiers, response header, next-actions). No CLAUDE.md editing needed. Disable with
   `SAKI_CORE_DISABLE=1`.
@@ -37,7 +37,7 @@ A SessionStart hook also nudges you when you're behind (fail-open; never blocks)
 ## The flow
 
 `prd → prd-review → proto → rplan → rplan-review → approved → qa → reviewer → wrap`, or let
-`/saketek:build` / `/saketek:pipeline` drive it end-to-end. Each command right-sizes itself.
+`/saki-builder:build` / `/saki-builder:pipeline` drive it end-to-end. Each command right-sizes itself.
 
 ## Settings you must merge yourself
 
@@ -48,9 +48,9 @@ A plugin can't ship permissions/model/env. Copy what you want from
 ## The learning loop (split)
 
 - **Personal overlay** `~/.claude/memory/patterns-personal.md` — yours, private, injected every
-  session, never pushed. `/saketek:reflect` writes here by default.
+  session, never pushed. `/saki-builder:reflect` writes here by default.
 - **Team baseline** `memory/patterns*.md` — the shared, curated layer. Changes land only via **MR**
-  (`/saketek:sync` opens a branch + MR). See `config/docs/learning-loop.md`.
+  (`/saki-builder:sync` opens a branch + MR). See `config/docs/learning-loop.md`.
 
 ## Opt-in personal hooks
 
@@ -63,7 +63,7 @@ Work from a checkout and install it as a **local-path marketplace** so edits flo
 
 ```
 > /plugin marketplace add /path/to/saki-builder        # the repo dir
-> /plugin install saketek@saki-builder
+> /plugin install saki-builder@saketek
 ```
 
 Before pushing: `npm test` (the validator) must pass — the pre-push hook enforces it

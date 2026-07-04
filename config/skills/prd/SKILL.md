@@ -31,7 +31,7 @@ inputs:
 
 You are acting as a product analyst for project {{project_name}} ({{project_type}}). Stack: {{stack}}.
 
-The PRD bridges the human's intent to the build pipeline (`/saketek:rplan` → `/saketek:approved` → `/saketek:qa`).
+The PRD bridges the human's intent to the build pipeline (`/saki-builder:rplan` → `/saki-builder:approved` → `/saki-builder:qa`).
 
 **Philosophy:** The human sets the expectation. You apply the discipline. The deliverable must be
 readable without you.
@@ -78,7 +78,7 @@ not a design. Keep it short; accept 1–2 word answers.
 Do not propose a solution yet.
 
 **(b) Appetite** — set the time-box *with the human*. This is Shape Up's load-bearing lever (fixed
-time, variable scope) and it is what `/saketek:prd-review` and `/saketek:rplan` inherit downstream —
+time, variable scope) and it is what `/saki-builder:prd-review` and `/saki-builder:rplan` inherit downstream —
 so it is never optional. Offer:
 
 ```
@@ -103,11 +103,11 @@ is not a decision.
 **(e) Rabbit holes & no-gos** — name 1–2 places this could sink time, and 1–2 things explicitly out
 of bounds. Seed §12 (rabbit holes) and §11 (non-goals).
 
-**Autonomous fallback (`/saketek:pickup` / `--yes` / "you decide"):** do not stall for input. Auto-select
+**Autonomous fallback (`/saki-builder:pickup` / `--yes` / "you decide"):** do not stall for input. Auto-select
 the recommended shape, derive appetite from the intent's scope (small/medium/large), state the defaults
-in one line, and continue. When invoked by `/saketek:pickup E<n>`, the **epic seed** grounds this: the
+in one line, and continue. When invoked by `/saki-builder:pickup E<n>`, the **epic seed** grounds this: the
 epic's Goal → problem (a), its Success signal → appetite hint, its User flow → the recommended shape. This
-preserves the workflow's single human gate at proto — running `/saketek:proto` designs the UI and **locks**
+preserves the workflow's single human gate at proto — running `/saki-builder:proto` designs the UI and **locks**
 the PRD — so the shape phase adds **no** new gate.
 
 ---
@@ -127,7 +127,7 @@ If two failure reasons stand unrebutted, STOP. Tell the human in plain English:
 **Carry it to the file (not just scratch).** The load-bearing assumption from (1) MUST appear in the
 saved **§2** as a stated + tagged line (Step 7): `**Load-bearing assumption:** <X> — \`assumed|observed|validated\``.
 This holds in BOTH cases — a bet (`assumed`, also carried in the DISCOVERY-RISK banner) and a grounded
-PRD (`observed`/`validated` with its citation). It is what `/saketek:prd-review` Phase-1 item 1
+PRD (`observed`/`validated` with its citation). It is what `/saki-builder:prd-review` Phase-1 item 1
 reads; leaving it scratch-only breaks that consumer.
 
 ---
@@ -177,7 +177,7 @@ Two primary jobs = two PRDs. Related jobs: 0–3 max.
 are `J2`, `J3`, … in §4 order. Every slice's `Serves: J<n>` tag (Step 3) and every §5 `JTBD` value
 (Step 2) MUST name one of these IDs — **except the counter-metric row, whose `JTBD` cell names the
 metric(s) it guards (`guards 5.x`), not a job**. A `Jn` with no matching job in §3/§4 is a dangling
-reference (the gate and `/saketek:prd-review` both fail it).
+reference (the gate and `/saki-builder:prd-review` both fail it).
 **Resolution is bidirectional.** The mirror also holds: every related job in §4 MUST itself be served
 by ≥1 §5 outcome or §8 slice. A `J2`/`J3`… that nothing references is an **orphan job** — cut it (it
 isn't really part of what you're building) or add the outcome/slice that serves it. A dangling
@@ -188,7 +188,7 @@ scope theater (a job you listed but aren't building) — lower severity, deducte
 
 1 primary + 2–3 secondary + 1 counter-metric.
 Emit §5 as a table with an explicit **Basis** column — without a column for it the basis tag
-gets dropped at write time (the exact leak `/saketek:prd-review` hard-fails on):
+gets dropped at write time (the exact leak `/saki-builder:prd-review` hard-fails on):
 
 `| # | Outcome (Minimize/Maximize [metric] when [context]) | Target | Basis | Method | JTBD |`
 
@@ -212,24 +212,24 @@ Number them. Each slice must pass all five:
 5. Fits ~30 min agent iteration (≤5 acceptance criteria)
 
 Each slice states **`Serves: J<n> · 5.<x>`** — the JTBD and the primary outcome it advances (this
-is what `/saketek:prd-review` item 8 checks; a slice with no `Serves` line reads as an orphan).
+is what `/saki-builder:prd-review` item 8 checks; a slice with no `Serves` line reads as an orphan).
 
 A slice **MAY** carry an optional **`Assumes:`** line naming the hidden build work its behavior silently
 requires but the acceptance criteria don't state — migration/backfill of existing rows · a feature flag ·
 a new permission/role · an index the metric query needs · seed data · a rollback path. Keep it
 **category-level and one line** (`Assumes: a backfill of existing orders; a pending-payout index`) — NOT
-file-level task breakdown (which migration file / which column is `/saketek:rplan`'s job). If the
+file-level task breakdown (which migration file / which column is `/saki-builder:rplan`'s job). If the
 hidden work is a load-bearing capability in its own right (its own testable behavior), **promote it to its
-own slice** instead of an `Assumes:` line. This is the line `/saketek:rplan` Step 1 ingests so the work
-reaches the plan instead of being rediscovered mid-build; `/saketek:prd-review` Judge 3 prescribes it
+own slice** instead of an `Assumes:` line. This is the line `/saki-builder:rplan` Step 1 ingests so the work
+reaches the plan instead of being rediscovered mid-build; `/saki-builder:prd-review` Judge 3 prescribes it
 when a state-changing slice omits it.
 
 Cap: ≤7 slices (>7 = split into multiple epics, each its own PRD). Slice 1 = vertical walking skeleton.
 
 ### 4. Acceptance criteria per slice
 
-Each criterion must be **observable and executable** — this is the `/saketek:prd-review` item 9
-contract (and what `/saketek:qa` runs). Write each as **Given / When / Then** with a **checkable
+Each criterion must be **observable and executable** — this is the `/saki-builder:prd-review` item 9
+contract (and what `/saki-builder:qa` runs). Write each as **Given / When / Then** with a **checkable
 signal**, and tag it **`[auto]`** or **`[manual]`**:
 
 ```
@@ -253,7 +253,7 @@ Tag money/stock/tenant rules `🔒 INVARIANT`. Link each rule to ≥1 acceptance
 `🔒 INVARIANT` MUST be tested by a criterion that exercises its **failure/edge path**, not only the
 happy path (over-limit · empty/zero · concurrent/double-submit · unauthorized/wrong-tenant ·
 duplicate/idempotency-on-retry · … — apply the paths the rule's stated behavior implies). A
-happy-path-only test of an invariant is exactly what `/saketek:prd-review` Phase 1 hard-fails.
+happy-path-only test of an invariant is exactly what `/saki-builder:prd-review` Phase 1 hard-fails.
 
 ### Appetite, Kill Criteria & Decision Log (from Step 0.5 — feeds §6 + §7)
 
@@ -301,19 +301,19 @@ Score = 100 − Σ deductions. Fix in-place until score ≥ 90 before presenting
 If score < 90 → fix the cited gaps and re-score. Do NOT present below 90.
 
 **Structural floor (BLOCK regardless of score).** Independently of the number, a PRD with ANY of the
-following fails `/saketek:prd-review` Phase 1 and must be fixed before presenting — even at ≥90:
+following fails `/saki-builder:prd-review` Phase 1 and must be fixed before presenting — even at ≥90:
 a `🔒 INVARIANT` with no failure/edge criterion; a §5 target with no basis tag; a dangling `Jn`
 (a `Serves`/`JTBD` ref resolving to no §3/§4 job); missing or effort-only Kill Criteria; <2 Non-Goals;
 an absent Decision Log (§7); or a slice with no `Serves` tag. Each is only a −3/−5/−8 deduction, so the
 score can sit ≥90 with one present — but review will structurally reject it. Treat them as BLOCK here to
-keep `/saketek:prd` and `/saketek:prd-review` in lockstep.
+keep `/saki-builder:prd` and `/saki-builder:prd-review` in lockstep.
 
 ---
 
 ## Step 7 — Save the full PRD (for downstream skill consumption)
 
 Save to `tasks/prd-{{input.feature | slugify}}.md` with ALL sections in this exact order
-so `/saketek:rplan`, `/saketek:proto`, and `/saketek:qa` can parse them:
+so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can parse them:
 
 ```
 <!-- prd-quality: [score]/100 -->
@@ -344,12 +344,12 @@ so `/saketek:rplan`, `/saketek:proto`, and `/saketek:qa` can parse them:
 **§15 Screens & UI Reference** is the PRD's UI/UX footprint in the *saved artifact*. Populate it from the
 **same screen list you present in Step 8** (the plain-English "Screens") — persist it here so the PRD names
 its user-visible screens (one line each), instead of the list being computed for the human view and thrown
-away. This is the product-level screen inventory, NOT a design (the visual design is `/saketek:proto`'s job).
+away. This is the product-level screen inventory, NOT a design (the visual design is `/saki-builder:proto`'s job).
 When the feature has no user-visible screens, **omit §15 entirely** (a backend PRD has no UI footprint — the
-same "omit if none" rule as §13/§14). `/saketek:proto` writes the **approved-design reference** into §15 at lock
+same "omit if none" rule as §13/§14). `/saki-builder:proto` writes the **approved-design reference** into §15 at lock
 time (`UI approved: tasks/proto-<slug>/ · <date>`), so the locked artifact points at its design.
 
-**Section numbers §1–§15 are a hard contract** — `/saketek:proto` and `/saketek:prd-review` reference
+**Section numbers §1–§15 are a hard contract** — `/saki-builder:proto` and `/saki-builder:prd-review` reference
 §5/§8/§9/§10/§11 **by number**. Never renumber; add new content as subsections (the Decision Log lives *inside*
 §7) or in the header, never by inserting a numbered section mid-document. **§15 is a tail append** (after §14) —
 it shifts no existing number and nothing references it by number, so it is contract-safe; keep new sections at
@@ -357,26 +357,26 @@ the tail, never inserted between existing ones.
 
 The **shareable header** (Owner/Status/Updated/Appetite/Epic) is team-facing metadata — a solo builder can
 leave `Owner: unassigned` and ignore it; a team uses it to own, review, and date the PRD. `Status`
-advances **Draft → In Review → Approved → Locked** as the PRD moves through `/saketek:prd-review`, human
-sign-off, and the `/saketek:proto` lock (below).
-**Epic:** carries the `E<n>` this PRD serves when it was started by `/saketek:pickup E<n>` — the traceability
+advances **Draft → In Review → Approved → Locked** as the PRD moves through `/saki-builder:prd-review`, human
+sign-off, and the `/saki-builder:proto` lock (below).
+**Epic:** carries the `E<n>` this PRD serves when it was started by `/saki-builder:pickup E<n>` — the traceability
 link back to `tasks/roadmap.md`; a standalone PRD leaves it `—`.
 
 ### The lock — the explicit freeze before build (`Status: Locked`)
 
-The PRD phase (`/saketek:prd` → `/saketek:prd-review` → `/saketek:proto`) ends with an **explicit lock**:
-the requirements are frozen before any slice reaches `/saketek:rplan`. The lock is a header machine-marker:
+The PRD phase (`/saki-builder:prd` → `/saki-builder:prd-review` → `/saki-builder:proto`) ends with an **explicit lock**:
+the requirements are frozen before any slice reaches `/saki-builder:rplan`. The lock is a header machine-marker:
 
 `<!-- prd-locked: <@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/ | none -->`  +  header `Status: Locked`
 
-- **Written by `/saketek:proto`, not `/saketek:prd`.** The lock is the terminal act of the last pre-build
-  layer: `/saketek:proto` designs the UI/UX, gets it approved, then freezes the spec by writing the marker.
-  `/saketek:prd` **never** writes it — the *absence* of the marker is the correct default (not-yet-frozen). For a
-  no-UI PRD, `/saketek:proto` is still the explicit freeze step (it renders nothing and writes `ui:none`).
+- **Written by `/saki-builder:proto`, not `/saki-builder:prd`.** The lock is the terminal act of the last pre-build
+  layer: `/saki-builder:proto` designs the UI/UX, gets it approved, then freezes the spec by writing the marker.
+  `/saki-builder:prd` **never** writes it — the *absence* of the marker is the correct default (not-yet-frozen). For a
+  no-UI PRD, `/saki-builder:proto` is still the explicit freeze step (it renders nothing and writes `ui:none`).
 - **Approved vs Locked.** *Approved* = sound + review-green + human sign-off (soundness). *Locked* = Approved
   AND its UI/UX designed/approved AND requirements frozen (build-ready). A Locked PRD is by definition Approved;
-  `prd-locked` is the single flag `/saketek:build` reads — it **hard-refuses to start until the lock is present**
-  (a GATE before `/saketek:rplan`). This is the "lock Product Requirement before hand off to rplan" gate.
+  `prd-locked` is the single flag `/saki-builder:build` reads — it **hard-refuses to start until the lock is present**
+  (a GATE before `/saki-builder:rplan`). This is the "lock Product Requirement before hand off to rplan" gate.
 - `ui:` points at the approved proto gallery (`tasks/proto-<slug>/`), so the locked artifact references its
   design; §15 carries the same reference in prose. On a no-UI PRD the value is `none`.
 
@@ -384,9 +384,9 @@ Include a `⚠ DISCOVERY-RISK` banner below the machine-readable header if the e
 is 100% `assumed`, OR the **§2 load-bearing assumption is `assumed`**, OR **any assumption that gates a
 committed §5 metric is `assumed`** (e.g. an adoption/willingness claim the primary or secondary outcome
 depends on) — a single un-grounded load-bearing/gating row is a bet even when the rest of the table is
-grounded. This is a signal for `/saketek:rplan` to surface it as a plan-level UNKNOWN, and it MUST
+grounded. This is a signal for `/saki-builder:rplan` to surface it as a plan-level UNKNOWN, and it MUST
 also be surfaced to the human in Step 8 (the bet line), not left file-only. It is also what
-`/saketek:prd-review` Readiness DoR #4 keys off — leaving it unset lets a bet pass as READY.
+`/saki-builder:prd-review` Readiness DoR #4 keys off — leaving it unset lets a bet pass as READY.
 
 ---
 
@@ -449,15 +449,15 @@ Then ask: *"Does this match what you had in mind — or should we adjust before 
 
 Advance the saved header `Status: Draft → In Review`, then suggest next steps in plain English:
 
-- Recommended: *"Run `/saketek:prd-review tasks/prd-[slug].md` to pressure-test the spec before we build."*
-- Then: *"Run `/saketek:proto tasks/prd-[slug].md` to see what it'll look like — and, on your approval,
-  that **locks** the requirements (freezes the spec) for build."* (A no-UI PRD still runs `/saketek:proto`
+- Recommended: *"Run `/saki-builder:prd-review tasks/prd-[slug].md` to pressure-test the spec before we build."*
+- Then: *"Run `/saki-builder:proto tasks/prd-[slug].md` to see what it'll look like — and, on your approval,
+  that **locks** the requirements (freezes the spec) for build."* (A no-UI PRD still runs `/saki-builder:proto`
   as the explicit freeze step.)
-- Then (only once **Locked**): *"Run `/saketek:build tasks/prd-[slug].md` — it plans each slice with
-  `/saketek:rplan` and ships it. `/saketek:build` won't start until the PRD is Locked."*
+- Then (only once **Locked**): *"Run `/saki-builder:build tasks/prd-[slug].md` — it plans each slice with
+  `/saki-builder:rplan` and ships it. `/saki-builder:build` won't start until the PRD is Locked."*
 
-Do NOT produce file-level tasks in the PRD — that is `/saketek:rplan`'s job. The disciplined path is
-`/saketek:pickup E<n>` → `/saketek:proto E<n>` (locks) → `/saketek:build E<n>`.
+Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s job. The disciplined path is
+`/saki-builder:pickup E<n>` → `/saki-builder:proto E<n>` (locks) → `/saki-builder:build E<n>`.
 
 ---
 
@@ -478,10 +478,10 @@ Do NOT produce file-level tasks in the PRD — that is `/saketek:rplan`'s job. T
 | A related job (§4) that no §5 outcome or §8 slice serves | Orphan job — cut it (YAGNI) or add the outcome/slice that serves it; resolution is bidirectional, not just ref→job |
 | Inserting a new numbered section (renumbering §5/§8/§9/§10/§11) | Hard contract — add subsections (Decision Log lives in §7) or use the header |
 | A `🔒 INVARIANT` tested only on the happy path | Add a failure/edge criterion (over-limit · concurrent · duplicate/idempotency · unauthorized) — review Phase 1 hard-fails a happy-path-only invariant |
-| A slice that silently assumes hidden build work (migration/index/flag/backfill) | State it in the slice's `Assumes:` line (or promote it to its own slice) — else `/saketek:rplan` rediscovers it mid-build; review Judge 3 prescribes it |
+| A slice that silently assumes hidden build work (migration/index/flag/backfill) | State it in the slice's `Assumes:` line (or promote it to its own slice) — else `/saki-builder:rplan` rediscovers it mid-build; review Judge 3 prescribes it |
 | A `baseline N→M` basis that just restates the target | Cite the source of the starting number N, or tag the row `aspirational` — a basis must ground, not echo |
 | Approving a bet without flagging it | If DISCOVERY-RISK, the Step 8 "⚠ Worth checking first" callout is mandatory |
-| Handing a PRD to `/saketek:build` (or `/saketek:rplan`) that isn't **Locked** | Requirements aren't frozen — `/saketek:proto`'s approval writes `Status: Locked` + `<!-- prd-locked -->`; build hard-refuses until it's present. `/saketek:prd` never writes the lock (absence = not-yet-frozen) |
+| Handing a PRD to `/saki-builder:build` (or `/saki-builder:rplan`) that isn't **Locked** | Requirements aren't frozen — `/saki-builder:proto`'s approval writes `Status: Locked` + `<!-- prd-locked -->`; build hard-refuses until it's present. `/saki-builder:prd` never writes the lock (absence = not-yet-frozen) |
 | A UI feature whose screens live only in the Step 8 human view | Persist them to §15 of the saved PRD — the artifact must name its UI, not compute-and-discard it |
 
 ## Script

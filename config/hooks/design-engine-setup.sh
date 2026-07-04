@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # design-engine-setup.sh — record + report a project's DESIGN ENGINE for
-# /saketek:proto: "native" (render the real design system → HTML gallery,
-# the canonical path /saketek:build reads) or "figma" (use a connected
+# /saki-builder:proto: "native" (render the real design system → HTML gallery,
+# the canonical path /saki-builder:build reads) or "figma" (use a connected
 # Figma design as a SOURCE via the Figma MCP, routed by seat capability).
 #
 # This script owns the RECORD FILE (.claude/design-engine.json) and reports the

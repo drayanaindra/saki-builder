@@ -3,7 +3,7 @@ name: update
 description: Update the installed saki-builder plugin to the latest marketplace version. Reports installed vs latest and the exact /plugin upgrade commands. Pull-based — a newer version doesn't reach you until you pull it.
 ---
 
-# /saketek:update — update the plugin to the latest version
+# /saki-builder:update — update the plugin to the latest version
 
 Updating is **pull-based**: a newer version in the marketplace doesn't reach your install until you
 pull it. Claude Code keeps the plugin in a **managed cache** it updates via the `/plugin` manager —
@@ -27,8 +27,8 @@ so this reports where you stand and gives you the exact commands. A SessionStart
 
 3. **Update via the `/plugin` manager** (the supported path for the managed cache):
    ```
-   /plugin marketplace update saki-builder
-   /plugin update saketek@saki-builder
+   /plugin marketplace update saketek
+   /plugin update saki-builder@saketek
    ```
    It's a no-op if already current, so it's safe to run regardless. Best-effort latest check: if
    `GITLAB_TOKEN` is set, run `node "${ROOT}/config/hooks/check-plugin-update.js"` to confirm
@@ -40,6 +40,6 @@ so this reports where you stand and gives you the exact commands. A SessionStart
 
 - Don't leak a `fatal: not a git repository` — a non-git install is the normal case, not an error.
 - Never claim "up to date" you couldn't verify (no git fetch + no `GITLAB_TOKEN` → say "couldn't confirm").
-- Use the marketplace/plugin names `saki-builder` / `saketek@saki-builder`.
+- Use the marketplace/plugin names `saketek` / `saki-builder@saketek`.
 
-> The legacy `/saketek:rupdate` pulls a symlink-install repo (owner-only). For the plugin, this is the path.
+> The legacy `/saki-builder:rupdate` pulls a symlink-install repo (owner-only). For the plugin, this is the path.

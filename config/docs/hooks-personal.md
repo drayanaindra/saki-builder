@@ -9,8 +9,8 @@ The saki-builder plugin ships and **auto-registers** only project-neutral hooks 
 | `repo-context.sh` | SessionStart | emits a tight repo-state block |
 | `dangerous-command-guard.sh` | PreToolUse:Bash | blocks destructive commands |
 | `format-staged.sh` | PreToolUse:Bash | formats staged files just before `git commit` |
-| `build-completion-gate.sh` | Stop | keeps an autonomous `/saketek:build` run alive until done |
-| `pipeline-completion-gate.sh` | Stop | keeps a `/saketek:pipeline` run alive to its gate |
+| `build-completion-gate.sh` | Stop | keeps an autonomous `/saki-builder:build` run alive until done |
+| `pipeline-completion-gate.sh` | Stop | keeps a `/saki-builder:pipeline` run alive to its gate |
 
 The following hooks are **environment-specific** — they need tooling not everyone has, so they are
 **shipped but NOT auto-registered**. Opt in by adding them to your own `~/.claude/settings.json`

@@ -1,5 +1,5 @@
 {
-  "name": "saki-builder",
+  "name": "saketek",
   "description": "Claude Code marketplace — the SAKI Builder personal-scale toolkit.",
   "owner": {
     "name": "drayanaindra",
@@ -7,10 +7,10 @@
   },
   "plugins": [
     {
-      "name": "saketek",
+      "name": "saki-builder",
       "displayName": "SAKI Builder",
       "source": "./",
-      "description": "research→plan→build→qa→review skills, adversarial reviewers, domain agents, safety hooks, an execution protocol, and a split learning loop. Run /saketek:init after install to tailor it to your project.",
+      "description": "research→plan→build→qa→review skills, adversarial reviewers, domain agents, safety hooks, an execution protocol, and a split learning loop. Run /saki-builder:init after install to tailor it to your project.",
       "keywords": ["workflow", "planning", "code-review", "tdd"],
       "category": "workflow",
       "defaultEnabled": true

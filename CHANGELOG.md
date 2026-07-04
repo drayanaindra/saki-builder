@@ -35,11 +35,11 @@ Fix — gateway routing tables.
 
 Phase 4 — distribution + rebrand.
 
-- **`/saketek:update`** skill + **`config/hooks/check-plugin-update.js`** SessionStart nudge
+- **`/saki-builder:update`** skill + **`config/hooks/check-plugin-update.js`** SessionStart nudge
   (pull-based; fail-open; `SAKI_UPDATE_CHECK_DISABLE=1` to silence).
 - **`docs/HOW-TO.md`** — teammate onboarding (install, commands, settings merge, learning loop, hooks).
 - Rebranded `claude-config` → `saki-builder` across README + skill/hook brand mentions. `rupdate`
-  marked legacy (owner symlink-pull); plugin users use `/saketek:update`. Remaining
+  marked legacy (owner symlink-pull); plugin users use `/saki-builder:update`. Remaining
   `claude-config` strings are functional dir paths (the on-disk dir is intentionally not renamed).
 - **Not done here (owner-only):** publishing the marketplace to GitLab. Deferred: `gateway-*` library path tables.
 
@@ -49,10 +49,10 @@ Phase 3 — split learning loop.
 
 - **Team baseline** (`memory/patterns*.md`, shipped read-only) vs **personal overlay**
   (`~/.claude/memory/patterns-personal.md`, per-machine, injected by `inject-core.js`, never pushed).
-- Rewired `/saketek:reflect` — routes by audience: personal overlay (instant) vs team baseline (via MR).
-- Rewired `/saketek:sync` — team-baseline edits share via a branch + MR, never a direct push to `main`;
+- Rewired `/saki-builder:reflect` — routes by audience: personal overlay (instant) vs team baseline (via MR).
+- Rewired `/saki-builder:sync` — team-baseline edits share via a branch + MR, never a direct push to `main`;
   personal overlay is never synced.
-- `/saketek:reviewer` now reads both layers.
+- `/saki-builder:reviewer` now reads both layers.
 - `config/docs/learning-loop.md` documents the model; `.gitignore` guards stray `patterns-personal.md`.
 - Fixed 4 namespacing false-positives (`./sync.sh`, `**/prd.md`, `./auth.service`) + hardened the
   `bin/namespace-refs.js` guard against `./ ~/ **/` path contexts.
@@ -61,7 +61,7 @@ Phase 3 — split learning loop.
 
 Phase 2 — full migration to the plugin model.
 
-- **Namespaced 319 internal skill references** to `/saketek:*` (across 23 skill/agent files)
+- **Namespaced 319 internal skill references** to `/saki-builder:*` (across 23 skill/agent files)
   via `bin/namespace-refs.js`. External commands (`/code-review`, `/simplify`, `/verify`, `/init`)
   are left bare by design.
 - **Shared hooks ported** into `config/hooks/hooks.json` (auto-registered, merge with user hooks):
@@ -72,7 +72,7 @@ Phase 2 — full migration to the plugin model.
 - **`templates/settings.recommended.json`** — permissions/model/effort to merge into your own
   settings (a plugin can't ship these).
 - Portabilized agent doc-refs to `${CLAUDE_PLUGIN_ROOT}/config/docs/...`.
-- Validator: reference-resolution now active (every `/saketek:*` must resolve).
+- Validator: reference-resolution now active (every `/saki-builder:*` must resolve).
 
 ## 0.1.0 — 2026-07-02
 
