@@ -229,17 +229,18 @@ Proposed additions:
    A11y: presentational; action inherits Button a11y
 ```
 
-**Pause here and ask for confirmation** before rendering:
-> "These component specs will be rendered as proposed designs in the prototype and, after your
-> approval in Step 7, codified into the design system before `/build` runs. Confirm to proceed,
-> or adjust any spec now."
+**Auto-proceed after presenting** — do NOT pause for confirmation. Present the gap analysis
+and proposed specs inline, then immediately continue to Step 3. The user reviews and adjusts
+at Step 7b ("do you want to revise any component spec?") — that is the backstop before Step 7.5
+codifies them into the design system. Pausing at Step 2.5 before any render exists adds a
+blocking round-trip with no concrete artifact to react to; Step 7b, after the screenshots, is
+the more actionable review point.
 
-Do NOT proceed to Step 3 until the user confirms (or silently adjusts and re-presents if the
-user requests a change). This is the cheapest point to catch a wrong component direction —
-before any rendering happens.
+If the user explicitly says "stop and let me review specs" mid-run, honor it — but do not pause
+by default.
 
 If all components exist (no ⚠️/❌ entries), state "No design system extensions needed" and
-proceed to Step 3 without a pause.
+proceed to Step 3.
 
 ---
 
@@ -770,9 +771,9 @@ Three gotchas this guards — **all hit in a real test**, do not "simplify" them
 Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 
 > 1. "Does this match what you expected the end user to see — or adjust before `/build`?"
-> 2. "After seeing the rendered result, do you want to revise any component spec approved in Step 2.5?
->    (You confirmed names, variants, and tokens before rendering — this is your last chance to adjust
->    before Step 7.5 writes them to real files.)"
+> 2. "After seeing the rendered result, do you want to revise any component spec proposed in Step 2.5?
+>    (The specs were auto-applied using existing conventions — this is your chance to adjust names,
+>    variants, or tokens before Step 7.5 writes them to real files.)"
 
 Iterate on **look and specs only** (component choice, layout, copy, spacing, states shown, token
 names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto
@@ -916,7 +917,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Skipping Step 2.5 when Gate 2 is "Found" | Gap analysis runs regardless — slices may need components not yet in the library |
 | Listing MUI/Chakra/Mantine primitives (Button, Paper, etc.) individually as ✅ | For npm-library projects, all library primitives are ✅ by default — list only the custom business component layer |
 | Cross-referencing `src/proto/**` or `proto-preview/**` when checking if a component exists | Those are throwaway harness files — a component found there is NOT in the design system; exclude them from the scan |
-| Proceeding to render without confirming component specs | Step 2.5 requires explicit user confirmation before Step 3 — cheapest correction point |
+| Pausing at Step 2.5 for confirmation when user hasn't requested a stop | Auto-proceed after presenting specs — Step 7b (post-render) is the review point; pause only if user explicitly asks |
 | Naming new tokens or components outside existing conventions | Follow existing naming patterns exactly (same key names, same scale prefixes, same casing) |
 | Adding speculative tokens "we might need later" | Only add tokens explicitly required by the approved spec |
 | Creating a wrapper file for a ⚠️ purely stylistic MUI/Chakra variant | Theme overrides (`components.MuiX.variants`) are the correct path — new files only for multi-primitive composites |
