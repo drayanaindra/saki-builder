@@ -40,8 +40,9 @@ it removes the *look* risk, not the *behavior* work.
 
 ## Input
 
-Usage: `/saki-builder:proto <E<n> | prd-file.md> [--slice=N]` (filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>`
-to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only).
+Usage: `/saki-builder:proto <E<n> | prd-file.md> [--slice=N] [--restart]` (filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>`
+to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only). An interrupted run
+**resumes** at the next incomplete phase by default (Step 0.5); `--restart` forces a clean run from scratch.
 
 Locate the PRD exactly like `/saki-builder:build`. **Epic id (`E<n>`) — the disciplined path:** if the argument
 is an epic id, read `tasks/roadmap.md`, find `### E<n>`, and resolve its `**Child PRD:**` link to
@@ -84,6 +85,55 @@ Carry the **resolved mode** (`native` / `figma-read` / `figma-write`) forward �
 **The live check always wins over the record**: recorded `figma` but MCP down → `native`; recorded
 capability `write` but the live seat is now read-only → `figma-read`. Note the downgrade; never fail the
 run over an engine mismatch. A `--figma-only` run ignores Step 0 (it is an export-only path by definition).
+
+---
+
+## Step 0.5 — Resume detection (a hard stop must not restart from zero)
+
+`/saki-builder:proto` writes durable checkpoints to `tasks/proto-<slug>/` and the project tree as it runs,
+so an interrupted run (hard stop, crash, killed turn) can **resume at the next incomplete phase** instead of
+redoing expensive work — re-codifying real components (2.6), re-mounting the harness (5), or re-capturing
+the headless screenshots (6a). Run this the moment the PRD path is resolved (Input/Step 0) and `<slug>` is
+known — **before** GATE 1 re-writes the manifest. `--restart` forces a clean run (ignore this step; re-derive
+every artifact); `--figma-only` also skips it (export-only path). Otherwise:
+
+1. **No gallery → fresh run.** If `tasks/proto-<slug>/` does not exist, there is nothing to resume — proceed
+   to GATE 1 normally.
+2. **Scope must match, or don't resume.** Read the top of `screen-manifest.md`: a manifest stamped
+   `PARTIAL (--slice=N)` covers ONE slice — resume only when THIS invocation passes the same `--slice=N`; a
+   full manifest resumes only a no-`--slice` invocation. On any scope mismatch, do NOT resume — announce it
+   and start fresh (or tell the user to pass the matching flag, or `--restart`).
+3. **Walk the checkpoint ledger in order; find the highest contiguous DONE, resume at the next phase.** A
+   checkpoint is DONE only when its artifact is present **AND** its own gate re-verifies — presence ≠
+   correctness, a half-written file is not DONE:
+
+| # | Phase | DONE when | Re-verify (cheap) |
+|---|-------|-----------|-------------------|
+| 1 | GATE 1 | `screen-manifest.md` exists | non-empty, has numbered rows |
+| 2 | 2.4 | `reuse-map.md` exists | non-empty |
+| 3 | 2.6 | `design-system-updates.md` exists AND every component file it names exists | `tsc --noEmit` over those files passes (the Step 2.6 gate) |
+| 4 | 5 | the `proto-preview/*` harness route exists | 5d provenance + typecheck pass; the 5c middleware bypass is still present (re-add if missing) |
+| 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
+| 6 | 6b | `preview.html` exists | the Step 6b `title:` / `page:` counts |
+| 7 | 8 | `proto-<slug>-notes.md` exists | non-empty |
+| 8 | 8.5 | the PRD carries `<!-- prd-locked: … -->` | marker present |
+
+4. **In-context-only phases never block resume.** The gap analysis (2.5), state map (Step 3), and mock-data
+   reasoning (Step 4) are chat reasoning whose OUTPUT already lives in the artifacts above (2.5 → the codified
+   component files + `design-system-updates.md`; 4 → the mock data baked into the harness). Do NOT re-run them
+   on resume; when a later phase needs the gap-analysis summary on screen (e.g. Step 7b), **reconstruct** it
+   from `reuse-map.md` + `design-system-updates.md` rather than regenerating the analysis.
+5. **Approval is proven ONLY by the lock marker (Step 8.5), never by a later artifact.** Step 7's human
+   approval is in-context and not durably recorded until the lock is written. So even when `preview.html` and
+   the notes exist, an **unlocked** PRD resumes at **Step 7 (re-present for approval)** — never auto-lock a run
+   whose approval you cannot see. The lock marker is the single durable proof the human said yes.
+6. **Partial-write safety.** A hard stop *inside* a phase can leave a half-written component (2.6) or harness
+   file (5); the re-verify column catches it — a failing typecheck/provenance gate means that checkpoint is
+   NOT DONE, so resume re-enters that phase and completes it rather than trusting a corrupt artifact. This is
+   the same "verify code state, not a status flag" discipline the Coverage Gate already applies.
+7. **Announce, then auto-resume.** Print one line —
+   `Resuming /saki-builder:proto <slug> from <phase> (checkpoints 1–K found in tasks/proto-<slug>/).` — then
+   continue at that phase. Proto auto-proceeds by design; resume inherits that. `--restart` is the escape.
 
 ---
 
@@ -1255,6 +1305,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Capturing the page frame at one viewport only | Shoot both desktop (1280) and mobile (390) — design.md is mobile-first |
 | Calling "Playwright's javascript_tool" | The tool is `mcp__claude-in-chrome__javascript_tool` — use the exact MCP tool name |
 | Deleting the `proto-preview` route at the end of the proto run | It PERSISTS — `/saki-builder:build` owns teardown (Step 8). It's the capture harness + promotion source, not a deletable scratch file |
+| Restarting from zero when an interrupted run left a partial `tasks/proto-<slug>/` gallery | Step 0.5 resume detection — walk the checkpoint ledger, re-verify each artifact's gate, and resume at the next incomplete phase; `--restart` is the only way to force a clean run |
 | Advertising the `preview.json` manifest as a live Studio preview | The current Studio ignores it and opens the static `preview.html`; the manifest is optional/legacy (5e) |
 | Preferring a bare / Storybook harness when the real shell can mount | Prefer full-shell composition (5b#1) for page fidelity; the bare harness is the fallback only |
 | Making Figma export a hard dependency / telling the user to install Figma unprompted | Step 6c is optional — skip silently when the Figma MCP isn't connected; the static gallery is the deliverable |
@@ -1308,6 +1359,11 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 - **Figma export is additive & honest (6c).** Only when the Figma MCP is connected; prefer Tier A
   editable layers, fall back to Tier B screenshots when no browser/capture path is available, and always state
   which tier you produced. Never a hard dependency; never the canonical deliverable for `/saki-builder:build`.
+- **Resumable — a hard stop resumes, never restarts.** Proto writes durable checkpoints to
+  `tasks/proto-<slug>/` and the project tree; an interrupted run detects them (Step 0.5), re-verifies each
+  phase's gate, and resumes at the next incomplete phase — never redoing the codified components, the harness,
+  or the headless capture. Approval is proven only by the Step 8.5 lock marker, so an unlocked run resumes at
+  Step 7 (re-present), never auto-locks. `--restart` forces a clean run.
 - **Proto is the lock gate (Step 8.5).** On approval (Step 7) — or, for a no-UI PRD, on the human's freeze
   confirmation — `/saki-builder:proto` writes `Status: Locked` + `<!-- prd-locked: … -->` into the PRD: the explicit
   freeze `/saki-builder:build` enforces before `/saki-builder:rplan`. It is the **single lock writer** for every PRD.
