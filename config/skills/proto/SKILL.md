@@ -364,18 +364,17 @@ Proposed additions:
    A11y: presentational; action inherits Button a11y
 ```
 
-**Pause here and ask for confirmation** — this now gates real code, not just a render:
-> "These specs will be **codified into the real design system next (Step 2.6), then rendered as the real
-> components** — so what you approve in Step 7 is the real component, not an approximation. Confirm the
-> specs to proceed, or adjust any now. This is the cheapest correction point — before any real code is
-> written."
+**Auto-proceed after presenting** — do NOT pause for confirmation. Present the gap analysis and
+proposed specs inline, then immediately continue to **Step 2.6** (codify the confirmed additions into the
+real design system) and on to rendering. The user reviews and adjusts at **Step 7b** ("do you want to
+revise any of them?") — that is the backstop, and Step 7.5 applies any revision to the real component.
+Pausing at Step 2.5 before any render exists adds a blocking round-trip with no concrete artifact to react
+to; Step 7b, after the screenshots, is the more actionable review point.
 
-Do NOT proceed to Step 2.6 / rendering until the user confirms (or silently adjusts and re-presents if the
-user requests a change). This is the cheapest point to catch a wrong component direction — before any real
-design-system code is written.
+If the user explicitly says "stop and let me review specs" mid-run, honor it — but do not pause by default.
 
 If all components exist (no ⚠️/❌ entries), state "No design system extensions needed" and
-proceed to Step 3 without a pause.
+proceed to Step 3.
 
 ---
 
@@ -1013,9 +1012,9 @@ Three gotchas this guards — **all hit in a real test**, do not "simplify" them
 Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 
 > 1. "Does this match what you expected the end user to see — or adjust before `/saki-builder:build`?"
-> 2. "Now that you're seeing the real components rendered, do you want to revise any of them? (You
->    confirmed the specs in 2.5 and Step 2.6 already built them as real design-system components — a change
->    now is a tweak to the real component, applied in Step 7.5.)"
+> 2. "Now that you're seeing the real components rendered, do you want to revise any of them? (The specs
+>    were auto-applied in Step 2.5 using existing conventions, and Step 2.6 already built them as real
+>    design-system components — a change now is a tweak to the real component, applied in Step 7.5.)"
 
 Iterate on **look and components only** (component choice, layout, copy, spacing, states shown, token
 names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto — say so
@@ -1217,7 +1216,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Skipping Step 2.5 when Gate 2 is "Found" | Gap analysis runs regardless — slices may need components not yet in the library |
 | Listing MUI/Chakra/Mantine primitives (Button, Paper, etc.) individually as ✅ | For npm-library projects, all library primitives are ✅ by default — list only the custom business component layer |
 | Cross-referencing `src/proto/**` or `proto-preview/**` when checking if a component exists | Those are throwaway harness files — a component found there is NOT in the design system; exclude them from the scan |
-| Proceeding to render without confirming component specs | Step 2.5 requires explicit user confirmation before Step 3 — cheapest correction point |
+| Pausing at Step 2.5 for confirmation when user hasn't requested a stop | Auto-proceed after presenting specs — Step 7b (post-render) is the review point; pause only if user explicitly asks |
 | Naming new tokens or components outside existing conventions | Follow existing naming patterns exactly (same key names, same scale prefixes, same casing) |
 | Adding speculative tokens "we might need later" | Only add tokens explicitly required by the approved spec |
 | Creating a wrapper file for a ⚠️ purely stylistic MUI/Chakra variant | Theme overrides (`components.MuiX.variants`) are the correct path — new files only for multi-primitive composites |
