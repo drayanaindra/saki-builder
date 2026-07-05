@@ -142,15 +142,18 @@ Print the extracted slice list (numbered titles) and any **unresolved** `before 
 the run is auditable — these will be **auto-resolved** in the loop (step 0), not blocked on — then
 begin.
 
-### Optional: reuse a `/saki-builder:proto` preview if one exists
+### Reuse the `/saki-builder:proto` preview when one exists (verified at step 3.5)
 
 If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/saki-builder:proto` first), read it. It records the
 **real design-system components + token references** chosen per screen, already validated visually.
 When implementing a user-facing slice, **promote** those presentational components (mock data →
-real data + state + tests + backend wiring) instead of re-picking from scratch — the look is
-already approved. As part of the slice that promotes a `proto-preview/<slice>` preview, **delete
-that throwaway preview route/story and revert any `/proto-preview` middleware bypass** (neither may
-ship). If no proto notes exist, build the UI normally.
+real data + state + tests + backend wiring) — the look is already approved. **This is not discretionary
+when the notes exist:** promoting the named components (rather than re-picking UI from scratch) is
+**required and verified by the step-3.5 Proto-fidelity gate** (the inverse of proto's 5d) — a shipped
+slice that re-invents a promoted component is a blocking finding. As part of the slice that promotes a
+`proto-preview/<slice>` preview, **delete that throwaway preview route/story and revert any
+`/proto-preview` middleware bypass** (neither may ship). If **no** proto notes exist, build the UI
+normally (step 3.5 skips).
 
 ---
 
@@ -317,6 +320,35 @@ slice under XP discipline (TDD Red→Green→Refactor, commit-per-step, YAGNI). 
 here — invoke both without waiting for the user. (Re-load `clean-code` every slice; this keeps it in
 context even if a context clear happened between slices.)
 
+### 3.5. Proto-fidelity gate — promote the real components, don't re-invent (user-facing slice + proto handoff only)
+**Gate this step:** run it **only when** `tasks/proto-<prd-slug>-notes.md` exists AND this slice ships a
+user-facing surface. Otherwise **skip**, log `PROTO-FIDELITY: slice N — skipped (no proto notes | backend slice)`,
+and go to step 4.
+
+This is the **inverse of proto's Step 5d provenance check**. Proto proved its *preview* imported the real
+components; this proves the *shipped* slice did too — closing the seam where build silently re-picks UI from
+scratch and drifts from the approved look (the failure proto's own grounding gate prevents on its side).
+
+Mechanical — for each real component the notes name for this slice's screen(s) (the promoted presentational
+components + the design-system components proto codified/used), confirm the slice's **real implementation**
+imports it by its recorded path (where the notes give only a name, resolve its design-system path):
+```bash
+# for each component the notes promote for this slice's screens:
+grep -Rl "<recorded-import-path>" <slice's real route/component dir> 2>/dev/null
+# empty ⇒ the shipped slice did NOT import proto's component ⇒ it re-invented ⇒ blocking
+```
+If a component the notes said to **promote** is absent from the shipped slice (its path isn't imported; the
+slice hand-rolled its own version), that is a **blocking finding — same bar as a `/saki-builder:reviewer`
+correctness block**: fix in place (import/promote the named component), then re-run this gate. Do NOT advance
+to step 4 while a promoted component was re-invented. This is blocking-but-**recoverable** (fix + re-run),
+never an abort of the whole build.
+
+**Legitimate deviation (not a block):** proto's approved look was intentionally changed this slice — e.g. the
+step-5.5 security reshape, which already re-proto's and updates `tasks/proto-<slug>-notes.md`, so the grep
+matches the current components. The notes are the source of truth; a deviation that did NOT update the notes
+is drift → reconcile (re-proto the screen, or import the named component). Log one line:
+`PROTO-FIDELITY: slice N — <K promoted components verified | re-invented X → fixed>`.
+
 ### 4. `/saki-builder:qa` — test against acceptance criteria + in-scope invariants
 Invoke the `qa` skill. It runs **this slice's** acceptance criteria as real tests; every
 criterion must pass. **Also verify each in-scope Business Rule** — and for a `🔒 INVARIANT`,
@@ -389,7 +421,8 @@ to the next slice.
 
 **Loop until issue-free:** a slice is "done" only when `/saki-builder:qa` is fully green, **and**
 `/saki-builder:reviewer` has no blocking findings, **and** — if the slice was security-relevant — the
-step-5.5 security audit is clean. If you cannot get a slice green after repeated honest
+step-5.5 security audit is clean, **and** — if the slice had a `/saki-builder:proto` handoff — the
+step-3.5 Proto-fidelity gate passed (promoted components imported, not re-invented). If you cannot get a slice green after repeated honest
 attempts, stop and report exactly what's blocking — do not fake completion or weaken tests
 to pass.
 
@@ -462,6 +495,10 @@ Next actions:
   `qa` / `reviewer` / `security-review`; do not re-implement their logic here.
 - **Never fake green.** Don't weaken or delete tests to pass `/saki-builder:qa` or e2e. A blocked slice
   is reported honestly.
+- **Promote, don't re-invent.** When a `/saki-builder:proto` handoff exists (`tasks/proto-<slug>-notes.md`),
+  the shipped user-facing slice MUST import proto's named components — step 3.5 (Proto-fidelity gate)
+  verifies it (the **inverse of proto's 5d** provenance check). Re-inventing a promoted component is a
+  blocking finding, not a silent choice.
 - **Clean-code standard, always.** Every slice is written to the SonarQube clean-code standard —
   load the `clean-code` skill before implementing (step 3) so each diff clears the Pre-merge Gate
   (Clean as You Code) on the first try.
