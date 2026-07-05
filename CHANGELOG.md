@@ -2,6 +2,20 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.6.2 — 2026-07-05
+
+- **`/proto` no longer reinvents components that already exist.** Reuse-first grounding is now mechanically
+  enforced: proto can't render until the Reuse Map + Screen Manifest exist **and are correct** — a `NEW`
+  classification must be *proven absent* with a grep of the real app (never assumed because a harness didn't
+  import it), and no screen may stub an EXISTING component. On resume, the map is re-derived from the real
+  app, **never reconstructed from a stale harness** (which silently laundered prior errors forward). This
+  closes the drift where the preview showed hand-rolled look-alikes of shipped components under an invented
+  brand instead of the real ones.
+- **`/build` must promote proto's components, not silently re-pick them.** New **Proto-fidelity gate**
+  (per-slice step 3.5 — the inverse of proto's provenance check): a shipped user-facing slice that has a
+  proto handoff must import the components proto approved; re-inventing one is a blocking finding, not a
+  quiet choice. Gated to user-facing slices with a proto handoff; backend/no-proto slices skip cleanly.
+
 ## 0.6.1 — 2026-07-05
 
 - **License: MIT** — added a `LICENSE` file and set `plugin.json` `license` to `MIT` (was `UNLICENSED`,
