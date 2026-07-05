@@ -42,7 +42,7 @@ On every invocation, parse the `E<n>` id, then read `tasks/.pickup-<slug>-state.
 |------------------|--------|
 | (no state file) | Fresh start → Phase 1. |
 | `prd` | Re-run Phase 1 from the point the PRD was incomplete (the PRD file may be partial). |
-| `review` | Resume Phase 2 — re-run `/saki-builder:prd-review` and continue the loop. |
+| `review` | Resume Phase 2 — re-invoke autonomous `/saki-builder:prd-review` (it owns the loop-to-green) and read its terminal sentinel. |
 | `proto-ready` | Already green. Re-print the ready handoff (Phase 3); do nothing else. |
 | `blocked` | Re-print the BLOCKED report; a human decides. Do not silently retry. |
 
@@ -111,48 +111,37 @@ Maintain `tasks/.pickup-<slug>-state.json`. **Update it after every phase transi
 
 ---
 
-## Phase 2 — `/saki-builder:prd-review`  (loop until green = SHIP · READY)
+## Phase 2 — `/saki-builder:prd-review`  (delegate the loop-to-green)
 
-Set `phase:"review"`. Invoke the `prd-review` skill on the PRD. Read its result from the canonical
-**`--- REVIEW COMPLETE ---`** summary block it prints at the end (the same tokens `/pipeline` consumed) —
-its three lines are:
+Set `phase:"review"`. Invoke the `prd-review` skill on the PRD **WITHOUT `--review-only`** — its default
+**autonomous** mode drives the loop-to-green itself (review → apply the prescribed fixes to the PRD →
+re-review, with a hard 3-round cap + a BLOCKED escape). You no longer hand-roll that loop; `prd-review`
+**owns** it now, and `/saki-builder:pickup` **reuses** it (one loop, one place — never a second copy here).
+
+Read `prd-review`'s **terminal** result — one of the sentinels it prints on its own line:
 
 ```
-Phase 1 (Structural): PASSED / FAILED
-Verdict:              DISCOVERY-FIRST / REVISE / SHIP
-Readiness:            READY / NOT READY [— blocker + R#/§]
+PRD_REVIEW_GREEN:   <slug> — SHIP · READY · R rounds · B blockers fixed
+PRD_REVIEW_BLOCKED: <slug> — <DISCOVERY-FIRST | readiness: blocker | non-convergence>: <reason>
 ```
 
-The machine-readable `<!-- review-verdict: SHIP|REVISE|DISCOVERY-FIRST -->` comment (in the synthesis
-header) is the robust fallback if the block is reworded. (Anchor on the line-start `Verdict:` /
-`Readiness:` labels in that block — don't match the words mid-prose elsewhere in the review.)
+The `prd-review` state file `tasks/.prd-review-<slug>-state.json` (`phase: green | blocked`) is the robust
+fallback. **Green = `Verdict SHIP` AND `Readiness READY`** — both axes; a `SHIP · NOT READY` PRD is not
+buildable-now and `prd-review` returns `blocked` on that structural readiness gap, not green.
 
-**Green = `Verdict: SHIP` AND `Readiness: READY`** — both axes. A `SHIP · NOT READY` PRD is sound but not
-buildable-now (unbuilt dep, slice-1-blocking open Q, unaccepted bet); it is NOT green and does NOT advance.
+- **`PRD_REVIEW_GREEN`** → record `review.verdict:"SHIP"`, `review.readiness:"READY"`, copy `rounds` /
+  `blockers_fixed` from the sentinel (or the prd-review state file), set `phase:"proto-ready"`, and go to
+  **Phase 3**.
+- **`PRD_REVIEW_BLOCKED`** → record the reason, set `phase:"blocked"`, **flip the epic `In-progress →
+  Blocked`** in `tasks/roadmap.md`, emit `PICKUP_BLOCKED: <slug> — <reason>` on its own line, and end. Do
+  NOT loop forever, do NOT fabricate grounding — `prd-review` already exhausted the fixable paths.
 
-Loop (autonomous — you are the PRD author here). Record `verdict` + `readiness` + `phase1` each round:
-
-- **Phase 1 FAILED, or Verdict REVISE, or Readiness NOT READY on a FIXABLE blocker** → apply the review's
-  prescribed fixes to the PRD (rewrite vague criteria, add the prescribed failure/edge criteria, add the
-  slice's `Assumes:` line for prescribed hidden work — or promote load-bearing hidden work to its own
-  slice, fix orphan slices, add kill criteria, resolve a §12 open Q, close a fixable readiness blocker), bump
-  `review.rounds`, add to `review.blockers_fixed`, and re-run `prd-review`. **Cap at 3 rounds.**
-- **Escape to the human as BLOCKED** — do NOT loop forever, do NOT fabricate grounding — when the review
-  can't be authored to green:
-  - **Verdict DISCOVERY-FIRST** (a load-bearing unknown needs discovery), OR
-  - **Readiness NOT READY on a STRUCTURAL blocker** you can't author away — an unbuilt / `TBD` dependency,
-    or an unaccepted bet / unresolved DISCOVERY-RISK, OR
-  - **Non-convergence** — round-2 carries the same blocker volume/level as round-1, or the 3-round cap is
-    hit still not green (see `patterns.md` — score-trajectory convergence signal; recut, don't loop again).
-
-  Record it, set `phase:"blocked"`, **flip the epic `In-progress → Blocked`** in `tasks/roadmap.md`, emit
-  `PICKUP_BLOCKED: <slug> — <DISCOVERY-FIRST | readiness: blocker>: <reason>` on its own line, and end.
-- **Green — Verdict SHIP AND Readiness READY** → record `review.verdict:"SHIP"`, `review.readiness:"READY"`,
-  set `phase:"proto-ready"`, and go to **Phase 3**.
-
-Key design note: the review loop lives HERE in the orchestrator (`/saki-builder:pickup` is author + driver).
-`/saki-builder:prd-review` stays single-pass and independent — it never edits the PRD. The loop-to-green is a
-`/saki-builder:pickup` capability, not a reviewer capability.
+Key design note (option 3 — one shared loop): the loop-to-green lives in `/saki-builder:prd-review`'s
+autonomous mode; `/saki-builder:pickup` **reuses** it and keeps no copy. The fix→re-review loop, the 3-round
+cap, and the non-convergence / DISCOVERY-FIRST / structural-`NOT READY` escapes all run **inside**
+`prd-review`. `/saki-builder:pickup` only invokes it (without `--review-only`) and does the epic-specific
+terminal handling (proto-ready handoff, or flip the epic to Blocked). No nesting — the loop runs in exactly
+one place, so there is no double-loop when `/saki-builder:pickup` runs.
 
 ---
 
@@ -189,7 +178,8 @@ ALLOWS the stop at `phase:"proto-ready"` — ending the turn here is correct and
 - **Never fabricate grounding, never infinite-loop.** The only stops are: green (`proto-ready`), or a review
   that can't reach green (`DISCOVERY-FIRST`, an unbuilt dep / unaccepted bet, or non-convergence → `blocked`).
 - **Single source of truth for behaviour.** Invoke `prd` / `prd-review`; do not re-implement them. The epic
-  is the source of intent; the PRD is the source of scope.
+  is the source of intent; the PRD is the source of scope. The **loop-to-green lives in `prd-review`'s
+  autonomous mode** — `/saki-builder:pickup` reuses it (invoke without `--review-only`), never a second copy.
 - **Always persist state before ending a turn** so any resume (a context clear, or the Stop gate re-driving
   you) lands on the right phase.
 - **Status honesty.** Flip the epic `In-progress` on start and `Blocked` on escape; `/saki-builder:build` owns
