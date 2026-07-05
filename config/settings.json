@@ -144,6 +144,11 @@
             "type": "command",
             "command": "~/.claude/hooks/pickup-completion-gate.sh",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/prd-review-completion-gate.sh",
+            "timeout": 15
           }
         ]
       }

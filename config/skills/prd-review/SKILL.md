@@ -1,6 +1,6 @@
 ---
 name: prd-review
-description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score.
+description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score. Autonomous by default — loops (review → apply the prescribed fixes to the PRD → re-review) until SHIP·READY or blocked; pass `--review-only` for a single non-editing pass (today's behavior).
 ---
 
 # PRD Review — Structural Scan + Adversarial Judge Panel + Pair-Review Blind-Spot Pass
@@ -42,11 +42,32 @@ cite-everything / discard-uncited / no-external-validation / default-reject rule
 
 ---
 
+## Modes — autonomous (default) vs `--review-only`
+
+`/saki-builder:prd-review` runs **autonomous** unless `--review-only` is passed.
+
+- **Autonomous (default).** After a review pass, if the PRD is not green (`Verdict SHIP` AND `Readiness
+  READY`), **apply the review's own prescribed fixes to the PRD and re-review**, looping until green or a
+  hard stop — see **Phase 5**. This is the loop-to-green that `/saki-builder:pickup` also drives; it lives
+  here now, and `/saki-builder:pickup` reuses it (it does not keep its own copy).
+- **`--review-only`.** Run **one** pass (Step 0 → Phase 4) and stop. Never edit the PRD, never write a state
+  file. This is the classic single-pass reviewer — use it for a one-shot second opinion, or when another
+  orchestrator owns the loop.
+
+**The review CORE (Step 0 → Phase 4) NEVER edits the PRD, in either mode.** Only the **Phase 5** autonomous
+wrapper edits the PRD (it applies the prescribed fixes between passes). The judges (Phase 2) are always fresh
+Agent subagents each round, so relocating the fix-apply step here does not compromise the review's
+fresh-context independence.
+
+---
+
 ## Step 0: Load the PRD
 
 Take the target from ARGUMENTS (a `tasks/prd-*.md` path). If none given, find the most recent `tasks/prd-*.md`. Read it fully.
 
 Also parse from ARGUMENTS:
+- **`--review-only`** — run a single non-editing pass (Step 0 → Phase 4) and stop; skip **Phase 5**. Absent ⇒
+  **autonomous** (loop-to-green) is the default. See **Modes** above.
 - **`--reviewer @name`** — who is running this review (team-facing metadata). Default `unassigned`.
   Do NOT auto-fill it from the PRD's `Owner` — best-practice review keeps reviewer ≠ author.
 
@@ -419,8 +440,86 @@ Next:
                       PRD Status: back to Draft.
 ```
 
-The PRD `Status:` transitions are **advisory** — recommend them; a human edits the PRD header. This skill
-never auto-edits the PRD.
+The PRD `Status:` transitions are **advisory** — recommend them; a human edits the PRD header. The **review
+core (Step 0 → Phase 4) never auto-edits the PRD.** Under `--review-only` this recommendation is guidance for
+a human. **In autonomous mode, Phase 5 acts on it for you** — applying the prescribed fixes on
+`REVISE` / fixable-`NOT READY` and re-reviewing, or stopping on `SHIP · READY` (green) / a hard blocker.
+
+---
+
+## Phase 5: Autonomous loop-to-green  (default mode — skipped under `--review-only`)
+
+**Run only when NOT `--review-only`.** Phases 0–4 are the single-pass **review core** and never touch the
+PRD. Phase 5 wraps that core in the loop-to-green: run the core, read its verdict, and on anything short of
+green **apply the review's own prescribed fixes to the PRD** and run the core again — until the PRD is green
+or a hard stop is reached. You are the PRD author here (the same role `/saki-builder:pickup` played when it
+owned this loop). The three judges still run as fresh Agent subagents each round.
+
+### State file (single source of truth for the loop + the Stop hook)
+
+Maintain `tasks/.prd-review-<slug>-state.json` (the `<slug>` is the PRD's, from `tasks/prd-<slug>.md`).
+**Write it after every phase transition** — the `prd-review-completion-gate.sh` Stop hook reads it to keep
+the loop alive across turns. Get timestamps with `date +%s`. Schema:
+
+```json
+{
+  "slug": "instant-seller-payout",
+  "prd": "tasks/prd-instant-seller-payout.md",
+  "session": "<session_id if known, else omit>",
+  "phase": "reviewing|green|blocked",
+  "started_at": 1730000000,
+  "review": { "rounds": 0, "verdict": "", "readiness": "", "blockers_fixed": 0 }
+}
+```
+
+`phase` is the cursor the Stop gate keys off:
+- `reviewing` → the loop is still working → the Stop gate **keeps you running**.
+- `green` → the PRD reached `SHIP · READY` → terminal success → the Stop gate **releases**.
+- `blocked` → a hard stop you reported → the Stop gate **releases**.
+
+### The loop
+
+1. Init the state file (`phase:"reviewing"`, stamp `started_at`, `slug`, `prd`). Run the review **core**
+   (Step 0 → Phase 4) once. Read the result from the canonical **`--- REVIEW COMPLETE ---`** block (its
+   line-start `Verdict:` / `Readiness:` labels); the `<!-- review-verdict: … -->` synthesis comment is the
+   robust fallback. Record `verdict` + `readiness` and bump nothing on the first pass.
+
+2. **Green — `Verdict SHIP` AND `Readiness READY`** → set `phase:"green"`, record `review.verdict:"SHIP"` /
+   `review.readiness:"READY"`, print the terminal block below, and stop. (Both axes required — a
+   `SHIP · NOT READY` PRD is **not** green.)
+
+3. **Fixable — Phase 1 FAILED, or `Verdict REVISE`, or `Readiness NOT READY` on a FIXABLE blocker** → apply
+   the review's prescribed fixes **to the PRD** (rewrite vague criteria, add the prescribed failure/edge
+   criteria, add a slice's `Assumes:` line for prescribed hidden work — or promote load-bearing hidden work
+   to its own slice, fix orphan slices, add kill criteria, resolve a §12 open Q, close a fixable readiness
+   blocker), bump `review.rounds`, add to `review.blockers_fixed`, and re-run the core from step 1. **Cap at
+   3 rounds.**
+
+4. **Blocked — escape to the human, do NOT loop forever, do NOT fabricate grounding** — when the review
+   can't be authored to green:
+   - **`Verdict DISCOVERY-FIRST`** (a load-bearing unknown needs discovery), OR
+   - **`Readiness NOT READY` on a STRUCTURAL blocker** you can't author away — an unbuilt / `TBD`
+     dependency, or an unaccepted bet / unresolved DISCOVERY-RISK, OR
+   - **Non-convergence** — round-2 carries the same blocker volume/level as round-1, or the 3-round cap is
+     hit still not green (see `patterns.md` — score-trajectory convergence signal; recut, don't loop again).
+
+   Set `phase:"blocked"`, print the terminal block, and stop.
+
+### Terminal output
+
+On green:
+```
+PRD_REVIEW_GREEN: <slug> — SHIP · READY · R rounds · B blockers fixed
+
+✅ PRD green: tasks/prd-<slug>.md   (review record: tasks/prd-<slug>-review.md)
+```
+On blocked:
+```
+PRD_REVIEW_BLOCKED: <slug> — <DISCOVERY-FIRST | readiness: blocker | non-convergence>: <reason>
+```
+`PRD_REVIEW_GREEN` / `PRD_REVIEW_BLOCKED` (each on its own line) are the terminal sentinels; the Stop hook
+releases once `phase` is `green` or `blocked`. **Always persist the state file before ending a turn** so any
+resume (a context clear, or the Stop gate re-driving you) lands on the right phase.
 
 ---
 
@@ -431,6 +530,12 @@ judge, both pair agents, and your own coordinator output at every phase; when an
 with it, it wins. Within that, priority order: **① surface implementation reality → ② keep every finding
 grounded → ③ prescribe, don't lecture.**
 
+- **Autonomous is the default; `--review-only` is the single-pass escape hatch.** The review CORE
+  (Step 0 → Phase 4) never edits the PRD in either mode — only the **Phase 5** wrapper does, and only in
+  autonomous mode. Autonomous loops fix→re-review to green with a hard **3-round cap** + a BLOCKED escape
+  (`DISCOVERY-FIRST` / structural `NOT READY` / non-convergence) — never an infinite loop, never fabricated
+  grounding. `/saki-builder:pickup` reuses this loop; it must invoke `/saki-builder:prd-review` **without**
+  `--review-only` and never keep its own copy.
 - NEVER skip Phase 1. A missing section is a structural fail, never a judgment call.
 - Launch the three judges in parallel — never sequentially. **Judge 3 leads synthesis and the verdict.**
 - **Run Phase 2.5 Pair Review only on a high-risk PRD (any `🔒` invariant OR >4 slices), after the panel:
