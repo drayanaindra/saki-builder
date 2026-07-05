@@ -1,6 +1,44 @@
 # Plan — proto grounding-gate enforcement
 
-**Status:** Implemented (all 5 edits applied to config/skills/proto/SKILL.md; 7/7 success criteria verified)
+**Status:** REVISED v2 — v1 (existence gate) was insufficient; see "## Revision v2" below.
+
+## Revision v2 — target the ACTUAL root cause (evidence from a real re-run)
+
+**What v1 got wrong:** v1's Grounding gate checked the reuse-map/manifest *exist*. A real re-run then
+produced them and they were **present-but-wrong** — so v1 would have passed this exact case. Evidence
+(pipeline-studio `tasks/proto-builder-workflow-studio/`):
+- The re-run **resumed** and reconstructed `reuse-map.md` *from the stale harness* (`StudioShell.tsx`), not
+  the real app — laundering the original errors forward (`reuse-map.md` literally said "Reconstructed from …
+  harness on resume").
+- The map misclassified **`SaasBar` as NEW** and **omitted `LoginScreen`** (both exist in
+  `apps/web/src/components/`), and **stubbed `PipelineGraph`/`StreamPanel`** as a "faithful MUI stand-in"
+  (both exist) — the map even rationalized it ("those EXISTING components are what /build wires in").
+
+**Three corrected root causes → three fixes (v2):**
+1. **NEW is a claim of absence, unproven.** Step 2.4 marks `NEW` without grepping the real app. → Fix: a
+   `NEW` row REQUIRES an empty grep of the real feature dirs; never `NEW` because the harness didn't use it.
+2. **Existence gate ≠ correctness gate.** → Fix: upgrade the Step 5 gate to also verify the map is *right* —
+   every `NEW` row proven absent, and no row stubs a component that exists — else HARD-STOP.
+3. **Resume launders the stale harness.** → Fix: Step 0.5 must NEVER reconstruct grounding from the harness;
+   a missing map + present harness is an INCONSISTENT state → harness UNTRUSTED → re-derive from the real app.
+
+**v2 edits (config/skills/proto/SKILL.md), bottom-up:**
+| # | Anchor | Change | Risk |
+|---|--------|--------|------|
+| A | Step 5 Grounding gate (@516) | Add a **correctness** section after the existence check: (a) each `NEW` row must grep-resolve to nothing in the real app (non-empty ⇒ misclassified ⇒ HARD-STOP); (b) reject any "stand-in"/"NOTE" row for a component that exists. Retitle gate to "must exist **and be correct**". | MED |
+| B | Step 0.5 resume (@113 re-verify + new point @133) | Checkpoint 2 re-verify: non-empty **AND** derived from the real app, not the harness. New point: never reconstruct grounding from the harness; missing-map+present-harness = inconsistent = UNTRUSTED harness → re-derive from real app (treat as `--restart` for grounding). | MED |
+| C | Step 2.4 (@309) | Add: a `NEW` classification is a CLAIM OF ABSENCE — prove it with an empty grep of the real feature dirs; never `NEW` because a (prior) harness didn't import it. | LOW |
+| D | Anti-patterns + Rules | One anti-pattern row (reconstruct-from-harness / NEW-for-existing / stub-existing) + tighten the Rules bullet to "correct, not just present". | LOW |
+
+**v2 residual (ledger):** the correctness grep is name/noun-based (like 5d) — it can false-positive (a NEW
+row coincidentally matching an unrelated component) or miss a real component named differently. Mitigation:
+the grep is a *prompt to verify*, and the HARD-STOP message says "reclassify + import OR confirm genuinely
+absent", so a human/agent reconciles rather than blindly trusting. −4 (heuristic check on a MED gate). **v2 score ≈ 96%.**
+
+---
+
+### v1 record (superseded — existence-only)
+**Status:** Implemented v1 (all 5 edits applied to config/skills/proto/SKILL.md; 7/7 v1 criteria verified)
 **Source PRD:** none (standalone `/rplan`) — no lock check applies
 **Behavior Spec:** N/A — this edits a *skill's prose*, not a user-facing app surface (no UI/DB/API/role).
 Template's full-stack sections (migrations, API layer, Role matrix) and Step 2.5 flow doc are N/A by construction.
