@@ -1,6 +1,6 @@
 ---
 name: proto
-description: Render a faithful, throwaway UI preview of a finished PRD's COMPLETE end-to-end user journey — every user-facing step plus the connective entry/success screens that join them, each in all its reachable states — INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /saki-builder:build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Sits between /saki-builder:prd and /saki-builder:build. Usage — /saki-builder:proto <prd-file.md> [--slice=N].
+description: Render a faithful, throwaway UI preview of a finished PRD's COMPLETE end-to-end user journey — every user-facing step plus the connective entry/success screens that join them, each in all its reachable states — INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /saki-builder:build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Also emits a single self-contained `preview-bundle.html` — every screenshot inlined — that's easy to share as one file (email/Slack/drive, no folder). Sits between /saki-builder:prd and /saki-builder:build. Usage — /saki-builder:proto <prd-file.md> [--slice=N].
 ---
 
 # UI Preview Stage (faithful, throwaway)
@@ -114,7 +114,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 3 | 2.6 | `design-system-updates.md` exists AND every component file it names exists | `tsc --noEmit` over those files passes (the Step 2.6 gate) |
 | 4 | 5 | the `proto-preview/*` harness route exists | 5d provenance + typecheck pass; the 5c middleware bypass is still present (re-add if missing) |
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
-| 6 | 6b | `preview.html` exists | the Step 6b `title:` / `page:` counts |
+| 6 | 6b | `preview.html` **and** `preview-bundle.html` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis) — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
 | 7 | 8 | `proto-<slug>-notes.md` exists | non-empty |
 | 8 | 8.5 | the PRD carries `<!-- prd-locked: … -->` | marker present |
 
@@ -919,6 +919,8 @@ Self-contained: inline `<style>` + inline `<script>`, **no external/CDN deps**. 
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
   .seg button{background:transparent;color:var(--muted);border:0;padding:5px 11px;font:inherit;cursor:pointer}
   .seg button.on{background:var(--accent);color:#fff}
+  .dl{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;text-decoration:none;border-radius:7px;padding:6px 12px;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap}
+  .dl:hover{filter:brightness(1.08)}
   .hint{color:var(--muted);font-size:11px}.hint kbd{background:#000;border:1px solid var(--line);border-radius:4px;padding:0 5px}
   .fidelity{margin:0;padding:8px 16px;background:#2a2410;border-bottom:1px solid #4a3d12;color:#e8c97a;font-size:12px}
   .wrap{display:flex;min-height:calc(100vh - 92px)}
@@ -955,6 +957,7 @@ Self-contained: inline `<style>` + inline `<script>`, **no external/CDN deps**. 
   <span class="spacer"></span>
   <div class="seg" id="mode"><button data-mode="flow" class="on">Flow</button><button data-mode="overview">Overview</button></div>
   <div class="seg" id="vp"><button data-vp="desktop" class="on">Desktop</button><button data-vp="mobile">Mobile</button></div>
+  <a class="dl" id="dl" href="preview-bundle.html" download title="Download the single-file shareable copy — screenshots inlined, no folder needed">⬇ Shareable file</a>
 </header>
 <p class="fidelity">⚡ Faithful on layout · real components · design tokens · the real app shell. Mock data; click-through is a Figma-style flow between captured frames — live behavior is <code>/saki-builder:build</code>'s job.</p>
 <div class="wrap">
@@ -1003,6 +1006,13 @@ render();
 Use **relative** `<img src>` (the bare PNG filename) so the Studio resolves each as a sibling —
 `resolveProtoAsset` serves `tasks/proto-<slug>/<file>.png`. No base64, no absolute/`localhost:PORT` paths.
 
+The header's **⬇ Shareable file** CTA (`<a href="preview-bundle.html" download>`) links to the sibling
+single-file bundle (6b-bis) so a reviewer can grab the one-file copy straight from the gallery. It downloads
+wherever the gallery dir is served as files — `file://` and the Step 7a local static server both serve every
+sibling — and 6b-bis **strips this CTA from the bundle itself** (the bundle IS the download; a self-link
+there would dangle when shared alone). The bundle must exist for the click to resolve, so the CTA is a no-op
+until 6b-bis has run.
+
 #### Verify
 
 ```bash
@@ -1017,6 +1027,67 @@ hotspot is missing, note it in `index.md` — never drop silently.
 **Note:** the gallery is interactive as a **Figma-style frame-to-frame flow** (click-through between
 captured frames + state/viewport toggles). It does NOT run live behavior (validation, API calls, real
 state) — that remains `/saki-builder:build`'s work.
+
+### 6b-bis. Single-file shareable bundle (`preview-bundle.html`)
+
+`preview.html` embeds its frames by **relative** `<img src>` (a bare PNG filename), so it only renders next
+to its sibling PNGs — Pipeline Studio serves the two together, but the file **can't be shared alone**
+(emailing/dropping just `preview.html` shows broken images). Produce an **additive** companion that inlines
+every screenshot as a `data:image/png;base64,…` URI — **one self-contained `.html` file** anyone can open by
+double-click, attach to Slack/email, or drop in a drive, with **no folder and no server**. It is a twin of
+the gallery (same Flow / Overview / state + viewport toggles), not a replacement: `preview.html` stays the
+canonical artifact Studio opens and `/saki-builder:build` reads; the bundle is only the shareable copy.
+
+Generate it mechanically from the finished `preview.html` + the captured PNGs — write
+`tasks/proto-<prd-slug>/proto-bundle.mjs` and run it from the repo root
+(`node tasks/proto-<slug>/proto-bundle.mjs`). It swaps each quoted PNG filename in the `SCREENS` array for
+its base64 data URI, changing **only** the image sources — the gallery logic is untouched:
+
+```js
+// __PROTO__ throwaway — bundle preview.html + sibling PNGs into ONE self-contained, shareable file.
+// preview.html stays relative-src (Studio serves it + siblings); THIS is the portable twin you can send.
+// Deleted at /saki-builder:build teardown. Run from repo root: node tasks/proto-<slug>/proto-bundle.mjs
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const DIR = dirname(fileURLToPath(import.meta.url))                 // = tasks/proto-<slug>/
+const SRC = join(DIR, 'preview.html'), OUT = join(DIR, 'preview-bundle.html')
+
+let html = readFileSync(SRC, 'utf8')
+const pngs = readdirSync(DIR).filter(f => f.endsWith('.png'))
+if (!pngs.length) { console.error('BUNDLE FAILED — no PNGs in ' + DIR + ' (run the 6a capture first)'); process.exit(1) }
+
+let inlined = 0
+for (const png of pngs) {
+  const uri = 'data:image/png;base64,' + readFileSync(join(DIR, png)).toString('base64')
+  for (const q of ['"', "'"]) {                                    // match the filename WITH its quotes — a unique token, so replace-all is safe
+    const needle = q + png + q
+    if (html.includes(needle)) { html = html.split(needle).join(q + uri + q); inlined++ }
+  }
+}
+html = html.replace('<title>Proto — ', '<title>Proto (shareable) — ')
+html = html.replace(/\s*<a class="dl" id="dl"[^>]*>[^<]*<\/a>/, '')  // the bundle IS the shareable file — drop its own "download" CTA (a self-link dangles when shared alone)
+
+const left = html.match(/['"][\w./-]*\.png['"]/g) || []            // a referenced frame with no PNG on disk = a noted-omitted state (Step 3), not a page frame
+if (left.length) console.error('BUNDLE WARNING — ' + left.length + ' frame ref(s) left relative (missing PNG):\n' + left.join('\n'))
+
+writeFileSync(OUT, html)
+console.log(`bundled ${inlined} image ref(s) → preview-bundle.html (${(statSync(OUT).size/1048576).toFixed(1)} MB · one self-contained file, no siblings needed)`)
+```
+
+**Verify it truly stands alone** — copy just the one file elsewhere and open it:
+```bash
+S=tasks/proto-<slug>
+grep -c 'data:image/png;base64' "$S/preview-bundle.html"   # > 0 — screenshots are inlined
+cp "$S/preview-bundle.html" /tmp/proto-share-check.html && echo "open /tmp/proto-share-check.html — every frame must still render with NO sibling PNGs present"
+```
+The Coverage Gate guarantees every *page* frame exists at both viewports, so those always inline; only a
+deliberately-omitted non-page *state* (Step 3) can stay a relative ref (the WARNING lists it) — acceptable,
+since the page frames carry the journey. **Re-run `proto-bundle.mjs` after any Step 7.5 re-capture** so the
+shared file reflects the final, approved gallery (a one-command, idempotent rebuild). Size note: base64 adds
+~⅓ over the raw PNGs, so a large journey bundles to a few MB — fine for email/Slack; if a recipient balks at
+the size, send the folder (or a zip of `tasks/proto-<slug>/`) instead.
 
 ---
 
@@ -1161,7 +1232,9 @@ final state.
   (theme override for a purely stylistic variant, the component file otherwise). Update `design.md` and
   `tasks/proto-<prd-slug>/design-system-updates.md` if the change added or renamed anything.
 - **Verify** the adjusted component still renders in the `proto-preview` route — `curl` returns HTTP 200
-  with the `__PROTO__` sentinel — and re-screenshot only the affected frames.
+  with the `__PROTO__` sentinel — and re-screenshot only the affected frames. Then **re-run
+  `proto-bundle.mjs`** (6b-bis) so `preview-bundle.html` reflects the re-captured frames — a one-command,
+  idempotent rebuild.
 
 `/saki-builder:build` then promotes these real presentational components (mock data → real data + state + tests +
 backend wiring); it does NOT re-invent them. Write that as a hard dependency in the handoff notes (Step 8):
@@ -1177,9 +1250,10 @@ the **token references** used, and the **states** confirmed. Purpose: `/saki-bui
 presentational components (mock data → real data + state + tests + backend wiring) instead of
 re-picking from scratch.
 
-State the **cleanup contract** explicitly. The **static gallery — `preview.html` + the PNGs +
-`index.md` — is the deliverable Pipeline Studio actually opens** (read-only, via `/api/proto/...`);
-it persists as the record regardless. The throwaway `proto-preview/*` route (incl. the
+State the **cleanup contract** explicitly. The **static gallery — `preview.html` + `preview-bundle.html` + the PNGs +
+`index.md`** — is the deliverable that persists as the record; **Pipeline Studio opens `preview.html`**
+(read-only, via `/api/proto/...`), while `preview-bundle.html` is the single-file copy you share (6b-bis).
+It persists as the record regardless. The throwaway `proto-preview/*` route (incl. the
 `/proto-preview` index) and the Step 5c middleware bypass also **persist after the proto run** — but
 only because they are the **capture harness** and `/saki-builder:build`'s promotion source, **NOT** because the
 Studio serves them live (it no longer does; it opens the static gallery). So the proto run must NOT
@@ -1313,6 +1387,7 @@ Reuse Map: tasks/proto-<slug>/reuse-map.md   (existing shell + feature component
 Coverage Gate: PASSED — N/N manifested screens captured at both viewports   (or: PARTIAL — --slice=N)
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
 HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
+Shareable bundle: tasks/proto-<slug>/preview-bundle.html  (single self-contained file — every screenshot inlined; send as one attachment, no folder needed)
 Handoff notes: tasks/proto-<slug>-notes.md
 Local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — Cmd/Ctrl-click to open · stop: pkill -f "http.server <port>")
 Studio Preview: opens the static gallery (tasks/proto-<slug>/preview.html) via the Preview ↗ button
@@ -1326,6 +1401,7 @@ Next actions:
 > Open the local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — served in Step 7a)
 > Open the Preview ↗ in Pipeline Studio (the static page-overview gallery)
 > Open the exported Figma file to review/edit the layers (if Step 6c ran)
+> Share tasks/proto-<slug>/preview-bundle.html — one self-contained file (screenshots inlined; no sibling folder needed)
 > Review tasks/proto-<slug>/index.md and confirm the look
 > /saki-builder:build tasks/<prd-file>  (the PRD is now 🔒 Locked — build proceeds; promotes these components into real implementation, design system already updated)
 ```
@@ -1379,7 +1455,8 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | State-matrix-only gallery with no journey flow | Build the Figma-flow gallery (6b): a click-through Flow + a journey-ordered Overview; per-screen states are a toggle, never a bare matrix |
 | Plain static PNG list (no hotspots / no flow) when the journey is known | Wire 6a-bis hotspots so clicking the real control advances screen→screen — that is the Figma-prototype feel |
 | `<iframe srcdoc>` DOM gallery (renders unstyled in Studio — no dev server persists) | Embed the 6a PNG screenshots via relative `<img src>` (6b) — already-rendered, needs no server |
-| Absolute / `localhost:PORT` / base64 `img src` in the gallery | Relative PNG filenames only — `resolveProtoAsset` serves them as siblings (6b) |
+| Absolute / `localhost:PORT` / base64 `img src` in **`preview.html`** | `preview.html` uses relative PNG filenames only — `resolveProtoAsset` serves them as siblings (6b). base64 belongs ONLY in the additive shareable `preview-bundle.html` (6b-bis), never in the Studio-served gallery |
+| Sharing `preview.html` on its own (broken images — needs its sibling PNGs) | Send `preview-bundle.html` (6b-bis) — one self-contained file with every screenshot inlined; `preview.html` is for Studio/`file://` next to its folder |
 | Capturing the page frame at one viewport only | Shoot both desktop (1280) and mobile (390) — design.md is mobile-first |
 | Calling "Playwright's javascript_tool" | The tool is `mcp__claude-in-chrome__javascript_tool` — use the exact MCP tool name |
 | Deleting the `proto-preview` route at the end of the proto run | It PERSISTS — `/saki-builder:build` owns teardown (Step 8). It's the capture harness + promotion source, not a deletable scratch file |
@@ -1441,6 +1518,11 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 - **Figma-flow gallery.** `preview.html` is a click-through prototype: a **Flow** (hotspots advance
   screen→screen) + a journey-ordered **Overview**, with per-screen state + viewport toggles — never a
   bare state matrix (6b).
+- **Shareable single-file bundle (6b-bis).** Alongside `preview.html` (relative-src — needs its sibling
+  PNGs; what Studio serves), always emit `preview-bundle.html`: the same gallery with every screenshot
+  inlined as base64, so it's ONE self-contained file to share (email/Slack/drive), openable with no folder
+  and no server. Additive — `preview.html` stays canonical for Studio and `/saki-builder:build`; base64
+  belongs only in the bundle, which is regenerated by `proto-bundle.mjs` after any 7.5 re-capture.
 - **Honest fidelity, every run.** Always show what the preview is faithful on vs approximate on.
 - **Figma export is additive & honest (6c).** Only when the Figma MCP is connected; prefer Tier A
   editable layers, fall back to Tier B screenshots when no browser/capture path is available, and always state
