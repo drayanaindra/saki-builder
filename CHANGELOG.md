@@ -2,6 +2,27 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.8.0 — 2026-07-05
+
+- **`/prd-review` is autonomous by default — it loops to green instead of a single pass.** A bare
+  `/prd-review <prd>` now runs the review core (Step 0 → Phase 4, which still never edits the PRD) inside a
+  new **Phase 5** loop: on anything short of green (`Verdict SHIP` AND `Readiness READY`) it applies the
+  review's own prescribed fixes to the PRD and re-reviews, until green or a hard blocker
+  (`DISCOVERY-FIRST` / structural `NOT READY` / non-convergence), with a hard **3-round cap**. The three
+  judges still run as fresh subagents each round, so relocating the fix-apply step here doesn't compromise
+  the review's independence. Pass **`--review-only`** for the classic single, non-editing pass.
+- **`/pickup` reuses that one loop (option 3) — it no longer keeps its own copy.** Phase 2 now invokes
+  autonomous `/prd-review` (without `--review-only`) and branches on its terminal sentinel
+  (`PRD_REVIEW_GREEN` → proto-ready; `PRD_REVIEW_BLOCKED` → flip the epic to Blocked). No nesting, no
+  double-loop — the loop-to-green runs in exactly one place.
+- **New Stop hook `prd-review-completion-gate.sh` keeps the autonomous loop alive across turns**, mirroring
+  the hardened `pickup-completion-gate.sh` (phase-driven: block while `reviewing`, release on `green` /
+  `blocked` / unknown; progress-aware circuit breaker; session-owned; fail-open; SubagentStop-safe). Keyed
+  on `tasks/.prd-review-<slug>-state.json`. Locked by `test-prd-review-completion-gate.sh` (13/13).
+- **Why:** the loop-to-green was a `/pickup`-only capability, so a PRD not tied to a roadmap epic couldn't be
+  driven to green hands-off. Moving the loop into `/prd-review` and having `/pickup` reuse it gives both
+  entry points one implementation — the de-duplicating direction, not a second copy.
+
 ## 0.7.0 — 2026-07-05
 
 - **The readiness gate is now evidence-based, not a confidence percentage.** Across the whole pipeline
