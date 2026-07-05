@@ -308,6 +308,21 @@ to mount the real implementation with mock data — not to redesign it. Do NOT s
 the 2.5 gap analysis; the gap analysis is only for what the app does not yet have. The provenance check
 (5d) later verifies the render actually imported every EXISTING/shell row here.
 
+**Name-drift check (net-new screens only — a flag, never an auto-pick).** For a screen with **no
+EXISTING/PRIMITIVE Reuse-Map row** (a genuinely-new surface) that will render the product/brand name,
+resolve the brand string from the **implemented** design system / app shell — grep the real shell for the
+rendered brand literal (the wordmark in the real `TopBar` / login / app-bar) — and compare it to the
+product/brand name the PRD or roadmap uses. If they **differ**, do NOT type the spec's title into the
+render: **FLAG it for reconciliation** (per GATE 1's two-way rule) — use the implemented brand, or have the
+human confirm an intentional rebrand (which is then a real-code change, not a proto tweak):
+```
+NAME DRIFT — new screen "<name>": spec/roadmap name "<spec>" ≠ the brand the implemented UI renders
+("<real>", <path>). Reconcile before render — use the implemented brand, or confirm an intentional rebrand.
+Not auto-choosing.
+```
+This is **redundant for reused screens**: an EXISTING row is imported verbatim (Step 5), so the real brand
+comes along automatically — the check earns its keep only where there is no component to import.
+
 ---
 
 ## Step 2.5 — Design System Gap Analysis (always runs after Gate 2)
@@ -498,6 +513,31 @@ preview that lies.
 
 ## Step 5 — Render in a throwaway harness that composes the REAL shell
 
+**Grounding gate (BLOCKING — the Reuse Map + Screen Manifest must exist before any render).** Step 5
+composes against the Step 2.4 **Reuse Map** and the GATE 1 **Screen Manifest**; without them there is
+nothing to compose against and the 5d provenance grep passes *vacuously* (zero rows) — exactly how a real
+run shipped reinvented components under an invented brand. So before mounting anything, hard-verify both
+artifacts exist and are non-empty:
+```bash
+S=tasks/proto-<prd-slug>
+[ -s "$S/reuse-map.md" ]       || echo "MISSING reuse-map.md"
+[ -s "$S/screen-manifest.md" ] || echo "MISSING screen-manifest.md"
+```
+If either is missing or empty, **HARD-STOP** — do NOT render:
+```
+HARD STOP — GROUNDING MISSING
+Step 5 cannot render: <which file(s)> absent or empty.
+The Reuse Map (Step 2.4) + Screen Manifest (GATE 1) are the reuse-first contract every render composes
+against. Without them, proto reinvents components that already exist (the exact drift this gate prevents).
+Write both (re-run Step 2.4 / GATE 1), then resume at Step 5.
+```
+This gate runs whenever Step 5 runs — it is **not** a special case for any mode: `--figma-only` and the
+**no-UI PRD branch** (GATE 1) never reach Step 5 (they bypass rendering), and `--restart` re-derives the
+Manifest (GATE 1) + Reuse Map (Step 2.4) upstream, so both exist by the time Step 5 runs. It **complements,
+never duplicates** Step 0.5 (resume ledger — checks these on *resume*), Step 5d (provenance — checks the
+render's *content*), and the Coverage Gate (frame *coverage*): it is the one check that the grounding
+artifacts **exist at all** on a fresh run.
+
 Mount the screens by **composing the real, already-implemented components** — the app shell
 (nav/header/sidebar) AND every **EXISTING** feature component in the Step 2.4 Reuse Map — plus the
 Gate 2 primitives + tokens, with mock data only — **no fetching, no backend, no state logic**. **Import
@@ -625,6 +665,9 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   **Extend the same check to every NEW row:** Step 2.6 made it real, so its design-system import path must
   ALSO appear in the harness — a NEW component rendered from bespoke stand-in markup instead of its codified
   file is the same failure (**import `<path>` instead**). After 2.6 there are no approximations to render.
+  (The Reuse Map is guaranteed present + non-empty here by the **Step 5 Grounding gate**, so this provenance
+  grep can never pass *vacuously* on an absent/empty map — the hole that once shipped reinvented components.
+  This bullet checks the render's *content*; the gate guarantees the *contract* exists.)
 - **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
   :PORT` shows it, cwd matches), reuse it — hot-reload picks up the new route; no boot needed.
   Otherwise start it. Then smoke-test the route with `curl` (expect HTTP 200, no `Failed to compile`).
@@ -1123,6 +1166,8 @@ wrote one, is ignored by the current Studio and is removed with the namespace at
 Before the Completion Output, hard-verify the run covered the WHOLE journey. This gate is the reason
 "covers all screens" is true rather than aspirational — it is not optional, and it is NOT satisfied by
 "the important screens." A no-arg run passes this gate only at 100% coverage.
+(The manifest's *existence* is already assured upstream by the **Step 5 Grounding gate**; this gate verifies
+*coverage* — every manifested screen has a captured, distinct frame — not existence, so the two never duplicate.)
 
 1. Read `tasks/proto-<prd-slug>/screen-manifest.md` (GATE 1) — the canonical screen list.
 2. For EVERY screen row, confirm a captured `page` frame exists at BOTH viewports
@@ -1298,6 +1343,8 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Rendering the slice in a void / bare canvas instead of the real page | Full-shell composition (5b#1) — import the real layout/shell and render the slice inside it |
 | Re-approximating an already-implemented navbar/sidebar/feature component into a "design-wise correct" but *different* look (self-initiating a fresh design of the screen) | Reuse-first grounding — inventory the existing implementation (Step 2.4 Reuse Map), import & compose the real components verbatim, and prove it with the 5d provenance check. The preview must look like the *existing app*, not a redesign of it |
 | Sending an already-implemented component to the 2.5 gap analysis as "new" | Check the Reuse Map first — EXISTING rows are imported, only genuinely-absent surfaces get a 2.5 spec |
+| Rendering / capturing when `reuse-map.md` or `screen-manifest.md` was never written (5d provenance then passes *vacuously* — no rows to check) | **Grounding gate (top of Step 5)** HARD-STOPS before any render until both artifacts exist and are non-empty; the Reuse Map is the contract 5d checks against, so no map = no render |
+| Typing the PRD/roadmap product name onto a net-new screen when the implemented UI renders a different brand | **Name-drift check (Step 2.4)** — for a new screen, resolve the brand from the real shell and FLAG a mismatch for reconciliation; never auto-type the spec title (the "Builder Workflow Studio" vs implemented "Saki Studio" drift) |
 | State-matrix-only gallery with no journey flow | Build the Figma-flow gallery (6b): a click-through Flow + a journey-ordered Overview; per-screen states are a toggle, never a bare matrix |
 | Plain static PNG list (no hotspots / no flow) when the journey is known | Wire 6a-bis hotspots so clicking the real control advances screen→screen — that is the Figma-prototype feel |
 | `<iframe srcdoc>` DOM gallery (renders unstyled in Studio — no dev server persists) | Embed the 6a PNG screenshots via relative `<img src>` (6b) — already-rendered, needs no server |
@@ -1337,6 +1384,11 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
   preview looks like the *existing app*, never a "design-wise correct but different" fresh design of it.
   Only genuinely-absent surfaces are specced (2.5), and the 5d **provenance check** proves every
   EXISTING/shell row was actually imported before any frame is captured.
+- **Grounding is mechanically gated, not just prose.** The Reuse Map (Step 2.4) + Screen Manifest (GATE 1)
+  are a hard precondition to rendering: the **Grounding gate at the top of Step 5** HARD-STOPS a run whose
+  `reuse-map.md` or `screen-manifest.md` is missing/empty. Prose-BLOCKING labels alone proved insufficient —
+  a run once skipped Step 2.4 entirely and the 5d provenance grep passed *vacuously* (no rows to check),
+  shipping reinvented components under an invented brand. The gate closes that hole.
 - **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get a spec,
   user confirmation, and are codified into the real design system in **Step 2.6 — before the proto is even
   rendered**, so the preview shows real components, never approximations (finalized after visual approval in
