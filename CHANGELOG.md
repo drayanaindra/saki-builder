@@ -2,6 +2,27 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.7.0 — 2026-07-05
+
+- **The readiness gate is now evidence-based, not a confidence percentage.** Across the whole pipeline
+  (`/rplan`, `/rplan-review`, `/prd`, `/prd-review`, `/build`, `/approved`, `/persona`, plus the injected
+  core protocol) the old `Confidence ≥ 90/96%` threshold is replaced by a boolean: **a plan or PRD is
+  presentable only when its Blocking Set is empty.** The ledger stays — every blocking item still cites
+  `path:line` / grep / step number — but the scalar, the hand-tuned deduction weights, and the threshold
+  cliff are gone. A single load-bearing gap (an unverified anchor, a migration named with no creating step)
+  can no longer hide behind a high number, and there is no sum to round up. Momentum reads as the blocking
+  count falling (5 → 2 → 0). Risk now decides an item's **class** (Blocking vs Advisory), not a multiplier:
+  a gap on a HIGH-risk / state-changing step blocks; the same gap on a LOW cosmetic step is Advisory.
+- **`/prd`'s self-gate is strict.** Every real defect in the PRD predicate table is Blocking — no tolerance
+  sum — keeping `/prd` and `/prd-review` in lockstep on what Phase 1 rejects. The internal `prd-quality: N/100`
+  marker becomes `prd-blocking: N`.
+- **Why:** a percentage answers *"how complete does this feel?"*; a gate must answer *"is anything
+  load-bearing still open?"* The two only agree when nothing critical is broken — exactly the case where the
+  old gate could show a green 92% over a fatal gap. The change also removes the five anti-gaming warnings the
+  old scalar needed, because a boolean over cited evidence has no dial to turn. Verified with a 7-agent dry
+  test: the new gate blocks unverified anchors and strict-PRD defects, passes genuinely-clean artifacts, and
+  catches the demote-a-blocker-to-Advisory move the percentage invited.
+
 ## 0.6.2 — 2026-07-05
 
 - **`/proto` no longer reinvents components that already exist.** Reuse-first grounding is now mechanically
