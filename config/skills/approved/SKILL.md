@@ -27,7 +27,7 @@ print('Model set to claude-sonnet-4-6')
 
 Find the most recent `*-plan.md` in the project root. Read it. Extract:
 - All steps with their Test column and Committable flag
-- The **Confidence Ledger** — index every entry by the step number it cites. Entries without a step number go in a "global" bucket.
+- The **Evidence Ledger** — index every blocking item by the step number it cites. Items without a step number go in a "global" bucket.
 
 Then load the plan's companion files (same `[task]` slug):
 - **`[task]-context.md`** (the research findings `/saki-builder:rplan` pinned: existing models, schemas, file paths, patterns). If present, this is your **source of truth for existing code shape** — do NOT re-derive what it already documents (re-research wastes tokens and risks deriving a different shape than the plan assumed). If absent, note `⚠ no context file — will read code on demand` and proceed.
@@ -38,9 +38,9 @@ If the plan has no Test column (old-format plan), derive TDD mode per step:
 - Steps with CRUD/handler/wiring → Test-Along
 - Steps with config/migration/copy → Test-After
 
-If the plan has no Confidence Ledger, warn (do not block):
+If the plan has no Evidence Ledger, warn (do not block):
 ```
-⚠ Plan has no Confidence Ledger — proceeding without per-step risk surfacing.
+⚠ Plan has no Evidence Ledger — proceeding without per-step risk surfacing.
   Recommend re-running /saki-builder:rplan to generate one before next implementation.
 ```
 
@@ -81,7 +81,7 @@ Read the step's action, files, Test field. Pick TDD mode:
 | Test-After | Config, migration, rename, trivial | Implement → run existing test suite → refactor if needed |
 | Human-Test-First | Auth, payment, multi-tenant security | ASK user to write/approve test → implement → confirm GREEN |
 
-Resolve the step's ledger entries as part of GREEN — never implement past a step whose unresolved entry describes a real gap (missing auth, UNKNOWN, vague spec). Resolving = do the work, then delete the entry citing where it was resolved.
+Resolve the step's blocking items as part of GREEN — never implement past a step whose unresolved item describes a real gap (missing auth, UNKNOWN, vague spec). Resolving = do the work, then delete the item citing where it was resolved.
 
 ### Phase 2 — RED (skip for Test-After / Test-Along)
 Write the planned test asserting the **expected behavior** from the spec (not the implementation). Run it:
@@ -169,7 +169,7 @@ Steps: N/N completed
 Commits: [N] commits made
 TDD cycles: [N] Red→Green→Refactor completed
 Refactoring: [N] metrics-triggered refactors performed
-Ledger: [N] entries resolved during implementation, [N] remaining
+Evidence Ledger: [N] blocking items resolved during implementation, [N] remaining
 
 XP Summary:
   Tests written first: [N]

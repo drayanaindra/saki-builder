@@ -8,7 +8,7 @@ Use this format for all non-trivial execution plans.
 # EXECUTION PLAN: [task name]
 
 **Date:** YYYY-MM-DD
-**Confidence:** [X]%
+**Blocking items:** [N] (must be 0 to present — see Evidence Ledger)
 **Risk Score:** LOW / MED / HIGH
 **Unknown Count:** [N] / 2 max
 **Behavior Spec:** `[task]-flow.md` (user-facing) | N/A (backend-only)
@@ -25,7 +25,7 @@ When [situation], I want to [action], so I can [outcome].
 ## Concrete Example Output
 
 A real, specific example of what "done" looks like — not a description.
-Required before this plan can reach 96% confidence.
+Required before this plan can be presented — a Blocking item until filled.
 
 **Format depends on work type:**
 - Feature/Enhancement → user-visible behavior: input → output (paste a JSON response, screenshot caption, or exact UI text)
@@ -127,7 +127,7 @@ List every DB schema change and its migration.
 
 ## Implementation Completeness Checklist
 
-All items must be checked before confidence can reach 96%.
+Any unchecked item on a state-changing step is a **Blocking** item; unchecked cosmetic items on LOW steps are Advisory. All Blocking items must be resolved before presenting.
 
 **User Coverage**
 - [ ] Every role that touches this feature is in the Role Coverage matrix
@@ -164,26 +164,32 @@ All items must be checked before confidence can reach 96%.
 
 ---
 
-## Confidence Ledger
+## Evidence Ledger
 
-The score in the header is `100 − sum(Δ)` from the rows below. A plan without a ledger is **unscored** (treated as <70%).
+Readiness is a boolean: the plan is presentable when the **Blocking** table is empty. A plan without an
+Evidence Ledger is **unscored** — return to research. There is no percentage; the Blocking count is the signal.
 
-**Format:**
+### Blocking (must be empty to present — each row a binary, cited predicate)
 
-| Δ | Step | Reason | Evidence |
-|---|------|--------|----------|
-| -5 | 7 | Anchor `OrderService.split_batch` does not grep (HIGH-risk, ×2 of -2.5 base) | `grep -r split_batch backend/app/services` → no match |
-| -3 | — | Checklist item "Mobile/responsive noted" unchecked | this plan, Implementation Checklist § Frontend |
-| -8 | 9 | Migration file `xxxx_add_batch_id.py` named but not created (HIGH-risk, ×2 of -4 base) | no creating step in plan |
+| # | Step | Blocking predicate (unresolved) | Evidence |
+|---|------|---------------------------------|----------|
+| B1 | 7 | Anchor `OrderService.split_batch` does not grep | `grep -r split_batch backend/app/services` → no match |
+| B2 | 9 | Migration file `xxxx_add_batch_id.py` named but has no creating step | no creating step in plan |
+
+### Advisory (visible, never gates)
+
+| Step | Note | Evidence |
+|------|------|----------|
+| 3 | Mobile/responsive not noted (LOW, cosmetic) | this plan, Implementation Checklist § Frontend |
 
 **Rules:**
-- Every entry MUST cite evidence (`path:line`, grep result, or step number). Uncited deductions are invalid.
-- `Step` column: write `—` for ledger-wide issues (missing role, vague global criteria).
-- Apply the risk multiplier in your head; the `Δ` column is the final value subtracted (LOW=×1, MED=×1.5, HIGH=×2).
-- Score of 100 requires a single explicit row: `| 0 | — | All anchors verified, all targets have parents and creating steps, no unchecked items, no unknowns above LOW | self-audit |`.
+- Every Blocking row MUST cite evidence (`path:line`, grep result, or step number). An uncited row is invalid — resolve it or move it to Advisory.
+- **Blocking vs Advisory is decided by the step's risk, not by a weight:** an unresolved gap on a HIGH-risk or state-changing step is Blocking; the same gap on a LOW cosmetic step is Advisory. If you can't reduce an item to a binary yes/no + citation, it's Advisory.
+- `Step` column: write `—` for ledger-wide items (missing role, vague global criteria).
+- A ready plan shows an **empty Blocking table** plus one attestation row in Advisory: `| — | All anchors verified, all targets have creating steps, no unchecked items on state-changing steps, no unknowns above LOW | self-audit |`.
 - Replace the example rows above with your own. Empty or missing ledger → return to research.
 
-**Score: 100 − [sum of Δ] = [X]%** *(matches the header)*
+**Blocking: [N] → READY when 0.**
 
 ---
 
@@ -199,9 +205,9 @@ The score in the header is `100 − sum(Δ)` from the rows below. A plan without
 ## Annotation Space
 
 > Human: add notes, corrections, constraints here.
-> Claude will revise plan and re-score before proceeding.
+> Claude will revise plan and re-check the Blocking Set before proceeding.
 
 ---
 Status: [ ] Draft  [ ] Annotated  [ ] Approved  [ ] In Progress  [ ] Complete
-Confidence Gate: [ ] Confidence Ledger present and every entry cited  [ ] All checklist items checked  [ ] Confidence >= 96%  [ ] Unknowns <= 2
+Readiness Gate: [ ] Evidence Ledger present and every blocking item cited  [ ] Blocking Set empty  [ ] Unknowns <= 2
 ```

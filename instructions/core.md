@@ -6,7 +6,7 @@ detailed references live in `config/docs/*` and are loaded on demand.
 
 ## Execution Protocol (BLOCKING)
 
-For non-trivial tasks: use `/saki-builder:rplan` before implementing (research → plan → confidence gate).
+For non-trivial tasks: use `/saki-builder:rplan` before implementing (research → plan → readiness gate).
 Trivial (typo, 1-line fix) → execute directly.
 
 1. NEVER implement without a structured plan first (unless trivial or the user says "skip workflow").
@@ -21,9 +21,9 @@ Trivial (typo, 1-line fix) → execute directly.
 `Model: [OPUS/SONNET/HAIKU] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`
 Required for non-trivial responses. Skip for trivial replies, acknowledgments, short clarifying questions.
 
-## Confidence Gate
+## Readiness Gate
 
-Do NOT execute until: Confidence ≥ 90%, Unknowns ≤ 3, human approves.
+Do NOT execute until: the **Blocking Evidence Set is empty** (every blocking item resolved, each with a citation), Unknowns ≤ 3, human approves. A blocking item is a binary, cited predicate — an unverified anchor, an open MED/HIGH unknown, an uncovered failure path on a state-changing step. There is no percentage to clear: the gate is "no blocking item stands," and momentum reads as the blocking-item count falling to 0.
 
 ## Risk Tiers
 

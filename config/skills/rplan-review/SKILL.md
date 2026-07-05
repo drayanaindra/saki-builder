@@ -22,7 +22,7 @@ Print:
 ```
 --- PLAN LOADED ---
 File: [filename]
-Initial confidence: [X]%
+Initial blocking count: [N]
 ```
 
 ---
@@ -132,7 +132,7 @@ Priority order: ① implementation reality first · ② grounded · ③ prescrib
 - CITE EVERY FINDING: quote the exact step # / section + the text you object to. Uncited findings are DISCARDED in synthesis — do not pad with vague concerns.
 - PRESCRIBE, don't flag: each blocker names the exact plan edit that fixes it (the step to add/change: file + function/criterion). A description with no prescribed edit is a half-finding.
 - DEFAULT TO BLOCKER for a state-changing or 🔒 step whose failure path is untested — do not soften it to a warning.
-- Do NOT propose a numeric confidence adjustment — Phase 3 owns the ledger.
+- Do NOT propose a numeric confidence adjustment — Phase 3 owns the ledger (each finding becomes a Blocking or Advisory row).
 ```
 
 **Backend Expert Agent:**
@@ -154,7 +154,7 @@ Output format:
 BACKEND REVIEW
 Blockers: (list — each one prevents safe implementation)
 Warnings: (list — non-blocking but should be addressed)
-(Phase 3 will translate blockers/warnings into Confidence Ledger entries — do NOT propose a numeric adjustment.)
+(Phase 3 will translate blockers/warnings into Blocking/Advisory ledger rows — do NOT propose a numeric adjustment.)
 ```
 
 **Frontend Expert Agent:**
@@ -245,7 +245,7 @@ Output format:
 UI/UX REVIEW
 Blockers: (list — each one creates a broken or inaccessible user experience)
 Warnings: (list — non-blocking but degrades UX quality)
-(Phase 3 will translate blockers/warnings into Confidence Ledger entries — do NOT propose a numeric adjustment.)
+(Phase 3 will translate blockers/warnings into Blocking/Advisory ledger rows — do NOT propose a numeric adjustment.)
 ```
 
 **Product Expert Agent:**
@@ -330,18 +330,18 @@ Merge all expert findings:
 2. **Verify every BLOCKER against the actual code/plan line before it enters the ledger.** Subagents misread patterns and flag correct APIs as bugs (CLAUDE.md core rule #4). Read the cited `path:line` yourself; a blocker that doesn't survive verification is downgraded or dropped, with a one-line note. **Best-effort when the repo isn't on disk:** if the plan's checkout isn't available, mark such blockers `PLAUSIBLE (unverified — repo absent)` rather than confirming or dropping them.
 3. **Deduplicate** — same issue flagged by multiple experts counts once
 4. **Classify** — Blocker (must fix before /saki-builder:approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
-5. **Extend the Confidence Ledger — do NOT overwrite the score with a formula.**
+5. **Extend the Evidence Ledger — add verified blockers to the Blocking table.**
 
-   For each blocker, append a new ledger entry to the plan file using the existing format from `/saki-builder:rplan` Step 4:
+   For each verified blocker, append a new **Blocking** row to the plan file using the format from `/saki-builder:rplan` Step 4:
    - Cite evidence (`path:line`, the expert that found it, the step number it ties to)
-   - Use the standard deduction from `/saki-builder:rplan` Step 4b (closest match, e.g. missing auth → "missing user role coverage" -3, vague step -5)
-   - Apply the risk multiplier of the step the issue ties to (×1, ×1.5, ×2 per Step 4c)
+   - Classify Blocking vs Advisory by the step's risk (§4b/§4c) — a state-changing/🔒 step's untested failure path or omitted implied work is **Blocking**
+   - A verified blocker on a state-changing step is always Blocking, never Advisory
 
-   For each warning, append a ledger entry with `-1` (uncited warnings invalid), or skip if non-actionable.
+   For each warning, append an **Advisory** row (cited), or skip if non-actionable.
 
-   **Recompute the score** = `100 − sum(ledger)`. The score lives entirely in the ledger; ad-hoc per-expert `+/-N%` adjustments are NOT applied separately.
+   **The verdict is the Blocking table being empty** — there is no score to recompute. Each finding is a Blocking or Advisory row; there are no per-expert `+/-N%` adjustments.
 
-   If the plan has no ledger (i.e. it was scored without one), state: "PHASE 3 ABORTED — plan has no Confidence Ledger. Re-run /saki-builder:rplan to score with ledger first."
+   If the plan has no Evidence Ledger, state: "PHASE 3 ABORTED — plan has no Evidence Ledger. Re-run /saki-builder:rplan to build the ledger first."
 
 Print synthesis:
 
@@ -359,26 +359,19 @@ Blockers (must fix before /saki-builder:approved — each cites a step # and pre
 Warnings (non-blocking):
   ⚠️ [W1] [domain] §step: [description] → FIX: [...]
 
-Confidence: [initial]% → [final]%
+Blocking: [initial N] → [final N]
 ```
 
-**If blockers exist:**
+**If the Blocking Set is non-empty:**
 ```
-PHASE 3 FAILED — blockers found
-Fix all ❌ blockers in the plan file, then re-run /saki-builder:rplan-review.
+PHASE 3 FAILED — Blocking Set non-empty
+Fix all ❌ blocking items in the plan file, then re-run /saki-builder:rplan-review.
 ```
 
-**If no blockers, confidence > 96%:**
+**If the Blocking Set is empty:**
 ```
-PHASE 3 PASSED — no blockers, confidence [X]% > 96%
+PHASE 3 PASSED — Blocking Set empty (Advisory items do not hold the gate)
 Proceeding to Phase 4.
-```
-
-**If no blockers but confidence ≤ 96%:**
-```
-PHASE 3 PARTIAL — no blockers but confidence [X]% ≤ 96%
-Resolve warnings or add more detail to reach 96%.
-Re-run /saki-builder:rplan-review after updating the plan.
 ```
 
 ---
@@ -410,25 +403,25 @@ PHASE 4 PASSED — implementation ready
 
 Phase 1 (Structural):   PASSED / FAILED
 Phase 2 (Expert review): PASSED / FAILED
-Phase 3 (Synthesis):    PASSED / FAILED / PARTIAL
+Phase 3 (Synthesis):    PASSED / FAILED
 Phase 4 (Readiness):    PASSED / FAILED
 
-Confidence: [start]% → [final]%
-Blockers found: [N]
-Warnings found: [N]
+Blocking: [start N] → [final N]
+Blocking items found: [N]
+Advisory items found: [N]
 
 Verdict:
   ✅ APPROVED FOR IMPLEMENTATION
-     All phases passed. Confidence [X]% > 96%.
+     All phases passed. Blocking Set empty.
      Next: /saki-builder:approved
 
   OR
 
   ❌ NOT READY
      [Phase N] failed:
-     - [blocker 1]
-     - [blocker 2]
-     Next: Fix blockers → re-run /saki-builder:rplan-review
+     - [blocking item 1]
+     - [blocking item 2]
+     Next: Fix blocking items → re-run /saki-builder:rplan-review
 ```
 
 ---
@@ -442,8 +435,8 @@ Priority order: **① surface implementation reality → ② keep every finding 
 - Only launch agents for domains that are actually touched by the plan.
 - Discard uncited findings, and VERIFY every blocker against the cited code/plan line before it enters the ledger — subagents flag correct APIs as bugs; an unverified CRITICAL is not a blocker yet.
 - Every blocker must PRESCRIBE the exact plan edit that fixes it (step + file + function/criterion) — a bare description is a half-finding.
-- A state-changing/🔒 step with an untested failure path or omitted implied work (backfill/index/authz/rollback) is a BLOCKER, not a warning — regardless of confidence score.
-- A blocker from any agent = plan is NOT ready, regardless of confidence score.
+- A state-changing/🔒 step with an untested failure path or omitted implied work (backfill/index/authz/rollback) is a Blocking item, not an Advisory — it holds the gate on its own.
+- A blocker from any agent = plan is NOT ready — the Blocking Set is non-empty until it is resolved.
 - "I'll handle it during implementation" = BLOCKER.
 - Annotate the plan file with all resolved findings under "Annotation Space".
 

@@ -25,7 +25,7 @@ This command is the one-shot equivalent of running, by hand, for each slice:
 You are in TRUST MODE. This means:
 - **NEVER ask "Do you want to proceed?"** or any variation. Make the call, log it, continue.
 - **Do NOT wait for plan approval.** `/saki-builder:rplan` normally stops for a human; here you
-  auto-approve any plan that clears the confidence bar and proceed to `/saki-builder:approved` yourself.
+  auto-approve any plan whose **Blocking Set is empty** and proceed to `/saki-builder:approved` yourself.
 - Agent-based sub-skills that are part of this flow (`/saki-builder:rplan-review`, `/saki-builder:reviewer`,
   and the `security-review` audit) are permitted — they are how slices get reviewed. Just never pause
   for user confirmation around them.
@@ -300,12 +300,12 @@ Invoke the `rplan` skill (Skill tool, `skill: rplan`) scoped to **this slice onl
 description plus its acceptance criteria, **and the Business Rules & Invariants in scope for it**
 (the rules its criteria link to, plus any `🔒 INVARIANT` the slice's writes could violate). The
 plan must be built to uphold them — call out each in-scope invariant so the implementation and its
-tests account for it. `/saki-builder:rplan` will research, build the plan, and score confidence. **Do not wait
-for approval** — read the resulting plan and its confidence score yourself.
+tests account for it. `/saki-builder:rplan` will research, build the plan, and populate its Evidence Ledger. **Do not wait
+for approval** — read the resulting plan and its Blocking Set yourself.
 
 ### 2. `/saki-builder:rplan-review` — *only if needed*
 Run the `rplan-review` skill when any of these hold; otherwise skip straight to step 3:
-- `/saki-builder:rplan` confidence is below its 96% bar, **or**
+- `/saki-builder:rplan` leaves any blocking item unresolved (Blocking Set non-empty), **or**
 - the slice is HIGH risk (auth, DB migration, deletes, money, security boundary), **or**
 - the slice spans >2 modules or has >3 acceptance criteria.
 

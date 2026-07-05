@@ -183,7 +183,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - The project's specific conventions (from CLAUDE.md)
    - File path patterns specific to this project
    - Domain-specific blockers (e.g., missing tenant guard for multi-tenant apps)
-   - Output format: `[DOMAIN] REVIEW / Blockers / Warnings / Confidence adjustment`
+   - Output format: `[DOMAIN] REVIEW / Blockers / Warnings` (Phase 3 classifies each as Blocking/Advisory — do NOT propose a numeric adjustment)
 
    Also create `.claude/skills/qa/SKILL.md` as a project override that extends the global
    qa skill's Playwright logic. The override should:

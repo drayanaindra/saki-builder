@@ -126,12 +126,14 @@ should check these explicitly.
 
 ---
 
-## Step 3 — Quality check (self-score before saving)
+## Step 3 — Quality check (Blocking Set must be empty before saving)
 
-Score = 100 − Σ deductions. Present the PRD only at ≥80.
+**Gate = the Blocking Set is empty.** Every row below is a Blocking predicate — resolve all before saving
+the persona. The Severity column is a fix-order hint (fix larger first), **not a summand**. Genuine cosmetic
+polish not in this table stays Advisory and never gates.
 
-| Issue | Δ |
-|-------|---|
+| Blocking predicate (resolve before saving) | Severity (fix-order hint — NOT summed) |
+|---------------------------------------------|----------------------------------------|
 | Snapshot missing any field | −5 each |
 | JTBD not in Klement form ("As a…" persona story instead) | −10 |
 | Pain points stated as features ("they want X") not blockers ("they fail because Y") | −5 each |
@@ -140,7 +142,7 @@ Score = 100 − Σ deductions. Present the PRD only at ≥80.
 | Every claim is `assumed` with no grounding attempt (Step 1 skipped) | −20 |
 | Mental model section empty or just restates the role | −10 |
 
-**Threshold:** ≥80 → save. 60–79 → fix then save. <60 → return to Step 0.
+**Gate:** Blocking Set empty → save. Any Blocking predicate unresolved → fix, then save. If most rows are unresolved → return to Step 0.
 
 ---
 

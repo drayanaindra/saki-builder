@@ -1,6 +1,6 @@
 ---
 name: rplan
-description: Create structured execution plan with confidence scoring and risk assessment. Use for any non-trivial task before implementation.
+description: Create structured execution plan with an evidence-based readiness gate (Blocking Set) and risk assessment. Use for any non-trivial task before implementation.
 ---
 
 # Structured Planning
@@ -176,7 +176,7 @@ Feature: [Role] — [capability]
 
 ### 3. Implementation Completeness Checklist
 
-Before scoring confidence, verify EVERY item below. A single `[ ]` (unchecked) item blocks the plan.
+Before gating, verify EVERY item below. A single `[ ]` (unchecked) item on a state-changing step is a Blocking item.
 
 **User Coverage**
 
@@ -218,13 +218,13 @@ Before scoring confidence, verify EVERY item below. A single `[ ]` (unchecked) i
 - [ ] No step that says "update frontend" without naming the exact file and function
 - [ ] No step that says "add API endpoint" without naming the method, path, and schema
 
-### 4. Confidence Scoring (Ledger-Based)
+### 4. Readiness Gate (Evidence-Based)
 
-**Score = 100 − sum of Confidence Ledger entries.**
+**Readiness = the Blocking Set is empty.** The gate is a boolean over cited evidence, not a threshold over a score.
 
-A plan without a Confidence Ledger is **unscored** — treat as <70% and return to research. The bare percentage in the plan header is meaningless without the ledger that justifies it.
+A plan without an Evidence Ledger is **unscored** — return to research. The gate asks one question: does any blocking item still stand? A blocking item is a binary, cited predicate (an unverified anchor, an open MED/HIGH unknown, an uncovered failure path on a state-changing step). Everything else is Advisory — visible, never gating. Momentum reads as the blocking count falling (5 → 2 → 0), not as a rising %.
 
-#### 4a. Reference verification (run before scoring)
+#### 4a. Reference verification (run before gating)
 
 Walk every step in the Steps table. Classify each file/function reference:
 
@@ -235,54 +235,59 @@ Walk every step in the Steps table. Classify each file/function reference:
   3. A unique identifier (function, struct, file name)
   Targets missing any of the three → ledger entry required.
 
-You may not score until every reference in every step has been classified and verified.
+You may not present until every reference in every step has been classified and verified. Any unverified anchor is a Blocking item.
 
-#### 4b. Standard deduction table
+#### 4b. Blocking-predicate table
 
-| Issue | Base Δ |
-|-------|--------|
-| Anchor reference does not grep | -5 |
-| Target reference missing anchor parent or creating step | -3 |
-| Vague step ("update X" without file+function) | -5 |
-| Implementation Checklist `[ ]` unchecked | -3 |
-| Step missing Test column entry | -2 |
-| Step Committable=No without grouping note | -3 |
-| Unresolved UNKNOWN — MED | -5 |
-| Unresolved UNKNOWN — HIGH | -8 |
-| Missing user role coverage | -3 |
-| `Concrete Example Output` empty/placeholder | BLOCK (score = 0) |
+Each issue is classified **Blocking** (must be resolved to present) or **Advisory** (visible, never gates)
+by the risk of the step it belongs to (§4c). Every Blocking item is binary and must cite evidence.
 
-#### 4c. Risk multiplier
+| Issue | Default class |
+|-------|---------------|
+| Anchor reference does not grep | Blocking |
+| Target reference missing anchor parent or creating step | Blocking |
+| Vague step ("update X" without file+function) | Blocking |
+| Unresolved UNKNOWN — MED or HIGH | Blocking |
+| `Concrete Example Output` empty/placeholder | Blocking |
+| Implementation Checklist `[ ]` unchecked on a state-changing step | Blocking |
+| Missing user role coverage | Blocking |
+| Step missing Test column entry (business-logic step) | Blocking |
+| Step Committable=No without grouping note | Advisory |
+| Implementation Checklist `[ ]` unchecked on a LOW cosmetic step | Advisory |
+| Style / polish / non-load-bearing gap | Advisory |
 
-Apply to every deduction based on the **step the deduction belongs to**:
+#### 4c. Risk decides Blocking vs Advisory (not a weight)
 
-- LOW-risk step: ×1
-- MED-risk step: ×1.5 (round up)
-- HIGH-risk step: ×2
+There is no multiplier — risk decides *class*, not magnitude. For each issue from §4b, use the risk of
+the step it belongs to:
 
-A `-3 checklist unchecked` issue tied to a HIGH-risk step is `-6` in the ledger.
-A deduction not tied to any step (e.g., missing role) uses ×1.
+- **HIGH-risk or state-changing step** → the issue is **Blocking**.
+- **MED-risk step** → **Blocking** if it touches correctness/safety (auth, data, a failure path), else Advisory.
+- **LOW-risk / cosmetic step** → **Advisory**.
 
-#### 4d. Action thresholds
+A checklist gap on a HIGH-risk migration step is Blocking; the same gap on a LOW cosmetic step is Advisory.
+An issue not tied to any step (e.g., a missing role) is Blocking. When in doubt, Blocking — an item you
+can't reduce to a binary yes/no + citation goes to Advisory instead.
 
-| Score                | Action                                           |
-| -------------------- | ------------------------------------------------ |
-| >= 96%               | Present plan, wait for approval                  |
-| 90–95%               | Resolve ledger items, re-score                   |
-| 70–89%               | More research needed — do NOT present yet        |
-| < 70%                | Stop, write context file, ask user for direction |
-| Unscored (no ledger) | Treat as <70% — return to research               |
+#### 4d. Readiness actions
 
-**Max unresolved unknowns before presenting:** 2.
+| State                          | Action                                                      |
+| ------------------------------ | ----------------------------------------------------------- |
+| Blocking Set empty             | Present plan, wait for approval                             |
+| Blocking Set non-empty         | Resolve each cited blocking item, re-check — do NOT present  |
+| Many blocking items, wide gaps | Stop, write context file, ask user for direction            |
+| Unscored (no Evidence Ledger)  | Return to research                                          |
 
-> Threshold rationale (vs `/saki-builder:prd`): `/saki-builder:rplan` presents at **≥96%** while `/saki-builder:prd` presents at **≥90%** — by design. A plan is one step from code and has a larger blast radius (a wrong file or migration ships a bug), so its bar sits higher than a product spec's.
+**Max unresolved unknowns before presenting:** 2 (an open MED/HIGH unknown is itself a Blocking item).
+
+> Bar rationale (vs `/saki-builder:prd`): a plan is one step from code and has a larger blast radius than a spec, so it **blocks on more predicate types** — every anchor must grep, every migration must have a creating step, every state-changing step needs a covered failure path. The higher bar is a longer blocking-predicate list, not a higher number.
 
 #### 4e. Honesty rules
 
-- Every ledger entry MUST cite evidence (`path:line`, grep result, or step number). An uncited deduction is invalid — the ledger as a whole is invalid until every entry is cited.
-- A score of 100 is allowed but requires the ledger to state explicitly: *"All anchors verified, all targets have anchor parents and creating steps, all checklist items satisfied, no unknowns above LOW."*
-- Before marking any checklist item `[x]`, ask: can I cite the plan line that satisfies it? If not, leave it `[ ]` and take the deduction.
-- The 96% threshold is for **honest** scores. Lowering deductions to clear the bar is the failure mode this gate exists to prevent.
+- Every Blocking item MUST cite evidence (`path:line`, grep result, or step number). An uncited item is invalid — resolve it or move it to Advisory (never leave it uncited in Blocking).
+- An empty Blocking Set requires the Evidence Ledger to state explicitly: *"All anchors verified, all targets have anchor parents and creating steps, all checklist items on state-changing steps satisfied, no unknowns above LOW."*
+- Before marking any checklist item `[x]`, ask: can I cite the plan line that satisfies it? If not, leave it `[ ]` — and if it sits on a state-changing step, it is Blocking.
+- The gate is honest emptiness, not an empty-looking table. **Demoting a Blocking item to Advisory without resolving it is the failure mode this gate exists to prevent** — the only way out of Blocking is to do the work and cite where.
 
 ### 5. Pre-Present Quality Gate
 
@@ -294,11 +299,11 @@ Before showing the plan to the user, answer all of these:
 4. Is every call chain wired end-to-end in the Plan Wiring section?
 5. Are success criteria testable without ambiguity?
 6. Is the `Concrete Example Output` section filled with a real, specific example (not placeholder, not a restatement of the problem)?
-7. Is the Confidence Ledger present, and does every entry cite evidence (`path:line`, grep result, or step number)?
+7. Is the Evidence Ledger present, and does every Blocking item cite evidence (`path:line`, grep result, or step number)?
 
 If any answer is "No" → fix the plan before presenting.
 If #6 is "No" → STOP. Do not present. Return to user and ask for the example, or recommend `/saki-builder:shaping-requirements`. Do not invent the example.
-If #7 is "No" → the score is unsubstantiated. Build the ledger before presenting; do not round up to clear the gate.
+If #7 is "No" → the readiness claim is unsubstantiated. Build the ledger before presenting; do not empty the Blocking table by demoting items you haven't resolved.
 
 ### 6. Self-Review (built-in domain checks)
 
@@ -398,13 +403,13 @@ Print:
 
 #### 6e. Update Ledger After Self-Review
 
-Update the Confidence Ledger to reflect what was fixed: remove resolved entries, add new entries for any gaps surfaced during review (including any criterion that could not be hardened). Recompute the score from the updated ledger. Do NOT delete entries you cannot cite as resolved — leave them and take the deduction.
+Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking items (citing where each was resolved), add new items for any gaps surfaced during review (including any criterion that could not be hardened — a state-changing one is Blocking). The gate is the Blocking table being empty. Do NOT remove a Blocking item you cannot cite as resolved — leave it, or move it to Advisory only if it is genuinely non-load-bearing.
 
 ### 7. Output with Next Action Recommendation
 
 - Write full plan to `[task]-plan.md` in project root
 - Present plan summary in chat with:
-  - Confidence score
+  - Blocking count (0 = ready)
   - Risk level
   - Self-review results (what was caught and fixed)
   - **Next action recommendation** (see below)
@@ -414,31 +419,31 @@ Update the Confidence Ledger to reflect what was fixed: remove resolved entries,
 Step 6 already performed self-review and (for HIGH risk) the combined-reviewer spot-check. `/saki-builder:rplan-review` is for HIGH-risk plans that benefit from parallel domain experts — it does NOT re-do Step 6's work. For LOW/MED, do not recommend `/saki-builder:rplan-review`; the gaps it would find are already covered by Step 6.
 
 ```
-If confidence >= 96% AND risk is LOW/MED:
-  → "Plan ready. /saki-builder:approved to start implementation."
+If Blocking Set empty AND risk is LOW/MED:
+  → "Plan ready (0 blocking). /saki-builder:approved to start implementation."
 
-If confidence >= 96% AND risk is HIGH:
-  → "Plan ready (HIGH risk). Recommend /saki-builder:rplan-review for parallel domain expert review, or /saki-builder:approved if Step 6 spot-check is sufficient."
+If Blocking Set empty AND risk is HIGH:
+  → "Plan ready (0 blocking, HIGH risk). Recommend /saki-builder:rplan-review for parallel domain expert review, or /saki-builder:approved if Step 6 spot-check is sufficient."
 
-If confidence 90-95%:
-  → "Confidence at [X]%. Gaps: [list cited ledger entries]. Fix the cited gaps and re-run /saki-builder:rplan — do NOT round up, do NOT escalate to /saki-builder:rplan-review to mask the gaps."
+If Blocking Set non-empty:
+  → "[N] blocking item(s): [list cited Blocking rows]. Fix the cited items and re-run /saki-builder:rplan — do NOT empty the table by demotion, do NOT escalate to /saki-builder:rplan-review to mask them."
 
-If confidence < 90%:
-  → "Confidence too low ([X]%). Need your input on: [specific questions]"
+If blocking items need your input to resolve:
+  → "[N] blocking item(s) need your input: [specific questions]"
 ```
 
 **Print the recommendation clearly:**
 
 ```
 --- PLAN COMPLETE ---
-Confidence: [X]%
+Blocking: [N] (0 = ready)
 Risk: LOW / MED / HIGH
-Self-review: [N] issues found and fixed, [N] blockers remaining
+Self-review: [N] issues found and fixed, [N] blocking items remaining
 
 Recommendation: [one of the above]
 > /saki-builder:approved    — start implementation
 > /saki-builder:rplan-review — expert validation (recommended for HIGH risk)
-> [specific questions if confidence < 90%]
+> [specific questions if blocking items need your input]
 ```
 
 ---
@@ -451,7 +456,7 @@ Recommendation: [one of the above]
 | Vague step | "update the service to handle X" | Name the file + function + the exact change |
 | Phantom anchor | a step references a function/file that doesn't `grep` | Verify; if absent it's a target needing a creating step (§4a) |
 | Orphan criterion | a Success Criterion with no `→ 5.x` link and no guardrail | Link the PRD outcome or name the guardrail, else cut it |
-| Ledger inflation | 97% with one tiny deduction on a 9-step HIGH-risk plan | Re-walk §4a, classify every reference, cite every deduction |
+| Hollow Blocking table | empty Blocking table on a 9-step HIGH-risk plan with an unverified anchor | Re-walk §4a, classify every reference; every unverified anchor is Blocking |
 | Stale model pin | leaving `claude-opus-4-x` hardcoded in Step 0 | Use the `opus` alias |
 
 ## Rules
@@ -466,6 +471,6 @@ Recommendation: [one of the above]
 - NEVER omit a user role that interacts with the feature
 - NEVER omit a migration step if schema changes
 - NEVER fabricate the `Concrete Example Output` — if the user did not provide one and it cannot be quoted directly from their prompt, STOP and ask. This is the single most important guard against shipping the wrong thing.
-- NEVER present a score without a Confidence Ledger. The number is meaningless without cited deductions; a bare percentage is unscored (treat as <70%).
+- NEVER present a plan without an Evidence Ledger. A readiness claim is meaningless without cited blocking items; a plan with no ledger is unscored — return to research.
 - NEVER mark a checklist item `[x]` unless you can cite the plan line that satisfies it. Unverified checks are the primary failure mode of the old gate.
-- If confidence < 96% after self-review, fix gaps — do NOT lower the bar, do NOT prune ledger entries you cannot cite as resolved
+- If the Blocking Set is non-empty after self-review, fix the items — do NOT empty the table by demotion, do NOT drop a Blocking item you cannot cite as resolved

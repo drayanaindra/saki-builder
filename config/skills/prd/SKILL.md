@@ -319,11 +319,15 @@ Emit three parts (any part with no rows is omitted):
 - **Decision Log (§7)** — from Step 0.5(c/d): the chosen shape + each alternative with a one-line
   why-not. This is what stops a team re-litigating the approach later.
 
-Score = 100 − Σ deductions. Fix in-place until score ≥ 90 before presenting.
-**Never show the score number or deduction table to the human.**
+**Gate = the Blocking Set is empty.** Every row in the table below is a **Blocking predicate** — under the
+strict model, resolve ALL of them before presenting: a cited real defect blocks, and there is no tolerance
+sum to hide behind. The Severity column is a fix-order hint (fix `BLOCK` / larger `−N` first), **not a
+summand** — a `−3` no more "buys slack" than a `BLOCK`; both must be clear. Genuine cosmetic polish that is
+not in this table stays Advisory and never gates.
+**Keep this internal — never show the Blocking list or the table to the human.**
 
-| Issue | Δ |
-|-------|---|
+| Blocking predicate (resolve before presenting) | Severity (fix-order hint — NOT summed) |
+|------------------------------------------------|----------------------------------------|
 | Premise check (Step 0b) not run, OR load-bearing assumption not stated + tagged in §2 of the saved file | BLOCK |
 | Primary JTBD in persona form ("As a…") | BLOCK |
 | Appetite (§6) missing or not set in Step 0.5 | BLOCK |
@@ -355,15 +359,14 @@ Score = 100 − Σ deductions. Fix in-place until score ≥ 90 before presenting
 | §16 row serving no §8 slice / §5 outcome (speculative surface — YAGNI) | −5 each |
 | §16 crosses into full design (column/field names, full req/resp payload, migration file, index) | −3 |
 
-If score < 90 → fix the cited gaps and re-score. Do NOT present below 90.
+If any Blocking predicate is unresolved → fix the cited gaps and re-check. Do NOT present with a non-empty Blocking Set.
 
-**Structural floor (BLOCK regardless of score).** Independently of the number, a PRD with ANY of the
-following fails `/saki-builder:prd-review` Phase 1 and must be fixed before presenting — even at ≥90:
-a `🔒 INVARIANT` with no failure/edge criterion; a §5 target with no basis tag; a dangling `Jn`
-(a `Serves`/`JTBD` ref resolving to no §3/§4 job); missing or effort-only Kill Criteria; <2 Non-Goals;
-an absent Decision Log (§7); or a slice with no `Serves` tag. Each is only a −3/−5/−8 deduction, so the
-score can sit ≥90 with one present — but review will structurally reject it. Treat them as BLOCK here to
-keep `/saki-builder:prd` and `/saki-builder:prd-review` in lockstep.
+**Phase-1 structural blockers (always Blocking, listed for lockstep).** A PRD with ANY of the following
+fails `/saki-builder:prd-review` Phase 1 and must be fixed before presenting: a `🔒 INVARIANT` with no
+failure/edge criterion; a §5 target with no basis tag; a dangling `Jn` (a `Serves`/`JTBD` ref resolving
+to no §3/§4 job); missing or effort-only Kill Criteria; <2 Non-Goals; an absent Decision Log (§7); or a
+slice with no `Serves` tag. Under the strict gate these are Blocking like every other row — called out
+here so `/saki-builder:prd` and `/saki-builder:prd-review` stay in lockstep on what Phase 1 rejects.
 
 ---
 
@@ -373,7 +376,7 @@ Save to `tasks/prd-{{input.feature | slugify}}.md` with ALL sections in this exa
 so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can parse them:
 
 ```
-<!-- prd-quality: [score]/100 -->
+<!-- prd-blocking: 0 -->
 <!-- slices: [N] -->
 <!-- appetite: [small|medium|large] -->
 
@@ -532,7 +535,7 @@ Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s j
 
 | Anti-pattern | Fix |
 |---|---|
-| Showing quality gate score to human | Enforce it internally — never display it |
+| Showing the internal Blocking list or predicate table to the human | Enforce it internally — never display it |
 | Showing Klement / Ulwick / INVEST labels to human | Internal discipline only |
 | Acceptance criteria written as HTTP calls in Step 8 | Write what the user observes, not how code works |
 | "Screens" that are backend-only | Only list what a user actually sees |

@@ -139,7 +139,7 @@ If any fail: say so explicitly.
 
 **Push back** when: requirements contradict, scope > timeline (and user hasn't acknowledged), proposed approach has known failure mode user hasn't considered, no measurement for "did it work?", no rollback on something risky.
 
-**Escalate** when: confidence drops below 90% mid-implementation, original assumptions wrong, two reasonable paths exist and the trade-off is a product call.
+**Escalate** when: a blocking unknown surfaces mid-implementation, original assumptions wrong, two reasonable paths exist and the trade-off is a product call.
 
 # Communication Style
 

@@ -18,22 +18,30 @@ Trivial tasks (typo fix, single-line change) can skip to EXECUTE with inline con
 ## Phase 2: PLAN (structured)
 
 - Use plan template at `~/.claude/skills/rplan/template.md`
-- Score confidence, count unknowns, declare branch points
+- Build the Blocking Evidence Set, count unknowns, declare branch points
 - Write to `[task]-plan.md` in project root
 - Output: plan file ready for human annotation
 
-### Confidence Scoring
+### Readiness (Blocking Evidence Set)
+
+The gate is a boolean over cited evidence, not a threshold over a score.
 
 ```
-Score = (steps_with_no_unknowns / total_steps) * 100
-Weighted: HIGH-risk steps count 2x, MED-risk steps count 1.5x
+Readiness = the Blocking Evidence Set is EMPTY.
 ```
 
-| Score  | Action                                        |
-| ------ | --------------------------------------------- |
-| >= 90% | Present plan, proceed after approval          |
-| 70-89% | Resolve unknowns first, then re-score         |
-| < 70%  | More research needed, do NOT present plan yet |
+A **blocking item** is a binary, cited predicate that must be resolved before the plan is presentable:
+an anchor reference that does not grep, a target with no creating step, an open MED/HIGH unknown, an
+uncovered failure path on a state-changing step, an unchecked completeness item on a state-changing step,
+or a missing Concrete Example. Everything else (cosmetic gaps on LOW steps, polish) is **Advisory** —
+visible, never gating. Momentum reads as the blocking-item count falling (5 → 2 → 0), not as a rising %.
+
+| State                                            | Action                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| Blocking Set empty                               | Present plan, proceed after approval                       |
+| Blocking Set non-empty                           | Resolve each cited blocking item, re-check — do NOT present |
+| Item not reducible to a binary yes/no + citation | It is Advisory, not Blocking                               |
+| No Evidence Ledger                               | Unscored — return to research                              |
 
 ### Unknown Threshold
 
@@ -45,8 +53,8 @@ Weighted: HIGH-risk steps count 2x, MED-risk steps count 1.5x
 ## Phase 3: ANNOTATE (human loop)
 
 - Human adds corrections, context, constraints to plan file
-- Claude revises plan and re-scores confidence
-- Repeat 1-6 cycles until confidence >= 90% AND unknowns <= 3
+- Claude revises plan and re-checks the Blocking Evidence Set
+- Repeat 1-6 cycles until the Blocking Set is empty AND unknowns <= 3
 - Gate: DO NOT proceed to execute without explicit approval
 
 ## Phase 4: EXECUTE (autonomous within guardrails)
@@ -100,7 +108,7 @@ Default if no response: Option A
 
 | Command     | Purpose                                     | When to Use                                                                                                                               |
 | ----------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `/rplan`    | Structured planning with confidence scoring | Before any non-trivial task (2+ files, new feature, API change, architecture decision)                                                    |
+| `/rplan`    | Structured planning with an evidence-based readiness gate | Before any non-trivial task (2+ files, new feature, API change, architecture decision)                                       |
 | `/retro`    | Session retrospective, capture learnings    | End of substantial sessions. Auto-reminded by Stop hook. Run when: corrections happened, non-obvious discovery, or session > 30min coding |
 | `/reflect`  | Cross-project pattern promotion             | Weekly (Friday), or when lessons-learned.md has 5+ unreviewed entries                                                                     |
 | `/init-env` | Scaffold environment for new project        | First time in a project with no `.claude/agents/` or `.claude/settings.json`                                                              |
@@ -117,7 +125,7 @@ START SESSION
 |
 +-- Non-trivial task ------ /plan
 |   |-- Research (read-only, planner subagent)
-|   |-- Plan (confidence score, unknowns, branch points)
+|   |-- Plan (Blocking Set, unknowns, branch points)
 |   |-- Annotate (human reviews, 1-6 cycles)
 |   |-- Execute (autonomous within hooks)
 |   |-- Branch point? ----- Pause, present options, wait

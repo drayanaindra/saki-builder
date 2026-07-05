@@ -50,7 +50,7 @@ Also parse from ARGUMENTS:
 - **`--reviewer @name`** — who is running this review (team-facing metadata). Default `unassigned`.
   Do NOT auto-fill it from the PRD's `Owner` — best-practice review keeps reviewer ≠ author.
 
-Capture the **PRD version pin** from the PRD's own header — the `<!-- prd-quality: N/100 -->` score and the
+Capture the **PRD version pin** from the PRD's own header — the `<!-- prd-blocking: N -->` marker and the
 `Updated: YYYY-MM-DD` field. This pins exactly which version you reviewed, so a later review against an
 evolved PRD is visibly newer.
 
@@ -59,11 +59,11 @@ Print:
 --- PRD LOADED ---
 File: [filename]
 Reviewer: [@name | unassigned]
-PRD version: quality [X]/100 · Updated [YYYY-MM-DD]   |  (none — PRD predates the Quality Gate)
+PRD version: blocking [N] · Updated [YYYY-MM-DD]   |  (none — PRD predates the readiness gate)
 DISCOVERY-RISK banner: present / absent
 ```
 
-If the file has no `/saki-builder:prd` Quality-Gate score line, note it — the PRD may predate the upgraded skill, and the structural scan below matters more.
+If the file has no `<!-- prd-blocking: N -->` line, note it — the PRD may predate the upgraded skill, and the structural scan below matters more.
 
 ---
 
@@ -438,7 +438,7 @@ grounded → ③ prescribe, don't lecture.**
   print the skip note — Judge 3 already leads implementation coverage. It reports only the implementation +
   scope blind spots the panel MISSED — never re-lists panel findings. Same grounding guard as Judge 3:
   prescribe only paths a slice can reach.
-- A BLOCK from any judge = the PRD is not ready, regardless of the `/saki-builder:prd` self-gate score.
+- A BLOCK from any judge = the PRD is not ready, regardless of the `/saki-builder:prd` self-gate result.
 - **Judge 3 and the pair must PRESCRIBE** missing failure/edge criteria and name hidden work as an
   `Assumes:` line (or a dedicated slice) — never merely flag absence. Every prescription anchors to the
   slice + the behavior that implies it; a path the slice can't reach must NOT be prescribed (that's

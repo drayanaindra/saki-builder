@@ -2,7 +2,7 @@
 
 ## Execution Protocol (BLOCKING)
 
-For non-trivial tasks: use `/rplan` before implementing. The skill handles research → plan → confidence gate.
+For non-trivial tasks: use `/rplan` before implementing. The skill handles research → plan → readiness gate.
 Trivial (typo, 1-line fix) → execute directly.
 Full reference (phases, examples, decision matrix): `~/.claude/docs/execution-protocol-detail.md` — load on demand only.
 
@@ -22,9 +22,9 @@ Format: `Model: [OPUS/SONNET/HAIKU] | Task: [...] | Role: [...] | Status: [Readi
 Required for: non-trivial responses (planning, implementing, multi-step work, role/status transitions).
 Skip for: trivial replies, acknowledgments ("ok", "got it"), short clarifying questions, single-line status updates.
 
-## Confidence Gate
+## Readiness Gate
 
-Do NOT execute until: Confidence ≥ 90%, Unknowns ≤ 3, human approves.
+Do NOT execute until: the **Blocking Evidence Set is empty** (every blocking item resolved, each with a citation), Unknowns ≤ 3, human approves. A blocking item is a binary, cited predicate — an unverified anchor, an open MED/HIGH unknown, an uncovered failure path on a state-changing step. There is no percentage to clear: the gate is "no blocking item stands," and momentum reads as the blocking-item count falling to 0.
 
 ## Risk Tiers
 
