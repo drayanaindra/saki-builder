@@ -2,6 +2,22 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.10.0 — 2026-07-06
+
+- **New `/git` — a plain-English git front door, so you never need to know git.** Describe what you
+  want in normal words ("set up a new repo", "start a feature", "save my work", "I broke my branch",
+  "fix this conflict", "undo that", "open a PR") and saki runs the **safe** git operation for you: it
+  snapshots state first, picks the safe variant of every command (stash over discard,
+  `--force-with-lease` over `--force`, `-d` over `-D`), confirms only genuinely destructive actions,
+  then reports back in plain language — no command to type, no conflict marker to hand-edit.
+- **Covers the whole lifecycle.** Bootstrap a repo from nothing (`git init` → `.gitignore` → first
+  commit; remote + provider login hand off to `/init-env`), plus branch, commit, sync, publish/PR,
+  undo, recover (via `reflog`), stash, and inspect. Landing (Definition-of-Done gate → commit → push
+  → clean up) still belongs to `/wrap`, which `/git` hands off to rather than duplicating.
+- **Conflicts: the mechanical cases auto-resolve; real content clashes are analyzed, proposed, and
+  confirmed with one tap** — saki never blind-picks a side (that silently loses work) and you never
+  hand-edit a `<<<<<<<` marker.
+
 ## 0.9.0 — 2026-07-06
 
 - **`/epic` is replaced by `/add` — a categorizing intake that routes to a PRD *or* a plan.** The old
