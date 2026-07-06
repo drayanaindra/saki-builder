@@ -2,7 +2,24 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
-## 0.8.0 — 2026-07-05
+## 0.9.0 — 2026-07-06
+
+- **`/epic` is replaced by `/add` — a categorizing intake that routes to a PRD *or* a plan.** The old
+  `/epic` only ever added epics; `/add` categorizes each incoming item as **Epic · Feature · Improvement ·
+  Bug** (auto-proposed, or forced with `--epic`/`--feature`/`--improvement`/`--bug`), stamps a **Type +
+  Track** flag, assigns a per-type id (`E`/`F`/`I`/`B<n>`), and records it on the roadmap. The routing rule:
+  a new user journey/UI ⇒ **PRD-track** (Epic/Feature → `/pickup` → prd → proto → build); a change/fix to
+  existing behavior ⇒ **Plan-track** (Improvement/Bug → straight to `/rplan`, skipping the PRD and proto).
+- **BREAKING: `/saki-builder:epic` is removed** (clean rename, no tombstone). Use `/saki-builder:add`.
+- **The roadmap now holds typed work items, not just epics.** Both block templates carry `**Type:**` +
+  `**Track:**`; Plan-track items get a lean block (`What` / `Repro / Context` / `Child plan`). Legacy
+  `## Epics` / `E<n>`-only roadmaps stay valid — they read as `Type: Epic · Track: PRD`.
+- **`/pickup` is PRD-track only** — it accepts `E<n>` and `F<n>`, and redirects an `I<n>`/`B<n>` id to
+  `/rplan`. The PRD header field `**Epic:**` is generalized to `**Item:**` (holds `E<n>` or `F<n>`).
+- **`/prd`, `/proto`, `/build` resolve `E<n>|F<n>`** and use item-neutral wording; `/build` flips the built
+  item to `Shipped`. `/pipeline` (tombstone) and `/init-env` point at `/add`.
+
+
 
 - **`/prd-review` is autonomous by default — it loops to green instead of a single pass.** A bare
   `/prd-review <prd>` now runs the review core (Step 0 → Phase 4, which still never edits the PRD) inside a
