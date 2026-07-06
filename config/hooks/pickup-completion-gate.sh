@@ -156,10 +156,10 @@ if np > max_np:
 # ── Block the stop and tell the model to continue the front half ───────────────
 slug = sanitize(state.get("slug", "the run"))
 nextmap = {
-    "prd":    "run /prd (seeded by the epic), then advance to /prd-review",
+    "prd":    "run /prd (seeded by the item), then advance to /prd-review",
     "review": "run /prd-review and loop until green (verdict SHIP AND readiness READY), then set "
               "phase to proto-ready and emit the PICKUP_READY sentinel — do NOT run /proto yet "
-              "(running /proto is the human''s approval), and never mark the epic Shipped from here",
+              "(running /proto is the human''s approval), and never mark the item Shipped from here",
 }
 reason = (
     "PICKUP INCOMPLETE — do not stop yet. The /pickup state file (%s) is in the \"%s\" phase. "

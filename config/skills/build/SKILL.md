@@ -93,17 +93,17 @@ Plain `/saki-builder:build tasks/prd-<feature>.md` still runs and self-iterates 
 
 ## Input
 
-Usage: `/saki-builder:build <E<n> | prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
+Usage: `/saki-builder:build <E<n>|F<n> | prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
 
-**Epic id (`E<n>`) — the disciplined path:** if the argument is an epic id, read `tasks/roadmap.md`, find
-`### E<n>`, and resolve its `**Child PRD:**` link to `tasks/prd-<slug>.md`. If `E<n>` has no Child PRD yet
-(its value is `—`), **STOP**: `E<n> has no PRD yet — run /saki-builder:pickup E<n> first`. Remember the `E<n>`
-so the Completion Output can flip its roadmap status to `Shipped`.
+**PRD-track item id (`E<n>` or `F<n>`) — the disciplined path:** if the argument is an item id, read
+`tasks/roadmap.md`, find `### <id>`, and resolve its `**Child PRD:**` link to `tasks/prd-<slug>.md`. If
+`<id>` has no Child PRD yet (its value is `—`), **STOP**: `<id> has no PRD yet — run /saki-builder:pickup <id> first`.
+Remember the `<id>` so the Completion Output can flip its roadmap status to `Shipped`.
 
-> **Note — PRD-path launches still flip the epic.** The studio board (and a hand-typed
-> `/saki-builder:build tasks/prd-<slug>.md`) invokes this skill with the **PRD path**, not `E<n>`. Do NOT
-> assume "no `E<n>` argument ⇒ no epic to flip": the Completion Output reverse-maps the built PRD back to
-> its epic via the roadmap's `**Child PRD:**` field, so the `Shipped` flip fires on either launch path.
+> **Note — PRD-path launches still flip the item.** The studio board (and a hand-typed
+> `/saki-builder:build tasks/prd-<slug>.md`) invokes this skill with the **PRD path**, not `<id>`. Do NOT
+> assume "no id argument ⇒ no item to flip": the Completion Output reverse-maps the built PRD back to
+> its item via the roadmap's `**Child PRD:**` field, so the `Shipped` flip fires on either launch path.
 
 Otherwise extract the PRD path from the arguments: take the token ending in `.md` (or matching
 `prd-*`). Locate the file by checking, in order: `tasks/<name>`, `./<name>`, the path as
@@ -170,7 +170,7 @@ If the marker is **absent**, **STOP** — do not plan, do not touch code:
 ```
 HARD STOP — PRD NOT LOCKED
 Requirements aren't frozen; /saki-builder:build won't hand unfrozen scope to /saki-builder:rplan.
-Lock it first:  /saki-builder:proto <E<n> | prd-file.md>
+Lock it first:  /saki-builder:proto <E<n>|F<n> | prd-file.md>
   — designs + approves the UI, then writes Status: Locked (a no-UI PRD is frozen there too).
 Then re-run /saki-builder:build.
 ```
@@ -447,17 +447,17 @@ If **no e2e suite exists**, do NOT silently pass. Report:
 
 ## Completion Output
 
-When every slice is green, reviewed, and e2e passes, **flip the built PRD's epic to `Shipped` in
-`tasks/roadmap.md`** (if one exists). Identify the epic by **either** launch path:
-- **Epic-id launch** — the remembered `E<n>` from the Input step.
+When every slice is green, reviewed, and e2e passes, **flip the built PRD's item to `Shipped` in
+`tasks/roadmap.md`** (if one exists). Identify the item by **either** launch path:
+- **Item-id launch** — the remembered `<id>` (`E<n>`/`F<n>`) from the Input step.
 - **PRD-path launch** (the studio board and hand-typed `/saki-builder:build tasks/prd-<slug>.md`) — reverse-map:
-  scan `tasks/roadmap.md` for the `### E<n>` block whose `**Child PRD:**` **basename** matches the built
+  scan `tasks/roadmap.md` for the `### <id>` block whose `**Child PRD:**` **basename** matches the built
   PRD's basename (compare filenames only — roadmap stores a bare `prd-<slug>.md`, the build arg may be an
   absolute or `tasks/`-relative path).
 
-If a matching epic is found and it is not already `Shipped`, set its `**Status:**` to `Shipped` and
+If a matching item is found and it is not already `Shipped`, set its `**Status:**` to `Shipped` and
 `**Updated:**` to today (`date +%F`) — the roadmap lifecycle closes here (Planned → In-progress → Shipped).
-If **no** epic references this PRD (a standalone PRD build), skip silently — there is nothing to flip. Then output:
+If **no** item references this PRD (a standalone PRD build), skip silently — there is nothing to flip. Then output:
 
 ```
 --- /saki-builder:build COMPLETE ---
