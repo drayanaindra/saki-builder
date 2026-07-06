@@ -177,7 +177,8 @@
       "source": {
         "source": "git",
         "url": "https://gitlab.com/drayanaindra/saki-builder.git"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "effortLevel": "xhigh",
