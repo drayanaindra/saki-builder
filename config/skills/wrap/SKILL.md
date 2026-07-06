@@ -1,6 +1,6 @@
 ---
 name: wrap
-description: Full Definition of Done gate + converge-to-clean. Runs build, tests, coverage (≥80%), security scan, migration integrity, and SonarQube quality gate BEFORE committing/pushing. Only proceeds to git cleanup when all DoD gates pass. Run as the LAST step of any task.
+description: Full Definition of Done gate + converge-to-clean. Runs build, tests, coverage (≥80%), security scan, migration integrity, and SonarQube quality gate BEFORE committing/pushing. Only proceeds to git cleanup when all DoD gates pass. Run as the LAST step of any task. Pass `--heal` for autonomous mode (auto-fix + re-run each failing gate instead of stopping; used by /build).
 ---
 
 # Wrap — Definition of Done → converge to clean
@@ -11,6 +11,8 @@ description: Full Definition of Done gate + converge-to-clean. Runs build, tests
 2. **Converge to clean** — commit WIP, push, remove worktrees, switch to main
 
 **Order is law.** If ANY DoD gate fails, stop immediately. Do not commit, do not push, do not switch to main. Report what failed and the exact command to fix it.
+
+**Two modes.** Default (manual) = fail-stop, as above. **`--heal`** (autonomous — how `/build` calls it) = a failing DoD gate is *auto-fixed and re-run* instead of stopping, under a 3-strike honesty backstop. See the **Autonomous heal mode** section below. Everything else — Phase 0 and Phases 2–6 — is identical in both modes.
 
 ---
 
@@ -40,7 +42,8 @@ git fetch origin --prune
 ```
 
 Detect:
-- **Primary checkout** path
+- **Mode**: `--heal` present in the invocation → run in **Autonomous heal mode** (Phase-1 failures route + re-run, see the section below); otherwise default fail-stop.
+- **Primary checkout** path **and its current branch** (may be a non-default feature branch with commits to push — the common `/build` case)
 - **Default branch** (`git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`, fallback `main`)
 - Every **linked worktree** (path + branch)
 - Which trees are **dirty**
@@ -50,9 +53,35 @@ If there is no `origin`, skip all push steps — still run DoD gates, commit, re
 
 ---
 
+## Autonomous heal mode (`--heal`)
+
+`/build` (and any TRUST-MODE caller) invokes `/wrap --heal`. In this mode a **Phase-1 DoD gate failure does not stop the run** — it is routed to the *shallowest* skill that fixes it, then the **full Phase-1 gate is re-run from the top** (a fix can ripple into another gate — new tests shift coverage, a dep bump breaks the build, a Sonar fix touches a tested line). This mirrors `/build`'s step-5.5 "re-run the tail until all clean" depth routing. Phase 0 and Phases 2–6 are unchanged: once every gate is green, the same commit → push → remove-worktrees → switch-to-main convergence runs.
+
+**Heal routing — DoD gate → shallowest fix:**
+
+| Failing gate | Auto-heal route |
+| --- | --- |
+| 1a Build (compile error) | `/approved` — fix in place (a TDD red) |
+| 1b Tests (failing test) | trace the failure to its slice → `/approved` → re-run 1b |
+| 1c Coverage < floor | `/qa` on the files 1c already listed as below floor → add tests → re-run 1c |
+| 1d-i Deps CVE (critical/high) | bump/replace the package in place; if unfixable here, log it — the Sonar dep-risk gate at push is the backstop |
+| 1e Migration unpaired | write the missing `.down.sql` via `/approved` → re-run 1e |
+| 1f SonarQube FAILED | `/sonarqube:sonar-list-issues` → `/sonarqube:sonar-fix-issue` per issue → re-analyze → re-run 1f |
+| 1d-ii **Secret in diff** | **Never auto-continue a real credential.** A placeholder / test / dummy value → scrub to an env var and continue. A value that looks like a live secret → **hard-stop** (`BLOCKED: DoD/secret`): an agent can't rotate a leaked credential or scrub history, and must never route it through chat. This is the one gate that stops even under `--heal`. |
+
+**3-strike honesty backstop (same as `/build`'s loop guard).** If the *same* gate fails the *same* way ~3 times, stop healing it. Do **not** weaken the test, suppress the finding, or converge. Emit one line and end:
+
+```
+BLOCKED: DoD/<gate> — <reason> (survived 3 heal attempts)
+```
+
+A surviving `BLOCKED:` means Phases 2–6 do **not** run — the work is genuinely not done. Never fake-green a DoD gate to reach a clean tree.
+
+---
+
 ## Phase 1 — Definition of Done gate
 
-Run all checks. **Any failure = STOP. Do not proceed to Phase 2.**
+Run all checks. **Any failure = STOP** (default mode) — or, under `--heal`, **route per the Autonomous heal mode section above and re-run the gate** instead of stopping (a real secret in 1d-ii always stops). Do not proceed to Phase 2 until every gate is green.
 
 ### 1a: Build
 
@@ -266,9 +295,18 @@ Then:
 
 ---
 
-## Phase 3 — Land each worktree's branch and push
+## Phase 3 — Land each branch and push
 
-For each linked worktree on branch `B`:
+Push **every checkout that has commits to land** — this is the fix for the most common case: a
+feature branch created **in place** (`/build`'s `git checkout -b feature/<x>`, no worktree). Build the
+push list:
+
+- The **primary checkout** when its current branch `B` is **not** the default branch and has unpushed
+  commits (`git rev-list origin/$B..$B` non-empty, or `origin/$B` doesn't exist yet). **Do not skip
+  this** — Phase 5 is about to switch it to main, so an unpushed feature branch here would be stranded.
+- **Plus** each **linked worktree** on its branch `B`.
+
+For each such checkout directory `DIR` (`$PRIMARY` or `$WT`) on branch `B`:
 
 **3a. Decide the target.** Default: push `B` as-is (the MR merges it into main). Only do a local merge when a clearly identified parent branch `P` is checked out in the primary checkout.
 
@@ -281,12 +319,12 @@ grep -rnE '^(<{7}|={7}|>{7})' .   # any conflict markers → SAFE-STOP
 
 **3c. Push:**
 ```bash
-git -C "$WT" push origin "$B"
+git -C "$DIR" push -u origin "$B"     # $DIR = $PRIMARY (in-place feature branch) or $WT (worktree)
 ```
 
 - Pushing a **feature branch** is fine. The `sonar-gate.sh` PreToolUse hook only blocks pushes to **main**. If pushing **main**, the gate fires — respect it.
 - Push rejected (remote moved)? No file overlap → `git pull --rebase && push`. Overlap → **safe-stop**. Never force-push the default branch.
-- Verify after: `git -C "$WT" rev-list origin/$B..$B` must be empty.
+- Verify after: `git -C "$DIR" rev-list origin/$B..$B` must be empty.
 
 ---
 
@@ -348,6 +386,8 @@ If any invariant is NOT met, replace with the **Safe-stop** for the blocker.
 
 ## Safe-stops
 
+*(Under `--heal`, the DoD-gate rows below are auto-healed and re-run instead of stopping — except **Secret found in diff**, which always stops. All non-DoD rows apply in both modes.)*
+
 | Situation | Action |
 | --- | --- |
 | Any DoD gate fails | Stop before Phase 2. Report gate + exact fix command. |
@@ -377,3 +417,4 @@ If any invariant is NOT met, replace with the **Safe-stop** for the blocker.
 - **Grep for conflict markers** after any merge.
 - **No force-push of the default branch.**
 - If the repo is already clean and on main, all DoD gates pass, and no worktrees exist → "already clean — nothing to do."
+- **`--heal` changes only Phase 1's failure behavior** (auto-fix + re-run instead of stop), never the gates themselves nor the Phase 2–6 convergence. A real secret (1d-ii) and the 3-strike backstop still hard-stop.
