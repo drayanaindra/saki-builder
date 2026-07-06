@@ -16,7 +16,7 @@ This command is the one-shot equivalent of running, by hand, for each slice:
 /saki-builder:rplan  →  /saki-builder:rplan-review (only if needed)  →  /saki-builder:approved  →  /saki-builder:qa  →  /saki-builder:reviewer  →  security audit (security-relevant slices only)
 ```
 
-…then verifying the whole thing end-to-end.
+…then verifying the whole thing end-to-end and converging to clean (`/saki-builder:wrap --heal`).
 
 ---
 
@@ -46,7 +46,8 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
 
 - **Completion signal.** You are done ONLY when every slice in the PRD is green
   (`/saki-builder:qa` passes, `/saki-builder:reviewer` is clean, **and** any security audit a
-  security-relevant slice required is clean) **and** the e2e suite passes. At that point,
+  security-relevant slice required is clean), the e2e suite passes, **and** FINAL GATE 2
+  (`/saki-builder:wrap --heal`) has converged the tree to a clean `main`. At that point,
   and only then, print `PRD_BUILD_COMPLETE`. Never print it early.
 - **Do not hand control back** until you either print `PRD_BUILD_COMPLETE` or hit a real
   hard stop (missing PRD, NO-GO, honestly-blocked slice). If a turn runs long, keep going —
@@ -445,6 +446,33 @@ If **no e2e suite exists**, do NOT silently pass. Report:
 
 ---
 
+## FINAL GATE 2: Converge to clean (`/saki-builder:wrap --heal`)
+
+With every slice green and e2e passing, run the **Definition-of-Done gate + converge-to-clean** —
+do not print `PRD_BUILD_COMPLETE` until it succeeds. Invoke the `wrap` skill in autonomous heal mode
+(Skill tool, `skill: wrap`, argument `--heal`). TRUST MODE holds, so this is not a pause.
+
+`/saki-builder:wrap --heal` runs the full DoD gate (build, tests, coverage ≥80%, dep-CVE, secrets,
+migration pairing, SonarQube) and, on any failure, **auto-heals instead of stopping** — routing each
+failing gate to the shallowest skill (`/saki-builder:approved`, `/saki-builder:qa`, `sonar-fix-issue`,
+dep bump) exactly as step 5.5 routes security findings — then, once green, **commits residual WIP →
+pushes the feature branch → removes any worktree → switches the primary checkout to a clean `main`**.
+This is the converge step; after it the run leaves nothing outstanding.
+
+Two outcomes:
+- **Clean** → the DoD gate passed (possibly after heals) and the tree converged to `main`. Proceed to
+  Completion Output and print `PRD_BUILD_COMPLETE`.
+- **`BLOCKED: DoD/<gate>`** → a gate survived wrap's 3-strike honesty backstop (or a real secret was
+  found). Do **NOT** print `PRD_BUILD_COMPLETE` and do **NOT** converge. Surface it as a build blocker
+  (same honesty bar as a blocked slice): report the gate, the offending files, and the exact fix. A
+  leaked live secret is human-only — never route it through chat.
+
+The heal routes reuse the skills `/saki-builder:build` already drives, so no behavior is re-implemented
+here — this gate only adds the whole-repo DoD check and the converge-to-clean that per-slice gates
+don't cover.
+
+---
+
 ## Completion Output
 
 When every slice is green, reviewed, and e2e passes, **flip the built PRD's item to `Shipped` in
@@ -467,6 +495,7 @@ Slices: [N/N] done
   1. <title> ✓  (qa: pass, review: clean, sec: clean|n/a)
   2. <title> ✓  ...
 E2E: <pass | no suite found>
+Converge: DoD gate PASSED (heals: <n|none>) — feature/<name> pushed, on clean main
 PRD_BUILD_COMPLETE
 
 Auto-resolved decisions (review & override if any are wrong):
@@ -475,7 +504,7 @@ Auto-resolved decisions (review & override if any are wrong):
   …  (omit this block if nothing needed auto-resolving)
 
 Next actions:
-> Review the branch diff and open a PR
+> Open a PR from the pushed origin/feature/<name> (tree is already on clean main)
 > [revisit any auto-resolved decision you disagree with]
 > [anything logged as a non-blocking nit]
 ```
@@ -503,3 +532,7 @@ Next actions:
   load the `clean-code` skill before implementing (step 3) so each diff clears the Pre-merge Gate
   (Clean as You Code) on the first try.
 - **E2E before done, always.**
+- **Converge before done, always.** After e2e, FINAL GATE 2 runs `/saki-builder:wrap --heal` — the
+  whole-repo DoD gate + converge-to-clean. `PRD_BUILD_COMPLETE` prints only after it succeeds. A
+  `BLOCKED: DoD/<gate>` from wrap is a real block (never fake-green to reach a clean tree); a leaked
+  live secret is human-only.
