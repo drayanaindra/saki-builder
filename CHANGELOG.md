@@ -2,6 +2,25 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.11.0 — 2026-07-06
+
+- **`/build` now finishes the job — it converges to a clean `main` on its own.** After every slice is
+  green and the e2e suite passes, `/build` runs a new final gate that hands off to `/wrap` in an
+  autonomous heal mode: it runs the full Definition-of-Done gate (build, tests, coverage ≥80%,
+  dependency CVEs, secrets, migration pairing, SonarQube) and, on any failure, **auto-fixes and
+  re-checks instead of stopping** — routing each failing gate to the shallowest skill (`/approved`,
+  `/qa`, `sonar-fix-issue`, a dependency bump), the same way it already routes security findings. Once
+  green, it commits, pushes your feature branch, removes any worktree, and leaves you on a clean `main`
+  with nothing outstanding. You no longer hand-run `/wrap` after a build.
+- **New `/wrap --heal` mode.** `/wrap` still fail-stops by default (reports the exact fix and stops).
+  Passing `--heal` makes it autonomous: a failing gate is healed and the full gate re-run under a
+  3-strike honesty backstop — if the same gate fails the same way ~3 times it stops with
+  `BLOCKED: DoD/<gate>` rather than fake-greening. A real secret in the diff always stops for a human
+  (an agent can't rotate a leaked credential).
+- **Fix: `/wrap` now pushes a feature branch created in place**, not only branches living in a
+  worktree — so the common `/build` flow (a `feature/<x>` branch in the primary checkout) is pushed
+  before `/wrap` switches you to `main`, instead of being stranded locally.
+
 ## 0.10.0 — 2026-07-06
 
 - **New `/git` — a plain-English git front door, so you never need to know git.** Describe what you
