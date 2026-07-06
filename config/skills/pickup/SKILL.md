@@ -102,17 +102,17 @@ Maintain `tasks/.pickup-<slug>-state.json`. **Update it after every phase transi
 
 ---
 
-## Phase 1 — `/saki-builder:prd`  (seeded by the epic)
+## Phase 1 — `/saki-builder:prd`  (seeded by the item)
 
 1. Init the state file (`phase:"prd"`, stamp `started_at`, `epic`, `slug`, `title`, `prd`).
-2. **Flip the epic `Planned → In-progress`** in `tasks/roadmap.md` (update its `**Status:**` and `**Updated:**`).
-3. Invoke the `prd` skill, passing the **epic seed** as the feature intent — compose a rich intent string
-   from the epic so `/saki-builder:prd`'s Step 0/0.5/1 consume it autonomously (no human gate here — the shape
+2. **Flip the item `Planned → In-progress`** in `tasks/roadmap.md` (update its `**Status:**` and `**Updated:**`).
+3. Invoke the `prd` skill, passing the **item seed** as the feature intent — compose a rich intent string
+   from the item so `/saki-builder:prd`'s Step 0/0.5/1 consume it autonomously (no human gate here — the shape
    phase takes its autonomous fallback under `/saki-builder:pickup`):
-   - epic **Goal** → the problem / desired outcome
-   - epic **Target user & Job** → the JTBD (§3)
-   - epic **User flow** → the recommended solution shape
-   - epic **Success signal** → an outcome/metric seed (§5) and appetite hint
+   - item **Goal** → the problem / desired outcome
+   - item **Target user & Job** → the JTBD (§3)
+   - item **User flow** → the recommended solution shape
+   - item **Success signal** → an outcome/metric seed (§5) and appetite hint
 4. When `/saki-builder:prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Item: <id>`**
    (pass the item id so `/saki-builder:prd` stamps it; if it wrote `—`, edit the header to `**Item:** <id>`).
 5. Record `**Child PRD:** prd-<slug>.md` under the `### <id>` block in `tasks/roadmap.md`.
@@ -141,15 +141,15 @@ buildable-now and `prd-review` returns `blocked` on that structural readiness ga
 - **`PRD_REVIEW_GREEN`** → record `review.verdict:"SHIP"`, `review.readiness:"READY"`, copy `rounds` /
   `blockers_fixed` from the sentinel (or the prd-review state file), set `phase:"proto-ready"`, and go to
   **Phase 3**.
-- **`PRD_REVIEW_BLOCKED`** → record the reason, set `phase:"blocked"`, **flip the epic `In-progress →
+- **`PRD_REVIEW_BLOCKED`** → record the reason, set `phase:"blocked"`, **flip the item `In-progress →
   Blocked`** in `tasks/roadmap.md`, emit `PICKUP_BLOCKED: <slug> — <reason>` on its own line, and end. Do
   NOT loop forever, do NOT fabricate grounding — `prd-review` already exhausted the fixable paths.
 
 Key design note (option 3 — one shared loop): the loop-to-green lives in `/saki-builder:prd-review`'s
 autonomous mode; `/saki-builder:pickup` **reuses** it and keeps no copy. The fix→re-review loop, the 3-round
 cap, and the non-convergence / DISCOVERY-FIRST / structural-`NOT READY` escapes all run **inside**
-`prd-review`. `/saki-builder:pickup` only invokes it (without `--review-only`) and does the epic-specific
-terminal handling (proto-ready handoff, or flip the epic to Blocked). No nesting — the loop runs in exactly
+`prd-review`. `/saki-builder:pickup` only invokes it (without `--review-only`) and does the item-specific
+terminal handling (proto-ready handoff, or flip the item to Blocked). No nesting — the loop runs in exactly
 one place, so there is no double-loop when `/saki-builder:pickup` runs.
 
 ---
@@ -158,7 +158,7 @@ one place, so there is no double-loop when `/saki-builder:pickup` runs.
 
 The PRD is green. `/saki-builder:pickup` stops here. It writes **no** lock flag — running `/saki-builder:proto E<n>`
 designs the UI/UX and **locks** the PRD (`Status: Locked` + `<!-- prd-locked -->`, freezing requirements), the
-single human gate before build. The epic stays `In-progress`.
+single human gate before build. The item stays `In-progress`.
 
 Ensure `phase:"proto-ready"` and the state file is written, then print:
 
@@ -180,16 +180,16 @@ ALLOWS the stop at `phase:"proto-ready"` — ending the turn here is correct and
 
 - **Run the loop to green.** The front half is kept alive by `pickup-completion-gate.sh` (it blocks an early
   stop while `phase` ∈ {prd, review}). It releases the moment `phase` becomes `proto-ready` or `blocked`.
-- **The gate is structural.** No epic id → no run. There is no cold-intent feature path — that is the whole
+- **The gate is structural.** No item id → no run. There is no cold-intent feature path — that is the whole
   point of the disciplined workflow.
 - **One human gate, at proto.** `/saki-builder:pickup` never advances into proto; running `/saki-builder:proto E<n>`
   designs the UI/UX and **locks** the PRD (the freeze before build). Never auto-run `/saki-builder:proto` from here.
 - **Never fabricate grounding, never infinite-loop.** The only stops are: green (`proto-ready`), or a review
   that can't reach green (`DISCOVERY-FIRST`, an unbuilt dep / unaccepted bet, or non-convergence → `blocked`).
-- **Single source of truth for behaviour.** Invoke `prd` / `prd-review`; do not re-implement them. The epic
+- **Single source of truth for behaviour.** Invoke `prd` / `prd-review`; do not re-implement them. The item
   is the source of intent; the PRD is the source of scope. The **loop-to-green lives in `prd-review`'s
   autonomous mode** — `/saki-builder:pickup` reuses it (invoke without `--review-only`), never a second copy.
 - **Always persist state before ending a turn** so any resume (a context clear, or the Stop gate re-driving
   you) lands on the right phase.
-- **Status honesty.** Flip the epic `In-progress` on start and `Blocked` on escape; `/saki-builder:build` owns
-  the `Shipped` flip. Never mark an epic `Shipped` from here.
+- **Status honesty.** Flip the item `In-progress` on start and `Blocked` on escape; `/saki-builder:build` owns
+  the `Shipped` flip. Never mark an item `Shipped` from here.
