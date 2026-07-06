@@ -179,8 +179,9 @@ list.** A shell that advertises `Activity`, `Completed`, or a clickable card whi
 the §8 slices produces dead-end affordances — the exact "I didn't see the end-to-end UI" failure. Resolve
 every gap one of two ways, never silently:
 - **The surface is in scope** → add it to the journey AND ensure the PRD defines it (a surface the proto
-  shows must be a surface `/saki-builder:build` builds — if it's not in §8, flag it back as a PRD gap to add first;
-  proto and PRD must agree).
+  shows must be a surface `/saki-builder:build` builds). If it's not in §8, **enter the Convergence loop** —
+  invoke `/saki-builder:prd`/`/saki-builder:prd-review` to add it, re-derive the manifest, continue — do NOT
+  stop; proto and PRD must agree, reached by looping, not by pausing.
 - **The surface is genuinely out of scope** (§11) → it must NOT be a live affordance in the shell. Note
   it, and treat the dangling nav item as a shell-fidelity bug to remove, not a screen to invent.
 This is distinct from "never invent a feature beyond §11": that forbids *adding* scope; this forbids
@@ -209,6 +210,30 @@ explicit `--slice=N` may scope the manifest to one slice, and it is then labelle
 the file and in the Completion Output — never the default. **Do not start rendering (Step 3+) until the
 manifest is written.**
 
+**Enumerate with critical thinking + curiosity — the manifest is a CEILING to reach, not a floor to clear
+(this is where screens go missing).** The Coverage Gate only checks that *manifested* screens were captured —
+it is **blind to a screen you never listed**, so a thin, mechanically-derived manifest sails through every
+downstream gate while the gallery is missing a screen (the exact failure observed). Mechanical derivation sets
+the floor; **curiosity raises it to the real ceiling.** Before freezing the manifest, interrogate the PRD like
+a skeptical senior designer — for every slice / criterion / rule / affordance ask *"what screen does this imply
+that I have NOT listed?"*:
+- **Every §9 criterion / §10 rule** — each `When X then Y` and each invariant (`rejected if amount > balance`,
+  `only one active`) implies a state/screen (the rejection view, the at-limit view). Listed?
+- **Every branch & error path** — a decision point has ≥2 outcomes; a fallible action has a failure screen
+  (declined, upload failed, not-found, expired/invalid link, timeout). Are BOTH sides listed, not just the
+  happy one?
+- **Every role** (§10) — multi-role flows have per-role screens (admin view vs member view, the
+  pending-approval wait screen).
+- **Every entry & exit** — how does the user *first arrive* (deep link, email, first-run empty) and what is the
+  *terminal* screen for **each** path (success — and each failure's dead-end)?
+- **Every shell affordance** (Gate 2 walk) — does each nav / menu / CTA / clickable-row destination have a row?
+- **Every transition** — is there an intermediate / loading / confirmation screen between two steps the flow
+  glosses over?
+Any screen this surfaces that the **PRD covers** → **add it to the manifest**. Any it surfaces that the **PRD
+does NOT cover** → that's a coverage gap → **Convergence loop** (fix the PRD, re-derive). Run this
+interrogation once, explicitly, and note the rows it added — an *unquestioned* manifest is precisely how a
+screen goes uncovered.
+
 **No-UI PRD branch (`/saki-builder:proto` is still the freeze gate).** If the finished PRD produces **no
 user-visible screen** — every slice is pure infra/backend with no route and no outcome/confirmation/
 notification screen a user ever sees (no §15 inventory, no user-visible surface on any slice) — there is
@@ -219,6 +244,47 @@ human plainly — *"This PRD has no user-visible screens — nothing to preview;
 requirements for build"* — and on their confirmation write the lock with `ui:none`. This keeps
 `/saki-builder:proto` the single lock writer for **every** PRD, so `/saki-builder:build` (which hard-refuses an
 unlocked PRD) has one consistent gate regardless of whether the feature has UI.
+
+---
+
+## Convergence loop — proto ⇄ `/saki-builder:prd` (autonomous; the human gate is the VISUAL, not the abstract)
+
+**Why a loop, not a pause.** Without a rendered screen a human can't judge scope in the abstract — *"is this
+surface in scope?"* is unanswerable as text but obvious as a picture. So when proto surfaces a blocker whose
+root cause is **the PRD doesn't cover what the journey needs**, it does NOT stop and ask — it **converges
+autonomously** by adjusting the PRD through its owner, then presents the finished visual as the *single* human
+gate (Step 7 → lock 8.5). Mirrors `/saki-builder:build`'s `/saki-builder:wrap --heal` convergence and
+`/saki-builder:pickup`'s `/saki-builder:prd ⇄ /saki-builder:prd-review` loop.
+
+**Route every fork by DESIGN gap vs COVERAGE gap:**
+- **Design gap** (how a screen *looks* / holds the journey — a BIG design-only 🔶) → proto resolves it itself
+  with senior-designer rigor (Step 2.5). **No loop.**
+- **Coverage gap** (the PRD doesn't *cover* what the journey needs — a dead-end shell affordance with no
+  screen (GATE 1), a journey step / backend-outcome screen with no §8 home, a scope-altering 🔶 (Step 2.5), an
+  uncovered state a §9 criterion implies, a screen the Coverage Gate can't source) → **enter this loop.** Proto
+  must never invent scope itself (scope is `/saki-builder:prd`'s — Step 8.5), so it **delegates** the fix.
+
+**The loop (bounded, autonomous):**
+1. **Name the gap** precisely — which affordance / step / screen the journey needs, and where the PRD is
+   silent (cite §8 / §9 / §11).
+2. **Adjust the PRD via its owner** — invoke **`/saki-builder:prd-review`** when the gap is a
+   coverage/criteria hole in *existing* slices, or **`/saki-builder:prd`** when a genuinely *new* surface/slice
+   must be added. Pass the named gap. The PRD skill makes + owns the scope change; proto never hand-edits scope.
+3. **Re-derive downstream** — re-run from **GATE 1** (rewrite the Screen Manifest from the updated PRD) → Reuse
+   Map (2.4) → render (5) → capture (6) → Coverage Gate. Lean on Step 0.5 resume so unaffected artifacts aren't
+   rebuilt.
+4. **Re-check + record.** Log each pass's PRD adjustment (what changed · why) to
+   `tasks/proto-<slug>/prd-adjustments.md`. If any coverage blocker remains, loop again.
+
+**Convergence + escape.** The loop ends when GATE 1's shell-walk **and** the Coverage Gate find **zero
+uncovered surfaces** — every affordance maps to a captured screen, every journey step has a §8 home. **Bound it
+at ≤3 passes.** If it still can't converge (PRD and journey keep disagreeing), the blocker is a genuine
+**product** question, not a coverage mechanic — **only then** stop and surface it (situation · options ·
+recommendation), because more autonomous passes will only drift (the "recut > fix-then-fix" signal).
+
+**Human gate = the result.** Present at Step 7 with a **"PRD adjusted this run"** changelog (from
+`prd-adjustments.md`) so the single gate is informed; Step 7 approval + the Step 8.5 lock freeze the reconciled
+PRD. No mid-flight scope pause — the human judges scope by *seeing* it.
 
 ---
 
@@ -327,12 +393,14 @@ EXISTING/PRIMITIVE Reuse-Map row** (a genuinely-new surface) that will render th
 resolve the brand string from the **implemented** design system / app shell — grep the real shell for the
 rendered brand literal (the wordmark in the real `TopBar` / login / app-bar) — and compare it to the
 product/brand name the PRD or roadmap uses. If they **differ**, do NOT type the spec's title into the
-render: **FLAG it for reconciliation** (per GATE 1's two-way rule) — use the implemented brand, or have the
-human confirm an intentional rebrand (which is then a real-code change, not a proto tweak):
+render — proto's job is to look like the *shipped* app, so **default to the implemented brand automatically**,
+log the drift to `prd-adjustments.md`, and surface it at Step 7 (the human sees the rendered brand and can
+confirm/override there). Don't pause mid-run. A *deliberate rebrand* is a scope change, not a proto tweak →
+route it through the **Convergence loop** (`/saki-builder:prd`), never hand-type a new brand into the render:
 ```
 NAME DRIFT — new screen "<name>": spec/roadmap name "<spec>" ≠ the brand the implemented UI renders
-("<real>", <path>). Reconcile before render — use the implemented brand, or confirm an intentional rebrand.
-Not auto-choosing.
+("<real>", <path>). Rendered with the implemented brand "<real>"; logged for Step-7 confirmation.
+(Intentional rebrand? → Convergence loop via /saki-builder:prd, not a proto edit.)
 ```
 This is **redundant for reused screens**: an EXISTING row is imported verbatim (Step 5), so the real brand
 comes along automatically — the check earns its keep only where there is no component to import.
@@ -380,16 +448,27 @@ below, so pick the LOWEST rung that works and add the minimum — never jump to 
 does, never redesign when a component does. Judge each screen's needed **interaction** here too: a component
 that renders the right pixels but can't support the interaction the journey needs is a ⚠️ (scale it), not a ✅.
 
-**🔶 escalation — propose, don't force-fit, and don't silently redesign.** Judge the change by size:
+**🔶 escalation — decide it like a senior designer; only a SCOPE change pauses.** Judge the change by what it touches:
 - **SMALL** (local to one screen, absorbable as a variant/component) → it isn't really 🔶; resolve it as
   ⚠️/❌ and note it.
-- **BIG** (shell/nav, a page's layout paradigm, a net-new pattern, or a ripple across >1 screen) → **STOP and
-  PROPOSE**: write a 4–6 line design-change proposal — *what the existing design constrains · the option(s) ·
-  the rough cost · the screens affected* — and PAUSE for the human, exactly like the Step 2.5 confirm below.
-  Never force the journey into a design that can't hold it; never self-initiate a big redesign without
-  sign-off. If the approved change alters **scope** (new features/screens, not just layout/pattern), that is a
-  **PRD concern** — point back to `/saki-builder:prd` to reconcile (GATE 1's two-way rule), then re-run proto. A
-  layout/pattern/component change that stays within the PRD's scope proceeds here (built in Step 2.6).
+- **BIG but design-only** (shell/nav restructure, a page's layout paradigm, a net-new pattern, or a ripple
+  across >1 screen — all *within* the PRD's scope) → **auto-resolve; do NOT pause.** But decide it with the
+  rigor of a **senior UI/UX designer**, not a snap pick: (1) enumerate 2–3 real options; (2) judge each against
+  the **existing design language** (does it still read as the same shipped app?), the **cost ladder** (the
+  lowest rung that faithfully holds the journey), the **interaction** the journey needs, **cross-screen
+  consistency**, **accessibility** (4.5:1 contrast, keyboard, landmarks), and **responsive** behavior at both
+  viewports; (3) commit to the option that is most faithful to the real app at the lowest cost, and add the
+  minimum — never a bigger redesign than the journey forces. Then **record the decision** in
+  `design-system-updates.md` (the options weighed · the pick · the rejected alternatives + why · the screens
+  affected), build it in **Step 2.6**, and let **Step 7b** be the human's review/reversal point — the same
+  auto-proceed-then-review backstop the gap analysis already uses. Never force-fit and never *silently*
+  redesign: auto-resolving means a **reasoned, recorded** design decision, not an unexamined one.
+- **BIG that alters SCOPE** (new features/screens, not just layout/pattern — beyond §8/§11) → **this is not a
+  design decision proto may make** (it violates "never invent a feature beyond §11"), so proto **delegates**:
+  **enter the Convergence loop** — invoke `/saki-builder:prd`/`/saki-builder:prd-review` to reconcile scope
+  (GATE 1's two-way rule), re-derive, and continue — rather than pausing mid-run. The human judges the added
+  scope at Step 7 by *seeing* it rendered, not as an abstract prompt. (If the loop can't converge in ≤3 passes,
+  THEN surface it — a genuine product question.)
 
 **For ⚠️ variants — library project branching rule:**
 - If the variant is **purely stylistic** (a color set, a size, a border tweak) on a single library
@@ -486,8 +565,10 @@ Apply each confirmed ⚠️/❌ from Step 2.5 using the resolution path its spec
   ```
 
 **Gate:** typecheck the new components/tokens before Step 5 — they are imported next, so a broken one crashes
-every frame. Codify only ✅-confirmed ⚠️/❌ — **never a 🔶** (a big design change is escalated in 2.5 for
-sign-off, not built here). If 2.5 found no ⚠️/❌, state "No additions to codify" and continue to Step 3.
+every frame. Codify the ✅-confirmed ⚠️/❌ **and any BIG design-only 🔶 that Step 2.5 auto-decided** (it is now
+a concrete set of component/layout changes — build it here, per its recorded decision). **Never build a
+scope-altering 🔶** — that one routed to `/saki-builder:prd`, not here. If 2.5 found no ⚠️/❌/🔶 to build, state
+"No additions to codify" and continue to Step 3.
 
 ---
 
@@ -1213,7 +1294,8 @@ Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 Iterate on **look and components only** (component choice, layout, copy, spacing, states shown, token
 names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto — say so
 and point back. If the user wants a *big* structural change the existing design can't hold, that is a 🔶
-(Step 2.5 escalation) — surface it as a design-change proposal, don't force it in here.
+(Step 2.5 rules): design-only → decide it here with the same senior-designer rigor, apply it in Step 7.5, and
+re-screenshot; scope-altering (new features/screens) → route back to `/saki-builder:prd`, never invent it here.
 
 **Both questions must be approved before proceeding.** If the user approves the journey but wants a
 component change, **edit the real component** (it already lives in the design system from 2.6), re-screenshot
@@ -1371,7 +1453,9 @@ Design System Gap Analysis:
   ✅ Existing (N components used as-is)
   ⚠️ Extended (M variants added)  →  see design-system-updates.md
   ❌ New (K components created)   →  see design-system-updates.md
-  🔶 Design change (P)  →  [proposed — paused for sign-off | approved & applied | none]
+  🔶 Design change (P)  →  [auto-decided & applied (senior-designer rationale in design-system-updates.md) | reconciled via Convergence loop → see prd-adjustments.md | none]
+
+PRD adjusted this run: tasks/proto-<slug>/prd-adjustments.md  (Convergence-loop changes /saki-builder:prd made to close coverage gaps — review at approval; or "none — PRD covered the whole journey")
   (or: No extensions needed — all components already existed)
 
 Design system updated: tasks/proto-<slug>/design-system-updates.md  (built in Step 2.6, before render)
@@ -1425,7 +1509,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Adding CSS custom properties to a TS tokens object (`theme.ts`) | Match the project's token format exactly (see Step 2.5 token format detection) |
 | Letting `/saki-builder:build` re-invent components instead of using the Step 2.6 additions | Design system update runs in Step 2.6 (before render), finalized in 7.5; handoff notes must name the real component files |
 | Rendering an *approximation* of a NEW component and codifying it only after approval | Codify confirmed ⚠️/❌ in **Step 2.6 BEFORE render** — proto composes the real component and Step 7 approves the real thing (the old approximate-first order let a human approve a stand-in that /saki-builder:build then rebuilt differently) |
-| Force-fitting a journey the existing design can't host, or self-initiating a big redesign | 🔶 escalation (2.5) — SMALL absorbs as ⚠️/❌; BIG **stops and PROPOSES** a design change for human sign-off; a scope change routes back to /saki-builder:prd |
+| Force-fitting a journey the existing design can't host, OR auto-deciding a big redesign *without* weighing options / recording the rationale | 🔶 rules (2.5) — SMALL absorbs as ⚠️/❌; BIG design-only **auto-resolves with senior-designer rigor** (2–3 options weighed · faithfulness + cost-ladder + a11y + responsive · decision recorded in design-system-updates.md · reviewed at Step 7b); only a **scope** change routes back to /saki-builder:prd. Auto-resolve ≠ unexamined — a reasoned, recorded decision, never a silent snap redesign |
 | Designing the delta from the component grep without ever looking at the existing page | Capture the current-state screenshot of any modified page first (2.4) — designers look before they design |
 | Jumping to a new component when a variant would do (or a redesign when a component would do) | Climb the cost ladder to the lowest rung that works — reuse < scale < add < propose (2.5) |
 | Inventing components when no design system exists | Gate 2 STOP — offer scaffold / mock / skip |
@@ -1437,6 +1521,10 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Claiming 1:1 after a Partial detection | Flag exactly which half is approximate |
 | Curating to the "important" states/slices instead of the whole journey | E2E by default (GATE 1 + Step 3) — every reachable state, every user-visible step, entry→success; `--slice` or omitting a state must be explicit + justified, never the default. Still never invent a state genuinely impossible for the screen. |
 | Rendering before writing the Screen Manifest | GATE 1 — enumerate every screen (slices + glue + backend outcomes + shell affordances + success) into `screen-manifest.md` first; it is the canonical count the Coverage Gate checks. No manifest = no rendering. |
+| Mechanically listing only the explicit §8 slices, so implied screens (error/branch/role/entry/exit/transition) never make the manifest — a thin manifest passes the Coverage Gate while the gallery is missing a screen | Interrogate the PRD with **critical thinking + curiosity** before freezing the manifest (GATE 1): every criterion/rule/branch/role/affordance/transition → "what screen does this imply?" — add the ones the PRD covers, loop the ones it doesn't. The gate can't catch a screen you never listed |
+| Pausing mid-run to ask the human about a COVERAGE gap (uncovered affordance / a journey step with no §8 home / a scope 🔶) | Convergence loop — a human can't judge scope in the abstract; delegate the fix to `/saki-builder:prd`/`/saki-builder:prd-review`, re-derive, and loop (≤3 passes) until coverage closes. Human gate is the finished VISUAL at Step 7, informed by `prd-adjustments.md` |
+| Proto hand-editing the PRD's scope itself inside the loop | Proto never owns scope (Step 8.5) — it *invokes* `/saki-builder:prd`/`/saki-builder:prd-review`, which makes + owns the change; proto only re-derives and re-renders |
+| Looping forever when PRD and journey keep disagreeing | Bound at ≤3 passes — non-convergence is a genuine product question, not a coverage mechanic; THEN surface it (situation · options · recommendation), the "recut > fix-then-fix" signal |
 | Emitting the Completion Output while a manifested screen has no captured frame | Coverage Gate is BLOCKING — every row in `screen-manifest.md` needs a page frame at BOTH viewports; a missing screen is a HARD STOP, not a note in `index.md`. |
 | Note-and-skipping a whole screen because a shot failed | Only a missing non-page *state* may be noted; a missing *screen* (page frame) fails the Coverage Gate — fix and re-capture (6a / Coverage Gate). |
 | Bare preview route that throws on a missing provider | Step 5a — detect + wrap in mock providers, or use Storybook |
@@ -1485,6 +1573,12 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
   (6a) hard-fails on a missing `__PROTO__` sentinel in the live DOM / a `pageerror` / an error boundary, so a
   crashed render is never screenshotted. Every screen, no curation, no negotiation — a missing OR duplicated
   screen fails the run. Screens are all-or-fail; only individual states may be reasoned about (Step 3).
+- **Enumerate with critical thinking + curiosity — the Coverage Gate can't catch a screen never listed.** The
+  gate verifies captured == *manifested*; it is blind to an omission in the manifest itself. So GATE 1
+  interrogates the PRD like a skeptical designer — every criterion / rule / branch / error path / role / entry /
+  exit / affordance / transition → *"what screen does this imply that I haven't listed?"* — before freezing the
+  manifest. Screens the PRD covers get added; screens it doesn't trigger the Convergence loop. A mechanical
+  pass sets the floor; curiosity raises it to the real ceiling (this is where missing screens come from).
 - **Real components or stop.** Gate 2 is blocking — a faithful preview without a real design system
   is a contradiction; say so rather than fabricate.
 - **Reuse the real implementation, don't redesign it.** Existing implemented shell + feature components
@@ -1509,9 +1603,20 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
   scale one (⚠️ variant) < add a new one (❌) < propose a design change (🔶). Look at the existing page first
   (2.4), pick the LOWEST rung that works, and add only what the screen forces — judging the needed
   interaction, not just the pixels. **Add first, then design with it:** confirmed additions are built for
-  real in Step 2.6 *before* rendering. A 🔶 that is *big* (shell/nav, a page's layout paradigm, a net-new
-  pattern, or a >1-screen ripple) is **proposed and paused for a human**, never force-fit or silently
-  redesigned; a change that alters scope routes back to `/saki-builder:prd`.
+  real in Step 2.6 *before* rendering. A 🔶 that is *big* but **design-only** (shell/nav, a page's layout
+  paradigm, a net-new pattern, or a >1-screen ripple, within scope) is **auto-decided with senior-designer
+  rigor** — 2–3 options weighed on faithfulness · cost ladder · interaction · a11y · responsive, the decision
+  recorded and reviewed at Step 7b — never force-fit and never a silent snap redesign. A 🔶 that alters
+  **scope** (new features/screens) goes through the **Convergence loop** — proto invokes `/saki-builder:prd`
+  to reconcile it, then re-renders; it never invents scope and never pauses mid-run (the human judges it as a
+  rendered visual at Step 7).
+- **Converge, don't pause — the human gate is the VISUAL.** A human can't judge scope in the abstract, so proto
+  never stops mid-run to ask about a **coverage gap** (an uncovered shell affordance, a journey step with no §8
+  home, a scope 🔶, a screen the Coverage Gate can't source). It **delegates the fix to
+  `/saki-builder:prd`/`/saki-builder:prd-review`, re-derives from GATE 1, and loops (≤3 passes)** until every
+  surface is covered — then presents the finished journey at Step 7 with a `prd-adjustments.md` changelog as the
+  single, informed gate. Non-convergence in 3 passes is a real product question → surface it then, not before.
+  (Design-only 🔶s don't loop — proto resolves those itself.)
 - **Throwaway but shell-faithful.** The preview **composes the real app shell** (5b#1) for page
   fidelity, yet lands only under the `proto-preview` namespace (or Storybook, the fallback), marked
   disposable, with a cleanup contract handed to `/saki-builder:build`.
