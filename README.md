@@ -30,9 +30,9 @@ config/                  # Shared config (safe for all users)
 │   ├── ddd-patterns.md         # Domain-Driven Design code patterns
 │   └── modular-architecture.md # Growth-driven architecture ladder (flat → modular → DDD → microservices)
 ├── skills/
-│   ├── roadmap/         # /roadmap      — view/init the epic portfolio (tasks/roadmap.md); the disciplined entry point
-│   ├── epic/            # /epic         — add an epic (Goal · Job · User flow · Success signal); 1 epic = 1 PRD
-│   ├── pickup/          # /pickup       — start an epic: seed /prd, loop /prd ↔ /prd-review to green (ready for /proto)
+│   ├── roadmap/         # /roadmap      — view/init the work-item portfolio (tasks/roadmap.md); the disciplined entry point
+│   ├── add/             # /add          — universal intake: categorize (Epic·Feature·Improvement·Bug), flag Type+Track, route to a PRD or a plan
+│   ├── pickup/          # /pickup       — start a PRD-track item (E<n>/F<n>): seed /prd, loop /prd ↔ /prd-review to green (ready for /proto)
 │   ├── prd/             # /prd          — generate a PRD from a feature intent (premise + quality + grounding + business-rule gates)
 │   ├── prd-review/      # /prd-review   — adversarial PRD review: parallel judge panel (product, metrics, slicing, evidence), every finding cited
 │   ├── proto/           # /proto        — faithful throwaway UI preview of a PRD's slices (real design system, Playwright screenshots) before /build
@@ -120,9 +120,9 @@ immediately makes new patterns available to Claude Code.
 
 | Command         | What it does                                                                                                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/roadmap`      | View (or `init`) the product roadmap — `tasks/roadmap.md`, the single team-shareable portfolio of epics + status. The disciplined entry point: every feature must trace to an epic here. |
-| `/epic`         | Add an epic to the roadmap (interactive: Goal → Target user & Job → User flow → Success signal). 1 epic = 1 PRD = ≤7 slices. `--list` shows all epics + status. |
-| `/pickup`       | **Start an epic.** `/pickup E<n>` reads the epic, seeds `/prd`, and loops `/prd` ↔ `/prd-review` to green (`SHIP · READY`), then stops — ready for `/proto`. Flips the epic `In-progress`; escapes to `Blocked` if the review can't reach a shippable PRD. The **only** entry to feature work (no cold-intent path). |
+| `/roadmap`      | View (or `init`) the product roadmap — `tasks/roadmap.md`, the single team-shareable portfolio of work items (epics · features · improvements · bugs) + status. The disciplined entry point: every piece of work traces to an item here. |
+| `/add`          | **The universal intake.** Categorizes an incoming item into **Epic · Feature · Improvement · Bug** (auto-proposed, or forced with `--epic`/`--feature`/`--improvement`/`--bug`), stamps a **Type + Track** flag, assigns a per-type id (`E`/`F`/`I`/`B<n>`), records it on the roadmap, and **routes** it. Routing rule: a new user journey/UI ⇒ **PRD-track** (→ `/pickup`); a change/fix to existing behavior ⇒ **Plan-track** (→ `/rplan`, skipping PRD + proto). Records + points only. `--list` shows the portfolio. Replaces the old `/epic`. |
+| `/pickup`       | **Start a PRD-track item.** `/pickup E<n>` (or `F<n>`) reads the item, seeds `/prd`, and loops `/prd` ↔ `/prd-review` to green (`SHIP · READY`), then stops — ready for `/proto`. Flips the item `In-progress`; escapes to `Blocked` if the review can't reach a shippable PRD. PRD-track only — an `I<n>`/`B<n>` id is redirected to `/rplan`. |
 | `/prd`          | Generate a Product Requirements Document (Job Story, outcomes, vertical slices, acceptance criteria, business rules & invariants, non-goals) from a feature intent. Gates on substance — premise, quality score, evidence grounding. Saved to `tasks/prd-<feature>.md`. Usually invoked by `/pickup`, not directly. |
 | `/prd-review`   | Adversarial, fresh-context PRD review: a deterministic structural scan, then a parallel judge panel (product, metrics, slicing, evidence) that cites every finding. Run after `/prd`, before `/build`. |
 | `/proto`        | Render a faithful, **throwaway** UI preview of the PRD's user-facing slices using the project's real design-system components + tokens, screenshotting every state via Playwright — so you see the end-user surface **before** `/build` writes code. Sits between `/prd` and `/build`. |
@@ -152,42 +152,59 @@ immediately makes new patterns available to Claude Code.
 /sync           -> push patterns to remote
 ```
 
-### Epic-anchored stepwise flow (`/roadmap → /epic → /pickup → /proto → /build`)
+### Roadmap-anchored stepwise flow — `/add` routes to one of two tracks
 
-Feature work is a disciplined assembly line — every feature traces to an epic on the roadmap, and each
-command boundary is a natural review gate:
+Every piece of work enters through **`/add`**, which categorizes it and stamps a **Track**. The Track
+decides the path — a new user journey/UI to design gets the full PRD assembly line; a change or fix to
+existing behavior skips the PRD + proto and goes straight to planning:
+
+| Type | Id | Track | Path after `/add` |
+| ------------- | ------ | ---------- | ------------------------------------------------------------------- |
+| **Epic**        | `E<n>` | **PRD**  | `/pickup E<n>` → `/prd` (loop `/prd-review` to green) → `/proto` → `/build` |
+| **Feature**     | `F<n>` | **PRD**  | `/pickup F<n>` → `/prd` (loop `/prd-review` to green) → `/proto` → `/build` |
+| **Improvement** | `I<n>` | **Plan** | `/rplan` → `/approved` → `/qa`                                       |
+| **Bug**         | `B<n>` | **Plan** | `/rplan` (or fix directly if trivial) → `/qa`                        |
+
+**PRD-track** (Epic / Feature) — the disciplined assembly line, each command boundary a review gate:
 
 ```
 /roadmap init        -> scaffold tasks/roadmap.md (the portfolio)              (once per project)
-/epic                -> add an epic: Goal · Target user & Job · User flow · Success signal   [Planned]
+/add "<intent>"      -> categorize -> Epic/Feature (Track: PRD), assign E<n>/F<n>            [Planned]
 /pickup E<n>         -> seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY), stop      [In-progress]
-                        -> writes tasks/prd-<slug>.md (Epic: E<n>), records Child PRD on the roadmap
+                        -> writes tasks/prd-<slug>.md (Item: E<n>), records Child PRD on the roadmap
 /proto E<n>          -> throwaway UI preview (real design system + Playwright shots)
                         -> running /proto IS your approval of the PRD (no separate step)
 /build E<n>          -> autonomously execute every slice (see below)                          [Shipped]
 ```
 
-**The gate is structural.** `/pickup` requires an epic id — there is no cold-intent feature path.
-`/pickup` loops the PRD to green autonomously and escapes to `Blocked` (never fabricates grounding, never
-loops forever) if the review can't reach a shippable spec. The single human gate is at proto: **running
-`/proto E<n>` is the approval**.
+**Plan-track** (Improvement / Bug) — no PRD, no proto; `/add` composes the intent and points at `/rplan`:
 
-> **`/pipeline` is retired** in favour of this stepwise flow. Recover the old autonomous pipeline via
-> `git show <old-sha>:config/skills/pipeline/SKILL.md`.
+```
+/add "<intent>"      -> categorize -> Improvement/Bug (Track: Plan), assign I<n>/B<n>        [Planned]
+/rplan               -> structured plan (seeded from the item) -> /approved -> /qa
+```
+
+**The gate is structural.** All work enters through `/add` — there is no cold-intent path. On the
+PRD-track, `/pickup` requires an `E<n>`/`F<n>` id, loops the PRD to green autonomously, and escapes to
+`Blocked` (never fabricates grounding, never loops forever) if the review can't reach a shippable spec.
+The single human gate is at proto: **running `/proto E<n>` is the approval**.
+
+> **`/epic` is removed** (clean rename → `/add`); **`/pipeline` is retired** in favour of this stepwise
+> flow. Recover the old autonomous pipeline via `git show <old-sha>:config/skills/pipeline/SKILL.md`.
 
 ### Autonomous slice execution (`/build`)
 
-`/build E<n>` (or `/build prd-<feature>.md`) hands the whole PRD to an autonomous loop — walk away:
+`/build E<n>` / `/build F<n>` (or `/build prd-<feature>.md`) hands the whole PRD to an autonomous loop — walk away:
 
 ```
 /build E3
-  -> resolves E3 -> its Child PRD -> reads the vertical slices (PRD order = execution order) + invariants
+  -> resolves E3 (or F<n>) -> its Child PRD -> reads the vertical slices (PRD order = execution order) + invariants
   -> for EACH slice, autonomously:
        open-question gate (hard-stop if a `before slice N` decision is unresolved)
        -> /rplan -> (/rplan-review if needed) -> /approved -> /qa -> /reviewer
      looping until the slice is green and review is clean
   -> runs the e2e suite before declaring the goal done
-  -> flips the epic to Shipped on the roadmap
+  -> flips the item to Shipped on the roadmap
 ```
 
 `/build` asks nothing — its only hard stops are a missing PRD, an **unresolved `before slice N`
