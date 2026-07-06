@@ -1,13 +1,16 @@
 ---
 name: pickup
-description: Pull a roadmap epic into active development — the disciplined entry point for feature work. `/pickup E<n>` reads the epic from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: E<n>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the epic Planned→In-progress; escapes to Blocked if the review can't reach a shippable PRD. Running /saki-builder:proto E<n> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Usage — /saki-builder:pickup E<n>.
+description: Pull a PRD-track roadmap item (Epic E<n> or Feature F<n>) into active development — the disciplined entry point for feature work. `/pickup <id>` reads the item from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: <id>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the item Planned→In-progress; escapes to Blocked if the review can't reach a shippable PRD. Running /saki-builder:proto <id> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Plan-track items (Improvement/Bug) don't come here — they go to /saki-builder:rplan. Usage — /saki-builder:pickup <E<n>|F<n>>.
 ---
 
-# Pick up an epic → write & review its PRD to green (ready for proto)
+# Pick up a PRD-track item → write & review its PRD to green (ready for proto)
 
-`/saki-builder:pickup E<n>` is the **only** way to start feature work — the structural gate of the disciplined
-workflow. It requires an epic that already exists on `tasks/roadmap.md`; there is no cold-intent path. It
-runs the **front half** of the product flow: seed `/saki-builder:prd` from the epic, then loop
+`/saki-builder:pickup <id>` is the **only** way to start PRD-track work — the structural gate of the
+disciplined workflow. It requires a **PRD-track item** (Epic `E<n>` or Feature `F<n>`) that already exists
+on `tasks/roadmap.md`; there is no cold-intent path. Epics and Features are handled **identically** here —
+"the item" below means either. (Plan-track items — Improvement `I<n>`, Bug `B<n>` — never come here; run
+`/saki-builder:rplan` on them instead.) It runs the **front half** of the product flow: seed
+`/saki-builder:prd` from the item, then loop
 `/saki-builder:prd-review` until the PRD is **green** (`Verdict SHIP` AND `Readiness READY`), and stop there —
 "ready to proto". You do **not** re-implement `/saki-builder:prd` or `/saki-builder:prd-review`; you **invoke** them
 (Skill tool) and drive the loop.
@@ -15,7 +18,7 @@ runs the **front half** of the product flow: seed `/saki-builder:prd` from the e
 ```
 /saki-builder:pickup E3
   → resolve E3 from tasks/roadmap.md   (flip Planned → In-progress)
-  → /saki-builder:prd   (seeded by the epic; PRD stamped `Epic: E3`)
+  → /saki-builder:prd   (seeded by the item; PRD stamped `Item: E3`)
   → loop /saki-builder:prd-review until SHIP · READY   (≤3 rounds; escape to Blocked if it can't)
   → STOP — PRD green & ready. Run /saki-builder:proto E3 (it designs the UI/UX and LOCKS the PRD).
 ```
@@ -27,16 +30,18 @@ The single human gate is at proto — **running `/saki-builder:proto E<n>` desig
 
 ## Usage
 
-- `/saki-builder:pickup E<n>` — start (or resume) epic `E<n>`. Filler words are fine (`/saki-builder:pickup start E3`).
-- No epic id → **structural gate**: print
-  `no epic id — add one first with /saki-builder:epic, then /saki-builder:pickup E<n>` and stop. Never invent a feature.
+- `/saki-builder:pickup <id>` — start (or resume) a PRD-track item `E<n>` / `F<n>`. Filler words are fine (`/saki-builder:pickup start E3`).
+- No item id → **structural gate**: print
+  `no item id — add one first with /saki-builder:add, then /saki-builder:pickup <E<n>|F<n>>` and stop. Never invent a feature.
+- A Plan-track id (`I<n>` / `B<n>`) → **wrong track**: print
+  `<id> is a Plan-track item (Improvement/Bug) — run /saki-builder:rplan, not /saki-builder:pickup` and stop.
 
 ---
 
 ## GATE 0 — Resume check (deterministic)
 
-On every invocation, parse the `E<n>` id, then read `tasks/.pickup-<slug>-state.json` if it exists (the
-`<slug>` is recorded in the epic's `Child PRD:` link, or in the state file). Branch on `phase`:
+On every invocation, parse the item id (`E<n>` / `F<n>`), then read `tasks/.pickup-<slug>-state.json` if it
+exists (the `<slug>` is recorded in the item's `Child PRD:` link, or in the state file). Branch on `phase`:
 
 | `phase` on entry | Action |
 |------------------|--------|
@@ -51,13 +56,17 @@ Always write the state file before ending a turn so resume lands on the right ph
 
 ---
 
-## GATE 1 — Resolve the epic (hard stop if missing)
+## GATE 1 — Resolve the item (hard stop if missing / wrong track)
 
-Read `tasks/roadmap.md`. Find the `### E<n> · <title>` block. If absent → print
-`E<n> not found on the roadmap. /saki-builder:roadmap to see epics, /saki-builder:epic to add one.` and stop.
+Read `tasks/roadmap.md`. Find the `### <id> · <title>` block (`<id>` = `E<n>` or `F<n>`). If absent → print
+`<id> not found on the roadmap. /saki-builder:roadmap to see items, /saki-builder:add to add one.` and stop.
 
-Extract the epic's fields: **title, Goal, Target user & Job (JTBD), User flow, Success signal**. These
-become the **epic seed** handed to `/saki-builder:prd`.
+Check the block's `**Track:**` (or infer from the prefix). If it is **Plan** (Improvement/Bug) → print
+`<id> is a Plan-track item — run /saki-builder:rplan, not /saki-builder:pickup` and stop. Only PRD-track
+items proceed.
+
+Extract the item's fields: **title, Goal, Target user & Job (JTBD), User flow, Success signal**. These
+become the **item seed** handed to `/saki-builder:prd`.
 
 Derive `<slug>` the way `/saki-builder:prd` does: `slugify(title)`. (Single-source the slug in `/saki-builder:prd`'s
 `{{input.feature | slugify}}` — `/saki-builder:pickup` passes the title as the feature, so the PRD lands at
@@ -104,9 +113,9 @@ Maintain `tasks/.pickup-<slug>-state.json`. **Update it after every phase transi
    - epic **Target user & Job** → the JTBD (§3)
    - epic **User flow** → the recommended solution shape
    - epic **Success signal** → an outcome/metric seed (§5) and appetite hint
-4. When `/saki-builder:prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Epic: E<n>`**
-   (pass the epic id so `/saki-builder:prd` stamps it; if it wrote `—`, edit the header to `**Epic:** E<n>`).
-5. Record `**Child PRD:** prd-<slug>.md` under the `### E<n>` block in `tasks/roadmap.md`.
+4. When `/saki-builder:prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Item: <id>`**
+   (pass the item id so `/saki-builder:prd` stamps it; if it wrote `—`, edit the header to `**Item:** <id>`).
+5. Record `**Child PRD:** prd-<slug>.md` under the `### <id>` block in `tasks/roadmap.md`.
 6. Set `phase:"review"`, `prd_written:true`.
 
 ---
@@ -156,10 +165,10 @@ Ensure `phase:"proto-ready"` and the state file is written, then print:
 ```
 PICKUP_READY: <slug> — review SHIP · READY · R rounds · B blockers fixed
 
-✅ PRD green & ready for proto: tasks/prd-<slug>.md   (Epic: E<n>)
+✅ PRD green & ready for proto: tasks/prd-<slug>.md   (Item: <id>)
    Review record: tasks/prd-<slug>-review.md
-   Run /saki-builder:proto E<n> when ready — it designs the UI/UX and LOCKS the PRD (freezes requirements).
-   (then /saki-builder:build E<n> to ship it — build refuses an unlocked PRD)
+   Run /saki-builder:proto <id> when ready — it designs the UI/UX and LOCKS the PRD (freezes requirements).
+   (then /saki-builder:build <id> to ship it — build refuses an unlocked PRD)
 ```
 
 `PICKUP_READY` (own line) is the terminal success sentinel. The `pickup-completion-gate.sh` Stop hook

@@ -1,27 +1,34 @@
 ---
 name: roadmap
-description: View or initialise the product roadmap — the single team-shareable portfolio artifact (tasks/roadmap.md) that lists every epic, its goal, user flow, and status. The roadmap is the disciplined entry point of the workflow: every feature must trace to an epic here before /pickup can start it. `/roadmap` prints the portfolio; `/roadmap init` scaffolds the file. Add epics with /saki-builder:epic. Usage — /saki-builder:roadmap [init].
+description: View or initialise the product roadmap — the single team-shareable portfolio artifact (tasks/roadmap.md) that lists every work item (epics · features · improvements · bugs), its goal, and status. The roadmap is the disciplined entry point of the workflow: every piece of work traces to an item here. `/roadmap` prints the portfolio; `/roadmap init` scaffolds the file. Add items with /saki-builder:add. Usage — /saki-builder:roadmap [init].
 ---
 
 # Product Roadmap — the portfolio artifact
 
-`tasks/roadmap.md` is the **single source of what the product is building and in what order**. It is a
-**product-strategy artifact** (what / why / order / status) — NOT a coordination tool. It deliberately
-carries **no** sprint numbers, assignees-as-schedule, velocity, or due dates (team *coordination* is
-out of scope). A solo builder writes just Goal + User flow and ignores the header fields; a team fills
-Owner/Status/Updated and reviews the same file.
+`tasks/roadmap.md` is the **single source of what the product is building and fixing, and in what
+order**. It holds every **work item** — the disciplined units of work. Each item carries a **Type**
+(Epic · Feature · Improvement · Bug) and a **Track** that follows from it:
 
-The roadmap is the **disciplined entry point**: `/saki-builder:pickup E<n>` will only start a feature that
-already exists here as an epic. There is no cold-intent path.
+- **PRD-track** (Epic `E<n>`, Feature `F<n>`) — a new user journey/UI → `/saki-builder:pickup <id>` writes
+  and reviews a PRD, then `/saki-builder:proto` designs + locks it, then `/saki-builder:build`.
+- **Plan-track** (Improvement `I<n>`, Bug `B<n>`) — a change/fix to existing behavior → skip the PRD and
+  go straight to `/saki-builder:rplan`.
+
+It is a **portfolio artifact** (what / why / order / status) — NOT a coordination tool. It deliberately
+carries **no** sprint numbers, assignees-as-schedule, velocity, or due dates. A solo builder writes just
+the Goal/What and ignores the header fields; a team fills Owner/Status/Updated and reviews the same file.
+
+The roadmap is the **disciplined entry point**: work starts by adding an item here with
+`/saki-builder:add` (which categorizes it and points at the right next command). There is no cold-intent path.
 
 ---
 
 ## Usage
 
-- `/saki-builder:roadmap` — print the portfolio: every epic with its `E<n> · title · Status`, grouped by status.
+- `/saki-builder:roadmap` — print the portfolio: every item with its `<id> · title · Type · Status`, grouped by status.
 - `/saki-builder:roadmap init` — scaffold `tasks/roadmap.md` if it does not exist (no-op with a notice if it does).
 
-Add or manage epics with **`/saki-builder:epic`** (this skill never adds epics — it only views/scaffolds).
+Add or manage items with **`/saki-builder:add`** (this skill never adds items — it only views/scaffolds).
 
 ---
 
@@ -30,27 +37,28 @@ Add or manage epics with **`/saki-builder:epic`** (this skill never adds epics �
 ### `/saki-builder:roadmap` (view)
 
 1. Read `tasks/roadmap.md`. If it is missing → print:
-   `No roadmap yet. Run /saki-builder:roadmap init to scaffold it, then /saki-builder:epic to add your first epic.`
+   `No roadmap yet. Run /saki-builder:roadmap init to scaffold it, then /saki-builder:add to add your first item.`
    and stop.
-2. Parse every `### E<n> · <title>` block and its `**Status:**` field.
-3. Print a compact portfolio grouped by status (Planned · In-progress · Shipped · Blocked). If there are
-   zero epics → `Roadmap is empty — add one with /saki-builder:epic.`
+2. Parse every `### <id> · <title>` block and its `**Type:**` / `**Status:**` fields.
+3. Print a compact portfolio grouped by status (Planned · In-progress · Shipped · Blocked). Show each
+   item's Type inline. If there are zero items → `Roadmap is empty — add one with /saki-builder:add.`
 
 ```
 ROADMAP — <product name>   (updated <YYYY-MM-DD>)
 
 In-progress
-  E3 · Instant seller payout        → Child PRD: prd-instant-seller-payout.md
+  E3 · Instant seller payout   (Epic)      → Child PRD: prd-instant-seller-payout.md
 Planned
-  E4 · Bulk CSV import
+  F4 · Bulk CSV import         (Feature)
+  B7 · Payout webhook 500      (Bug)       → Child plan: —
 Shipped
-  E1 · Passwordless login
-  E2 · Order status timeline
+  E1 · Passwordless login      (Epic)
+  I2 · Faster search index     (Improvement)
 Blocked
   (none)
 
-5 epics · 1 in-progress · 1 planned · 2 shipped · 0 blocked
-Next: /saki-builder:pickup E4   (start the next planned epic)
+6 items · 1 in-progress · 2 planned · 2 shipped · 0 blocked
+Next: /saki-builder:pickup F4  (PRD-track)  ·  /saki-builder:rplan for B7 (Plan-track)
 ```
 
 ### `/saki-builder:roadmap init` (scaffold)
@@ -61,28 +69,28 @@ product name (default: the repo/directory name if the human doesn't answer).
 
 ---
 
-## Roadmap file template (canonical — reused by /saki-builder:epic and /saki-builder:pickup)
+## Roadmap file template (canonical — reused by /saki-builder:add and /saki-builder:pickup)
 
 ```markdown
 # Roadmap: <product name>
 
 **Updated:** <YYYY-MM-DD>
 
-> The portfolio of epics for this product. Each epic = one PRD = ≤7 vertical slices. Add epics with
-> /saki-builder:epic. Start one with /saki-builder:pickup E<n> (writes the PRD), then /saki-builder:proto E<n>, then
-> /saki-builder:build E<n>. Status flows: Planned → In-progress → Shipped (Blocked if pickup can't reach a
-> shippable PRD). Strategy artifact only — no sprints, assignees-as-schedule, or due dates.
+> The portfolio of work items for this product. Add items with /saki-builder:add — it categorizes each
+> as Epic · Feature · Improvement · Bug and routes it. PRD-track (Epic/Feature): /saki-builder:pickup <id>
+> → /saki-builder:proto <id> → /saki-builder:build <id>. Plan-track (Improvement/Bug): /saki-builder:rplan.
+> Status flows: Planned → In-progress → Shipped (Blocked if a PRD-track item can't reach a shippable PRD).
+> Portfolio artifact only — no sprints, assignees-as-schedule, or due dates.
 
-## Epics
-
-<!-- epics appended below by /saki-builder:epic, newest-numbered last -->
+## Items
 ```
 
-## Epic block template (canonical — /saki-builder:epic appends exactly this shape)
+## Item block templates (canonical — /saki-builder:add appends exactly one of these)
 
+**PRD-track (Epic / Feature):**
 ```markdown
 ### E<n> · <title>
-**Status:** Planned · **Owner:** <@name | unassigned> · **Updated:** <YYYY-MM-DD>
+**Type:** <Epic|Feature> · **Track:** PRD · **Status:** Planned · **Owner:** <@name | unassigned> · **Updated:** <YYYY-MM-DD>
 **Goal:** <the OUTCOME we want, not the solution — one or two sentences>
 **Target user & Job (JTBD):** As a <user>, when <situation>, I want <motivation> so I can <outcome>.
 **User flow:** <happy-path steps, arrow-separated: step → step → step>
@@ -90,24 +98,36 @@ product name (default: the repo/directory name if the human doesn't answer).
 **Child PRD:** —
 ```
 
+**Plan-track (Improvement / Bug) — lean:**
+```markdown
+### B<n> · <title>
+**Type:** <Improvement|Bug> · **Track:** Plan · **Status:** Planned · **Owner:** <@name | unassigned> · **Updated:** <YYYY-MM-DD>
+**What:** <the fix/enhancement in one or two sentences>
+**Repro / Context:** <Bug: steps → expected vs actual · Improvement: what's suboptimal today>
+**Child plan:** —
+```
+
 **Status vocabulary (the lifecycle — enforced by the workflow verbs):**
 
 | Status | Set by | Meaning |
 |--------|--------|---------|
-| `Planned` | `/saki-builder:epic` | on the roadmap, not started |
-| `In-progress` | `/saki-builder:pickup E<n>` (on start) | PRD being written / reviewed / proto / build |
-| `Shipped` | `/saki-builder:build E<n>` (on `PRD_BUILD_COMPLETE`) | built, QA-green, reviewed |
-| `Blocked` | `/saki-builder:pickup E<n>` (on escape) | review can't reach a shippable PRD (discovery / unbuilt dep) |
+| `Planned` | `/saki-builder:add` | on the roadmap, not started |
+| `In-progress` | `/saki-builder:pickup <id>` (PRD-track) · `/saki-builder:rplan`→`/saki-builder:approved` (Plan-track) | being written/reviewed/built |
+| `Shipped` | `/saki-builder:build <id>` (PRD-track) · the fix landing QA-green (Plan-track) | built, QA-green, reviewed |
+| `Blocked` | `/saki-builder:pickup <id>` (on escape) | PRD-track review can't reach a shippable PRD (discovery / unbuilt dep) |
 
-**`E<n>` numbering:** sequential, never reused. `/saki-builder:epic` scans existing `### E<n>` headers and assigns
-`max(n)+1`. A shipped or blocked epic keeps its number forever (a deleted epic's number is not recycled).
+**Id numbering:** per-type prefix (`E`/`F`/`I`/`B`), each its own sequential counter, never reused.
+`/saki-builder:add` scans existing `### <prefix><n>` headers and assigns `max(n)+1` for that prefix. A
+shipped or deleted item keeps its number forever (numbers are not recycled).
 
 ---
 
 ## Rules
 
-- Never add or edit an epic's *content* here — that is `/saki-builder:epic`'s job (add) and the workflow verbs'
-  job (status flips). This skill only **views** and **scaffolds**.
+- Never add or edit an item's *content* here — that is `/saki-builder:add`'s job (add) and the workflow
+  verbs' job (status flips). This skill only **views** and **scaffolds**.
 - Never overwrite an existing `tasks/roadmap.md` on `init`.
-- Keep the artifact a strategy document: if asked to add scheduling/assignment/velocity fields, decline —
+- Keep the artifact a portfolio document: if asked to add scheduling/assignment/velocity fields, decline —
   the roadmap answers *what/why/order*, not *who/when* (coordination is out of scope).
+- Back-compat: an older roadmap may use a `## Epics` heading and `E<n>`-only items with no `**Type:**`
+  field — read those as `Type: Epic · Track: PRD`. New scaffolds use `## Items`.

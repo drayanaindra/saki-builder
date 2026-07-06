@@ -40,14 +40,14 @@ it removes the *look* risk, not the *behavior* work.
 
 ## Input
 
-Usage: `/saki-builder:proto <E<n> | prd-file.md> [--slice=N] [--restart]` (filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>`
+Usage: `/saki-builder:proto <E<n>|F<n> | prd-file.md> [--slice=N] [--restart]` (filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>`
 to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only). An interrupted run
 **resumes** at the next incomplete phase by default (Step 0.5); `--restart` forces a clean run from scratch.
 
-Locate the PRD exactly like `/saki-builder:build`. **Epic id (`E<n>`) — the disciplined path:** if the argument
-is an epic id, read `tasks/roadmap.md`, find `### E<n>`, and resolve its `**Child PRD:**` link to
-`tasks/prd-<slug>.md`. If `E<n>` has no Child PRD yet (its value is `—`), **STOP**: `E<n> has no PRD yet —
-run /saki-builder:pickup E<n> first`. Otherwise take the token ending in `.md` (or matching `prd-*`), and
+Locate the PRD exactly like `/saki-builder:build`. **PRD-track item id (`E<n>` or `F<n>`) — the disciplined
+path:** if the argument is an item id, read `tasks/roadmap.md`, find `### <id>`, and resolve its
+`**Child PRD:**` link to `tasks/prd-<slug>.md`. If `<id>` has no Child PRD yet (its value is `—`), **STOP**:
+`<id> has no PRD yet — run /saki-builder:pickup <id> first`. Otherwise take the token ending in `.md` (or matching `prd-*`), and
 check, in order: `tasks/<name>`, `./<name>`, the path as given. `--slice=N` is an explicit narrowing
 flag that previews one slice in isolation; the default (no flag) always previews the **complete
 end-to-end journey** across every user-facing step.

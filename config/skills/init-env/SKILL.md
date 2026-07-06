@@ -256,13 +256,13 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      Auto-loaded via CLAUDE.md. Raw notes live in lessons-learned.md.`
 
 11b. **Offer the product roadmap** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
-    disciplined product work starts from a roadmap of epics. Ask once:
-    `Set up a product roadmap now? It's how features get started — /saki-builder:pickup only works on an
-    epic that's on the roadmap. (y/n)`
+    disciplined product work starts from a roadmap of items. Ask once:
+    `Set up a product roadmap now? It's how work gets started — /saki-builder:add categorizes each item
+    (epic · feature · improvement · bug) and routes it. (y/n)`
     - **y** → scaffold `tasks/roadmap.md` via `/saki-builder:roadmap init` (ask for the product name, default
-      the repo name), then offer to add the first 1–3 epics with `/saki-builder:epic`. Don't force it — one
-      epic is enough to demonstrate the flow; the rest can be added later.
-    - **n** → skip; note the operator can run `/saki-builder:roadmap init` + `/saki-builder:epic` anytime. Do not
+      the repo name), then offer to add the first 1–3 items with `/saki-builder:add`. Don't force it — one
+      item is enough to demonstrate the flow; the rest can be added later.
+    - **n** → skip; note the operator can run `/saki-builder:roadmap init` + `/saki-builder:add` anytime. Do not
       block init on this.
 
 12. **Write the init marker** `.claude/.env-init.json` — the durable "this repo's Claude env was

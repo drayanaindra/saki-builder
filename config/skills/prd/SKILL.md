@@ -126,8 +126,8 @@ of bounds. Seed §12 (rabbit holes) and §11 (non-goals).
 
 **Autonomous fallback (`/saki-builder:pickup` / `--yes` / "you decide"):** do not stall for input. Auto-select
 the recommended shape, derive appetite from the intent's scope (small/medium/large), state the defaults
-in one line, and continue. When invoked by `/saki-builder:pickup E<n>`, the **epic seed** grounds this: the
-epic's Goal → problem (a), its Success signal → appetite hint, its User flow → the recommended shape. This
+in one line, and continue. When invoked by `/saki-builder:pickup <id>` (E<n>/F<n>), the **item seed** grounds
+this: the item's Goal → problem (a), its Success signal → appetite hint, its User flow → the recommended shape. This
 preserves the workflow's single human gate at proto — running `/saki-builder:proto` designs the UI and **locks**
 the PRD — so the shape phase adds **no** new gate.
 
@@ -382,7 +382,7 @@ so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can pars
 
 # PRD: [Feature name]
 
-**Owner:** [@name | unassigned] · **Status:** Draft · **Updated:** [YYYY-MM-DD] · **Appetite:** [small — hours | medium — a few days | large — ~a week+] · **Epic:** [E<n> | —]
+**Owner:** [@name | unassigned] · **Status:** Draft · **Updated:** [YYYY-MM-DD] · **Appetite:** [small — hours | medium — a few days | large — ~a week+] · **Item:** [E<n> | F<n> | —]
 
 ## 1. TL;DR
 ## 2. Problem & Evidence   (ends with **Load-bearing assumption:** <X> — `assumed|observed|validated` — the premise from Step 0b, in the file, not just scratch)
@@ -425,12 +425,12 @@ change.`) — same "omit if none" rule as §13/§14/§15.
 §14) — they shift no existing number, so they are contract-safe; keep new sections at the tail, never inserted
 between existing ones.
 
-The **shareable header** (Owner/Status/Updated/Appetite/Epic) is team-facing metadata — a solo builder can
+The **shareable header** (Owner/Status/Updated/Appetite/Item) is team-facing metadata — a solo builder can
 leave `Owner: unassigned` and ignore it; a team uses it to own, review, and date the PRD. `Status`
 advances **Draft → In Review → Approved → Locked** as the PRD moves through `/saki-builder:prd-review`, human
 sign-off, and the `/saki-builder:proto` lock (below).
-**Epic:** carries the `E<n>` this PRD serves when it was started by `/saki-builder:pickup E<n>` — the traceability
-link back to `tasks/roadmap.md`; a standalone PRD leaves it `—`.
+**Item:** carries the PRD-track item id (`E<n>` or `F<n>`) this PRD serves when it was started by
+`/saki-builder:pickup <id>` — the traceability link back to `tasks/roadmap.md`; a standalone PRD leaves it `—`.
 
 ### The lock — the explicit freeze before build (`Status: Locked`)
 
@@ -527,7 +527,7 @@ Advance the saved header `Status: Draft → In Review`, then suggest next steps 
   `/saki-builder:rplan` and ships it. `/saki-builder:build` won't start until the PRD is Locked."*
 
 Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s job. The disciplined path is
-`/saki-builder:pickup E<n>` → `/saki-builder:proto E<n>` (locks) → `/saki-builder:build E<n>`.
+`/saki-builder:pickup <id>` → `/saki-builder:proto <id>` (locks) → `/saki-builder:build <id>` (`<id>` = E<n>/F<n>).
 
 ---
 
