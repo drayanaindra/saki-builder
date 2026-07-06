@@ -2,6 +2,30 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.12.0 — 2026-07-07
+
+- **`/proto` now self-converges on PRD gaps instead of stopping to ask you.** When the preview surfaces
+  something the journey needs but the PRD doesn't cover — a dead-end nav item, a missing step or
+  outcome screen, a change that grows scope — `/proto` no longer pauses mid-run. It hands the fix to
+  `/prd` / `/prd-review`, re-derives the screen list, and loops (up to 3 passes) until coverage closes.
+  The reasoning: you can't judge scope in the abstract — without a rendered screen, "is this in scope?"
+  is unanswerable. So the **human gate is the finished visual** at approval time, shown with a "PRD
+  adjusted this run" changelog of everything the loop changed. If it can't converge in 3 passes, it
+  surfaces the genuine product question instead of drifting. `/proto` never edits scope itself — it
+  delegates to `/prd`, which owns it.
+- **Big design decisions now auto-resolve with senior-designer rigor**, instead of pausing for sign-off.
+  A large design-only change the existing design can't cleanly host (nav restructure, a page's layout
+  paradigm, a net-new pattern, a cross-screen ripple) is decided in-run — weighing 2–3 options against
+  faithfulness to the shipped app, cost, accessibility, and responsive behavior, and recording the
+  rationale for you to review at approval. Only a change that alters real **scope** still routes through
+  the convergence loop to `/prd`.
+- **`/proto` hunts for missing screens with critical thinking + curiosity.** Before freezing its screen
+  list, GATE 1 now interrogates the PRD — every acceptance criterion, business rule, branch, error path,
+  role, entry/exit, and shell affordance — asking "what screen does this imply that I haven't listed?".
+  This closes the hole where the coverage gate (which only checks that *listed* screens were captured)
+  was blind to a screen that was never listed — so a thin list passed while the gallery was missing a
+  screen.
+
 ## 0.11.0 — 2026-07-06
 
 - **`/build` now finishes the job — it converges to a clean `main` on its own.** After every slice is
