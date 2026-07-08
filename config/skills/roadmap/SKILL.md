@@ -37,7 +37,7 @@ Add or manage items with **`/saki-builder:add`** (this skill never adds items �
 ### `/saki-builder:roadmap` (view)
 
 1. Read `tasks/roadmap.md`. If it is missing → print:
-   `No roadmap yet. Run /saki-builder:roadmap init to scaffold it, then /saki-builder:add to add your first item.`
+   `No roadmap yet. Run /saki-builder:roadmap init to scaffold it, then /saki-builder:add to add your first item. (Brand-new product from scratch? /saki-builder:genesis sets up foundations and seeds the roadmap for you.)`
    and stop.
 2. Parse every `### <id> · <title>` block and its `**Type:**` / `**Status:**` fields.
 3. Print a compact portfolio grouped by status (Planned · In-progress · Shipped · Blocked). Show each
