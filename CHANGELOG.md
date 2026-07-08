@@ -2,6 +2,26 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.13.0 — 2026-07-08
+
+- **`/pickup` now acts as a Senior PM when a PRD review dead-ends on scope — it recuts the initiative
+  into an MVP instead of just stopping.** Before, a review that couldn't reach green left the item
+  `Blocked` for a human. Now, when the block is a *scope* signal (`non-convergence` — blockers not
+  falling across rounds, or the 3-round cap hit still-not-green), `/pickup` spawns the `senior-pm` agent
+  to split the over-appetite initiative into a thin **MVP** plus trigger-gated follow-on phases,
+  registers each as a roadmap Feature via `/add`, records a `Phase chain:` on the parent, and drives
+  **only the MVP** to green — the follow-on phases stay `Planned` with objective triggers for a later
+  `/pickup`. The reasoning: when blockers accumulate faster than they clear, the load-bearing problem is
+  scope, not implementation gaps — the fix is to recut, not to keep revising.
+- **The recut fires only on a scope blocker, never on a discovery one.** A `DISCOVERY-FIRST` block (the
+  premise/evidence is too thin) or an unaccepted bet still stops for a human — you can't phase your way
+  past not knowing whether the premise holds. An ambiguous `readiness` blocker is classified by the
+  senior-pm first (decomposable scope → recut; bet/discovery → blocked).
+- **Guardrails.** The senior-pm's phasing is verified against the actual PRD before acting (no invented
+  scope); the recut runs **at most once** per pickup (a child MVP that still won't converge is a genuine
+  block — no recursive decomposition); and it runs entirely inside the existing front-half loop, so the
+  Stop-gate needs no change.
+
 ## 0.12.0 — 2026-07-07
 
 - **`/proto` now self-converges on PRD gaps instead of stopping to ask you.** When the preview surfaces

@@ -72,6 +72,10 @@ a shipped/deleted item's number is not recycled, and existing `E<n>` roadmaps st
 
 Accept terse answers; the human may answer all at once. Keep it lean — this is intake, not a PRD/plan.
 
+An **orchestrator caller** (e.g. `/saki-builder:pickup`'s Phase-2b recut) may pass a **complete shape**
+(all fields) inside a `--<type>` intent — treat that as "answered all at once" and record without
+prompting (the autonomous fallback, same convention `/saki-builder:prd` uses under `/saki-builder:pickup`).
+
 **PRD-track (Epic / Feature)** — the outcome-first shape (same as the old epic):
 1. **Title** — a short noun phrase.
 2. **Goal — what outcome?** Push for the OUTCOME, not the mechanism (if they say "add a button", ask
