@@ -60,6 +60,33 @@ Always write the state file before ending a turn so resume lands on the right ph
 
 ---
 
+## GATE 0.5 — Greenfield guard (no product foundations yet → genesis first)
+
+`/saki-builder:pickup` seeds `/saki-builder:prd`, which assumes a **stack, design system, and schema that
+already exist** (prd grounds §16 against real code; proto's GATE 2 hard-STOPs without a design system). On a
+brand-new repo none of that exists, so picking up here would seed a **stack-less PRD**. Detect that first
+with **`test` builtins** — not `ls`/`find` output — so the check is both glob-safe (no `*.md` glob that
+aborts under zsh `nomatch`) AND robust to RTK rewriting `ls`/`find` output into a summary (which would make
+an empty repo read as non-empty):
+
+```bash
+if [ ! -e foundations.md ] && [ ! -e package.json ] && [ ! -e go.mod ] \
+   && [ ! -e pyproject.toml ] && [ ! -e Cargo.toml ] \
+   && [ ! -d src ] && [ ! -d app ] && [ ! -d components ]; then
+  echo GREENFIELD_NO_FOUNDATIONS      # no foundations marker, no stack, no code
+else
+  echo FOUNDATIONS_PRESENT
+fi
+```
+
+- **`GREENFIELD_NO_FOUNDATIONS`** → the product has **no foundations yet** → STOP:
+  `This repo has no product foundations yet — /saki-builder:pickup would seed a PRD assuming a stack, design system, and schema that don't exist. Run /saki-builder:genesis "<product idea>" first (it sets the MVP goal + foundations and seeds the roadmap), then /saki-builder:pickup E1.`
+  Do not proceed into a stack-less PRD.
+- **`FOUNDATIONS_PRESENT`** (a `foundations.md`, stack, or code exists) → foundations are in place (genesis
+  ran, or this is an existing product that predates genesis) → proceed to GATE 1 normally.
+
+---
+
 ## GATE 1 — Resolve the item (hard stop if missing / wrong track)
 
 Read `tasks/roadmap.md`. Find the `### <id> · <title>` block (`<id>` = `E<n>` or `F<n>`). If absent → print

@@ -48,6 +48,12 @@ the caller can force the categorization with a CLI flag (`--epic` / `--feature` 
 Read `tasks/roadmap.md`. If missing, scaffold it via `/saki-builder:roadmap init` (`mkdir -p tasks`, write
 the template, ask once for the product name — default the repo/directory name). Then continue.
 
+**Greenfield hint (non-blocking).** If the roadmap was missing AND the repo has no product foundations yet
+(no `foundations.md`, no stack file, no code) — a brand-new product from scratch — print once:
+`New product from scratch? /saki-builder:genesis sets up the foundations (MVP goal, stack, design system, schema) first, then seeds this roadmap.`
+Then continue normally — do **not** block. A user may add items directly, and `/saki-builder:genesis` G5
+calls `/add` only **after** it has created the roadmap, so this hint never fires mid-genesis.
+
 ## Step 1 — Categorize (propose Type + Track, confirm)
 
 If a `--<type>` flag was given, use it. Otherwise **propose** a Type from the intent, using these signals,
