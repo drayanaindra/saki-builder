@@ -177,6 +177,7 @@ Used when no `.claude/agents/reviewer.md` exists.
 - [ ] Solves the stated problem — no off-by-one, no wrong condition
 - [ ] Edge cases handled: empty input, null, zero, max values
 - [ ] No logic copied from the wrong branch/version
+- [ ] Instrumentation: every §5 event-based metric names an event that is **actually emitted at its wiring point** — declared-but-never-fired, fired on an error/validation path, or double-emitted on retry is a finding
 
 **Security**
 - [ ] No secrets or credentials hardcoded (API keys, tokens, JWTs, passwords, private keys,
