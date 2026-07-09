@@ -36,6 +36,7 @@ Then load the plan's companion files (same `[task]` slug):
 If the plan has no Test column (old-format plan), derive TDD mode per step:
 - Steps with service/domain logic → Test-First
 - Steps with CRUD/handler/wiring → Test-Along
+- Steps with **event emit / instrumentation** (a §5-metric `Emit <event>` step) → Test-Along — write the emit and a test asserting the emitter is called on the trigger (and NOT on the error path); never treat it as trivial Test-After, or the metric ships unrecorded
 - Steps with config/migration/copy → Test-After
 
 If the plan has no Evidence Ledger, warn (do not block):
