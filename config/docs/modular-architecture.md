@@ -33,7 +33,20 @@ src/                                src/
 └── config.py
 ```
 
+**⛔ HARD RULE — frontend/backend separation (from scratch, non-negotiable):**
+A new product is laid out as **two separate top-level folders — `frontend/` and `backend/`** — from the
+very first commit, even at Stage 1. **Never** start from a single unified app that serves both the UI and
+the API (no full-stack Next.js doing both). This applies to every product, however simple. The stage
+ladder below governs how each side grows *internally*; it never merges the two sides into one app.
+
+```
+repo/
+├── frontend/    (Next.js — the src/ tree on the right below lives here)
+└── backend/     (API service — the src/ tree on the left below lives here; owns the DB)
+```
+
 **Rules:**
+- **`frontend/` and `backend/` are separate top-level folders — always (see the hard rule above).**
 - One file per model, one file per route group
 - Schemas mirror models
 - `core/` for shared services
