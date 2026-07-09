@@ -16,7 +16,7 @@ There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely
 
 ## Step 0: Load the active plan
 
-Find the most recent `*-plan.md` in the project root. Read it fully.
+Find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
 
 Print:
 ```

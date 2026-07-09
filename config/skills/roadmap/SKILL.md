@@ -64,8 +64,10 @@ Next: /saki-builder:pickup F4  (PRD-track)  ·  /saki-builder:rplan for B7 (Plan
 ### `/saki-builder:roadmap init` (scaffold)
 
 If `tasks/roadmap.md` already exists → print `Roadmap already exists at tasks/roadmap.md` and stop (never
-overwrite). Otherwise `mkdir -p tasks` and write the **Roadmap file template** below, asking once for the
-product name (default: the repo/directory name if the human doesn't answer).
+overwrite). Otherwise `mkdir -p tasks` and write the **Roadmap file template** below. **Product name:** use
+the name passed in the invocation (`/saki-builder:roadmap init "<product name>"`, or a name a caller such as
+`/saki-builder:genesis` supplies) — **only ask when none was provided** (default: the repo/directory name if
+the human doesn't answer). A caller that already knows the name never triggers a prompt.
 
 ---
 

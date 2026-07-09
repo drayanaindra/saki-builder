@@ -11,7 +11,7 @@ Use this format for all non-trivial execution plans.
 **Blocking items:** [N] (must be 0 to present — see Evidence Ledger)
 **Risk Score:** LOW / MED / HIGH
 **Unknown Count:** [N] / 2 max
-**Behavior Spec:** `[task]-flow.md` (user-facing) | N/A (backend-only)
+**Behavior Spec:** `tasks/[task]-flow.md` (user-facing) | N/A (backend-only)
 **Source PRD:** `tasks/prd-[feature].md` § slice N | N/A (standalone)
 **Appetite:** ~[N] agent tasks (from PRD slice) — recut if step count exceeds this
 **Kill-if:** [§5 metric] crosses [threshold] (from PRD slice) | N/A

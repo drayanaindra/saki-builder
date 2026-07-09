@@ -61,7 +61,7 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
   ```json
   { "prd": "<path>", "branch": "<branch>", "commitPolicy": "per-step",
     "slices": [ { "n": 1, "title": "…", "status": "not-started|in-progress|done|blocked",
-      "steps": { "rplan":    { "status": "done", "artifact": "tasks/<...>-slice1-plan.md" },
+      "steps": { "rplan":    { "status": "done", "artifact": "tasks/<prd-slug>-slice1-plan.md" },
                  "approved": { "status": "done", "commit": "<sha>" },
                  "qa":       { "status": "done" },
                  "reviewer": { "status": "done" },
@@ -301,8 +301,12 @@ Invoke the `rplan` skill (Skill tool, `skill: rplan`) scoped to **this slice onl
 description plus its acceptance criteria, **and the Business Rules & Invariants in scope for it**
 (the rules its criteria link to, plus any `🔒 INVARIANT` the slice's writes could violate). The
 plan must be built to uphold them — call out each in-scope invariant so the implementation and its
-tests account for it. `/saki-builder:rplan` will research, build the plan, and populate its Evidence Ledger. **Do not wait
-for approval** — read the resulting plan and its Blocking Set yourself.
+tests account for it. **Tell `/saki-builder:rplan` to name the plan `<prd-slug>-slice<N>`** so it writes a
+slice-distinct `tasks/<prd-slug>-slice<N>-plan.md` (a multi-slice build keeps several plans in `tasks/`;
+newest-wins selection would otherwise let a later step bind to the wrong slice's plan). `/saki-builder:rplan`
+will research, build the plan, and populate its Evidence Ledger. Record that exact plan path in the state
+manifest's `artifact` and **pass it explicitly to `/saki-builder:approved` (step 3) and `/saki-builder:qa`
+(step 4)**. **Do not wait for approval** — read the resulting plan and its Blocking Set yourself.
 
 ### 2. `/saki-builder:rplan-review` — *only if needed*
 Run the `rplan-review` skill when any of these hold; otherwise skip straight to step 3:
@@ -317,7 +321,8 @@ re-read the plan.
 **First load the `clean-code` skill** (Skill tool, `skill: clean-code`) so the slice is written to
 the SonarQube clean-code standard — the Pre-merge Gate grades the diff (Clean as You Code), so
 writing clean now avoids a gate failure later. Then invoke the `approved` skill to implement the
-slice under XP discipline (TDD Red→Green→Refactor, commit-per-step, YAGNI). You are the approver
+slice under XP discipline (TDD Red→Green→Refactor, commit-per-step, YAGNI) — **pass it this slice's plan path
+from step 1** so it implements *this* slice's plan, not the newest `*-plan.md`. You are the approver
 here — invoke both without waiting for the user. (Re-load `clean-code` every slice; this keeps it in
 context even if a context clear happened between slices.)
 
@@ -351,7 +356,8 @@ is drift → reconcile (re-proto the screen, or import the named component). Log
 `PROTO-FIDELITY: slice N — <K promoted components verified | re-invented X → fixed>`.
 
 ### 4. `/saki-builder:qa` — test against acceptance criteria + in-scope invariants
-Invoke the `qa` skill. It runs **this slice's** acceptance criteria as real tests; every
+Invoke the `qa` skill, **passing this slice's plan path from step 1** so it tests *this* slice's criteria
+(not the newest `*-plan.md`). It runs **this slice's** acceptance criteria as real tests; every
 criterion must pass. **Also verify each in-scope Business Rule** — and for a `🔒 INVARIANT`,
 assert it holds under concurrency / partial failure where the stack allows (e.g. a race or
 double-fire test), not just the happy path, since a passing acceptance criterion does not prove an
@@ -359,6 +365,11 @@ invariant holds. If any criterion or invariant check fails → fix in place and 
 proceed while red.
 
 ### 5. `/saki-builder:reviewer` — fresh-context review
+**First confirm the slice actually committed** — `git diff BASE..HEAD` must be non-empty. An empty committed
+diff (e.g. `/saki-builder:approved` had nothing committable, or left work uncommitted) means both
+`/saki-builder:reviewer` and the step-5.5 security audit would review *nothing* and could report clean — a
+false green. On a code-bearing slice an empty diff is a **gate failure**: commit the slice's work (or fix why
+`/saki-builder:approved` didn't) and re-run — never accept a clean review of an empty diff.
 Invoke the `reviewer` skill on the slice's diff. If it reports **blocking** issues
 (correctness, security, data-loss, **or a violated `🔒 INVARIANT`**): fix them, then re-run `/saki-builder:qa`
 and `/saki-builder:reviewer` until the review is clean. Non-blocking nits: fix if cheap, otherwise log and move on.
@@ -441,8 +452,13 @@ e2e is green. Detect and run whichever applies (check `package.json` scripts / c
 If e2e fails → treat it as a blocking issue: trace it to the offending slice, fix, re-run
 `/saki-builder:qa` for that slice, then re-run e2e. Repeat until green.
 
-If **no e2e suite exists**, do NOT silently pass. Report:
-`⚠ NO E2E SUITE FOUND — slice-level /saki-builder:qa passed, but no end-to-end coverage exists.`
+If **no e2e suite exists**, do NOT silently pass:
+- **Multi-slice PRD (>1 slice):** absent e2e is a **blocking** gap — end-to-end coverage is the only thing
+  that proves the slices compose. Either add a minimal e2e that walks the PRD's primary journey (preferred),
+  or record an explicit, logged waiver `E2E WAIVED: <reason>`. Do **NOT** print `PRD_BUILD_COMPLETE` or flip
+  the item to `Shipped` on an unwaived multi-slice PRD with no e2e.
+- **Single-slice PRD:** report `⚠ NO E2E SUITE FOUND — slice-level /saki-builder:qa passed, but no
+  end-to-end coverage exists.` and proceed (one slice's `/saki-builder:qa` is sufficient coverage).
 
 ---
 
@@ -475,8 +491,10 @@ don't cover.
 
 ## Completion Output
 
-When every slice is green, reviewed, and e2e passes, **flip the built PRD's item to `Shipped` in
-`tasks/roadmap.md`** (if one exists). Identify the item by **either** launch path:
+The `Shipped` flip is **bound to `PRD_BUILD_COMPLETE`**: write it only once Final Gate 2 returned **Clean** —
+every slice green + reviewed, e2e green-or-waived (per the FINAL GATE), and the DoD gate passed — in the same
+step you print `PRD_BUILD_COMPLETE`, **never on a `BLOCKED:` path and never before it**. Then **flip the built
+PRD's item to `Shipped` in `tasks/roadmap.md`** (if one exists). Identify the item by **either** launch path:
 - **Item-id launch** — the remembered `<id>` (`E<n>`/`F<n>`) from the Input step.
 - **PRD-path launch** (the studio board and hand-typed `/saki-builder:build tasks/prd-<slug>.md`) — reverse-map:
   scan `tasks/roadmap.md` for the `### <id>` block whose `**Child PRD:**` **basename** matches the built

@@ -12,7 +12,7 @@ Full reference (phases, examples, decision matrix): `~/.claude/docs/execution-pr
 2. State Model/Task/Role/Status at response start for non-trivial responses (planning, implementing, multi-step). Skip for trivial replies and acknowledgments.
 3. NEVER assume — read code, verify, test assumptions
 4. NEVER include subagent findings in a plan without verifying key claims (especially bug reports) by reading the actual code — subagents misread patterns and flag correct APIs as bugs
-5. Write plans to files (`[task]-plan.md`), NOT chat — they survive context clearing
+5. Write plans to files (`tasks/[task]-plan.md`), NOT chat — they survive context clearing
 6. NEVER rebuild what already exists or is owned — before designing, verify against canonical source (git/board/STATUS/existing code), not summaries. Owned by someone → advisory, not rebuild
 
 ## Response Header
