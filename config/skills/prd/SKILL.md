@@ -224,14 +224,18 @@ tag the row `aspirational`.
 Classify every row's Method as exactly one of:
 - `query` — the data already persists (a table/column an existing write leaves behind). Method reads
   `query: <what to count>` (e.g. `query: orders WHERE status='paid'`). **No new emit** — the row is
-  measurable with what ships anyway.
+  measurable with what ships anyway. Use a DB/`query` Method only for server-side state GA4 can't see.
 - `event` — the metric counts a user/system **action that nothing currently records**. Method MUST name
   the event and its trigger: `event: emit <event_name> when <trigger>` (e.g.
   `event: emit checkout_completed when checkout succeeds`). This is the **instrumentation target**
   `/saki-builder:rplan` ingests into a build step + a firing criterion — an `event` Method with no named
-  event is undefined build work (`/saki-builder:prd-review` flags it).
+  event is undefined build work (`/saki-builder:prd-review` flags it). **Default the emit to a GA4 event**
+  for product-usage metrics (GA4 is the house analytics default, wired by `/saki-builder:genesis`
+  foundations) and back it with a §9 `observability` acceptance criterion asserting the event fires —
+  that is how the default GA4 instrumentation actually reaches the build.
 - `external` — read outside our code (payment dashboard, survey, third-party analytics). Method reads
   `external: <source>`. No emit — but say where the number comes from so it isn't mistaken for `query`.
+
 
 Counter-metric must name the specific failure mode it guards (e.g. "guards 5.1: faster onboarding
 gamed by skipping verification → locked-out users"); in the §5 table its `JTBD` cell reads
