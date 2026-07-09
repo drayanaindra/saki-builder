@@ -200,7 +200,7 @@ For each item in the Success Criteria section, classify it:
 | `DB`      | mentions table, column, row, migration applied       | `psql $DATABASE_URL -c "[query]"`                                |
 | `BUILD`   | always run — type check + compile                    | `go build ./...`, `npx tsc --noEmit`                             |
 | `UI`      | mentions page, button, form, browser, click          | Playwright spec (Step 1.5) — or MANUAL/BLOCKED if not configured |
-| `EVENT`   | names an emitted event / analytics call / instrumentation (`event <name> fires`) | `grep` the emit call at the wiring point, AND run the flow/unit test that exercises the trigger asserting the emitter is called (spy the emitter / assert the sink received `<name>`) |
+| `EVENT`   | names an emitted event / analytics call / instrumentation (`event <name> fires`) | Locate the emit by grepping source for the **emit call**, anchored to the emit API + name (`track(`/`emit(`/`capture(`/`logEvent(` … `<name>`), NOT a bare `<name>` match (which also hits consts/comments/tests/the plan itself); the wiring point is named in the plan's Steps row / Plan Wiring. Then run the flow/unit test that exercises the trigger, asserting the emitter is called **once** (spy the emitter / assert the sink received `<name>`). No emitter or test harness available → **BLOCKED** (state how to unblock), never SKIP |
 
 If a criterion has no test command written in the plan → run the best-fit command for its type. Do NOT skip it.
 

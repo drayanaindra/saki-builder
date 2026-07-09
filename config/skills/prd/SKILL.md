@@ -354,6 +354,7 @@ not in this table stays Advisory and never gates.
 | §5 outcome with target but no basis tag | −3 each |
 | §5 `baseline` basis with no cited source for its starting number (circular — restates the target) | −3 each |
 | §5 measurement method not instrumentable and not an Open Question | −3 each |
+| §5 Method unclassified (no `query`/`event`/`external` prefix) | −3 each |
 | §5 `event`-class Method names no event (`emit <name> when <trigger>` missing) | −3 each |
 | Counter-metric names no metric/failure-mode it guards | −5 |
 | Kill criteria missing or not outcome-tied | −8 |

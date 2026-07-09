@@ -78,8 +78,8 @@ Read the step's action, files, Test field. Pick TDD mode:
 | TDD Mode | When | Cycle |
 |----------|------|-------|
 | Test-First | Business logic, domain rules, calculations | Write test → confirm RED → implement → confirm GREEN → refactor |
-| Test-Along | Infrastructure, CRUD, handlers, wiring | Write code + test interleaved → confirm GREEN → refactor |
-| Test-After | Config, migration, rename, trivial | Implement → run existing test suite → refactor if needed |
+| Test-Along | Infrastructure, CRUD, handlers, wiring, **§5-metric emit / instrumentation** (an `Emit <event>` step) | Write code + test interleaved → confirm GREEN → refactor |
+| Test-After | Config, migration, rename, trivial (**never an emit step** — an `Emit <event>` step is Test-Along above, so the metric can't ship unrecorded) | Implement → run existing test suite → refactor if needed |
 | Human-Test-First | Auth, payment, multi-tenant security | ASK user to write/approve test → implement → confirm GREEN |
 
 Resolve the step's blocking items as part of GREEN — never implement past a step whose unresolved item describes a real gap (missing auth, UNKNOWN, vague spec). Resolving = do the work, then delete the item citing where it was resolved.
