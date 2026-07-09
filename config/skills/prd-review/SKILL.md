@@ -123,6 +123,7 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 | 3 | Evidence table — each claim tagged; floor met (≥1 `validated` OR a named spike) | | |
 | 4 | Primary JTBD in **Klement** form (`When… I want… so I can…`), exactly one | | |
 | 5 | §5 outcomes — each primary/secondary has target + **basis tag** (`baseline`/`benchmark`/`aspirational`) + measurement + a **JTBD link** (a `Jn` in §3/§4); the **counter-metric** row instead names the metric(s) it guards (`guards 5.x`, not a `Jn`) | | |
+| 5b | §5 Method is classified `query`/`event`/`external`, and every **`event`-class** row names its event (`event: emit <name> when <trigger>`) — an event-class Method with no named event is undefined instrumentation work | | |
 | 6 | ≥1 **counter-metric** naming the metric/failure-mode it guards | | |
 | 7 | **Appetite** (§6, band + span) **+ outcome-tied Kill Criteria**; **§7 Solution Shape** names the chosen shape + a **Decision Log** (alternatives considered w/ why-not) OR states there was one obvious shape | | |
 | 8 | Vertical slices — **≤7**, each `Serves: J<n> · 5.<x>` where `Jn` resolves to a job defined in §3/§4 and `5.x` to an outcome in §5 (a `Jn`/`5.x` with no matching definition = dangling). Resolution is **bidirectional** — a §4 related job referenced by no slice **and** no §5 outcome is an **orphan job** (a Judge-1 scope finding, *not* a Phase-1 hard-fail — see the hard-fail carve-out) | | |
@@ -203,8 +204,8 @@ Unverifiable claims (facts asserted but not checkable from the document):
 3. Is the **evidence floor** met (≥1 `validated` or a named spike), or is the table effectively all-`assumed` behind a `validated` label? Does the PRD honestly carry a `DISCOVERY-RISK` banner where its evidence is thin, or overclaim confidence?
 4. Targets with **fabricated precision** — a number with no `baseline`/`benchmark`/`aspirational` basis (an `aspirational`-tagged target is honest, not fabricated — do not flag it), including a **circular `baseline N→M`** whose starting number N cites no source (it restates the target instead of grounding it).
 5. A **Goodhart counter-metric** — one that doesn't name the specific metric + failure mode it guards.
-6. Metrics that are **not instrumentable** with what exists or is in scope.
-7. §5 outcomes with **no linking acceptance criterion** anywhere in the slices.
+6. Metrics that are **not instrumentable** with what exists or is in scope — including an **`event`-class Method with no named event** (`event: emit <name> when <trigger>` missing): it declares a metric nothing will record.
+7. §5 outcomes with **no linking acceptance criterion** anywhere in the slices — and, for an **`event`-class** outcome, a linking criterion that only restates the outcome instead of **asserting the event fires** (the criterion must verify emission, e.g. "event `<name>` fires when `<trigger>`").
 
 **Judge 3 — Slicing & Implementation-Reality (the lead lens).** Find, in priority order:
 1. **Missing failure/edge criteria — the post-manual-test bug source.** For each state-changing or `🔒` slice, name the failure paths the happy-path ACs leave untested and **prescribe the criterion that would catch each** (Given/When/Then + signal, tagged `[auto]`/`[manual]`). Draw from this canonical, **non-exhaustive** menu, applying an item *only where the slice's stated behavior implies that path* — prescribing a path the slice can't reach (e.g. `network-fail` for a slice that makes no network call) violates the grounding rule:

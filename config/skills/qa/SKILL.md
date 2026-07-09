@@ -200,6 +200,7 @@ For each item in the Success Criteria section, classify it:
 | `DB`      | mentions table, column, row, migration applied       | `psql $DATABASE_URL -c "[query]"`                                |
 | `BUILD`   | always run — type check + compile                    | `go build ./...`, `npx tsc --noEmit`                             |
 | `UI`      | mentions page, button, form, browser, click          | Playwright spec (Step 1.5) — or MANUAL/BLOCKED if not configured |
+| `EVENT`   | names an emitted event / analytics call / instrumentation (`event <name> fires`) | Locate the emit by grepping source for the **emit call**, anchored to the emit API + name (`track(`/`emit(`/`capture(`/`logEvent(` … `<name>`), NOT a bare `<name>` match (which also hits consts/comments/tests/the plan itself); the wiring point is named in the plan's Steps row / Plan Wiring. Then run the flow/unit test that exercises the trigger, asserting the emitter is called **once** (spy the emitter / assert the sink received `<name>`). No emitter or test harness available → **BLOCKED** (state how to unblock), never SKIP |
 
 If a criterion has no test command written in the plan → run the best-fit command for its type. Do NOT skip it.
 
@@ -238,6 +239,7 @@ Risk prioritization:
 | `UI` | (1) Double-click the primary action button rapidly → should not create duplicates. (2) Submit form with all fields empty → should show validation errors, not crash. (3) Paste special characters (`<script>alert(1)</script>`, `'; DROP TABLE`) in text inputs → should be escaped/rejected. |
 | `GO_TEST` | (1) Call function with zero-value arguments → should return error, not panic. (2) Call function with nil context → should return error. (3) If function accepts numeric input, try boundary: 0, -1, MaxInt64. |
 | `DB` | (1) Query with non-existent tenant ID → should return empty, not error. (2) Check that the operation respects RLS (query without tenant context should fail). (3) If inserting numeric values, try 0 and maximum values. |
+| `EVENT` | (1) Event fires **exactly once** on the happy path — no double-emit when the action is retried. (2) Event is **NOT** fired on the validation/error path (a failed action must not record a success). (3) The payload carries the fields the §5 metric queries (missing/empty required field → the metric can't be computed). |
 
 ### Execution
 

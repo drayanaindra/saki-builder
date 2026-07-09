@@ -219,6 +219,20 @@ source**, don't merely restate the target), `benchmark` (an external/comparable 
 empty/absent Basis is fabricated precision; a `baseline N→M` whose starting number N has no cited
 source is a **circular basis** (it restates the target instead of grounding it) — cite N's source or
 tag the row `aspirational`.
+
+**Method** is *how the number gets read* — and it decides whether the metric needs instrumentation.
+Classify every row's Method as exactly one of:
+- `query` — the data already persists (a table/column an existing write leaves behind). Method reads
+  `query: <what to count>` (e.g. `query: orders WHERE status='paid'`). **No new emit** — the row is
+  measurable with what ships anyway.
+- `event` — the metric counts a user/system **action that nothing currently records**. Method MUST name
+  the event and its trigger: `event: emit <event_name> when <trigger>` (e.g.
+  `event: emit checkout_completed when checkout succeeds`). This is the **instrumentation target**
+  `/saki-builder:rplan` ingests into a build step + a firing criterion — an `event` Method with no named
+  event is undefined build work (`/saki-builder:prd-review` flags it).
+- `external` — read outside our code (payment dashboard, survey, third-party analytics). Method reads
+  `external: <source>`. No emit — but say where the number comes from so it isn't mistaken for `query`.
+
 Counter-metric must name the specific failure mode it guards (e.g. "guards 5.1: faster onboarding
 gamed by skipping verification → locked-out users"); in the §5 table its `JTBD` cell reads
 `guards 5.x` (the metric(s) it protects), not a `Jn`.
@@ -340,6 +354,8 @@ not in this table stays Advisory and never gates.
 | §5 outcome with target but no basis tag | −3 each |
 | §5 `baseline` basis with no cited source for its starting number (circular — restates the target) | −3 each |
 | §5 measurement method not instrumentable and not an Open Question | −3 each |
+| §5 Method unclassified (no `query`/`event`/`external` prefix) | −3 each |
+| §5 `event`-class Method names no event (`emit <name> when <trigger>` missing) | −3 each |
 | Counter-metric names no metric/failure-mode it guards | −5 |
 | Kill criteria missing or not outcome-tied | −8 |
 | Orphan slice (serves no JTBD), or a `Serves`/`JTBD` `Jn` not defined in §3/§4 (dangling ref) | −5 each |
