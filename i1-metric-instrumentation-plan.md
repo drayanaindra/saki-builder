@@ -187,5 +187,18 @@ with S7 verifying the cross-skill contract.
 > Human: add notes, corrections, constraints here.
 
 ---
-Status: [x] Draft  [ ] Annotated  [ ] Approved  [ ] In Progress  [ ] Complete
+Status: [ ] Draft  [ ] Annotated  [x] Approved  [ ] In Progress  [x] Complete
 Readiness Gate: [x] Evidence Ledger present and every blocking item cited  [x] Blocking Set empty  [x] Unknowns ≤ 2
+
+## Implementation Result (2026-07-09)
+
+All 7 steps done, one commit each, `node test/validate.js` green after every step. Success criteria all ✅:
+- S1 `prd/SKILL.md` §5 Method classified query/event/external + event-must-name-emit; deduction row added — `7110fd4`
+- S2 `prd-review/SKILL.md` row 5b + Judge-2 items 6/7 flag unnamed event-Method & non-asserting criterion — `3b1b93b`
+- S3 `rplan/SKILL.md` Step-1 ingests event-Method → emit Steps row + firing criterion (reuse-first) — `2f66e0c`
+- S4 `qa/SKILL.md` EVENT criterion type + edge-case derivation (fires-once / not-on-error / payload) — `941b4a2`
+- S5 `reviewer/SKILL.md` Correctness line: declared-but-never-fired / error-path / double-emit = finding — `aabe3d7`
+- S6 `approved/SKILL.md` emit step = Test-Along, not trivial Test-After — `fe593b2`
+- S7 validation sweep: validate.js exit 0 · §1–§16 = 16 (not renumbered) · chain consistent across 6 seams.
+
+Distribution: `~/.claude/skills` symlinks into `config/skills/` → change is live for global main-thread skills now; the saki-builder **plugin cache** copy updates via `/saki-builder:update` (separate, as scoped in No-Gos).
