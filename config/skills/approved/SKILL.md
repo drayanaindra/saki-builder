@@ -47,6 +47,16 @@ If the plan has no Evidence Ledger, warn (do not block):
   Recommend re-running /saki-builder:rplan to generate one before next implementation.
 ```
 
+**Blocking-Set gate (readiness).** If the Evidence Ledger's **Blocking table is non-empty**, STOP — do not
+implement. A verbal "approved" does not clear the readiness gate; the gate is *Blocking Set empty* (the same
+bar `/saki-builder:build` auto-enforces before it runs a slice):
+```
+❌ Plan has [N] unresolved Blocking item(s) — not ready to implement:
+  • [cited Blocking row]
+Resolve each (re-run /saki-builder:rplan), or demote a genuinely non-load-bearing one to Advisory with a
+cited reason. Then re-run /saki-builder:approved.
+```
+
 ## Step 3: Confirm and begin
 
 Respond with:

@@ -159,7 +159,10 @@ the parent's name.
 4. When `/saki-builder:prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Item: <id>`**
    (pass the item id so `/saki-builder:prd` stamps it; if it wrote `—`, edit the header to `**Item:** <id>`).
 5. Record `**Child PRD:** prd-<slug>.md` under the `### <id>` block in `tasks/roadmap.md`.
-6. Set `phase:"review"`, `prd_written:true`.
+6. Set `phase:"review"`, `prd_written:true`. Advance the **PRD doc header** `**Status:** Draft → In Review`
+   — the autonomous review is starting, and `/saki-builder:prd`'s manual `Draft → In Review` bump doesn't
+   fire under `/saki-builder:pickup`, so set it here (otherwise the doc reads a stale `Draft` right up to the
+   proto lock). `/saki-builder:proto` later overwrites it to `Locked`.
 
 ---
 
@@ -280,11 +283,14 @@ Capture each assigned id (`F<n>`).
 
 ### Step 4 — Record the phase chain
 Under the **parent** `### <id>` block in `tasks/roadmap.md`, add
-`**Phase chain:** F7 (MVP) → F8 [trigger: …] → F9 [trigger: …]`. Keep the parent **`In-progress`** and
+`**Phase chain:** F7 (MVP) → F8 [trigger: …] → F9 [trigger: …]` **and** a machine-readable
+`**Superseded by:** F7, F8, F9` line (the phase-chain ids). Keep the parent **`In-progress`** and
 annotate it `Recut into phase chain — MVP <mvp-id> active` (there is no `Recut` status; do not invent
 one). The deferred children stay `Planned`. The parent's `Child PRD:` (the non-converged PRD) is now
 **superseded by the `Phase chain:`** — leave that PRD as a historical artifact; each child gets its own
-fresh PRD when picked up. Do not re-point or delete it.
+fresh PRD when picked up. Do not re-point or delete it. The parent is **not stranded**: when the last
+phase-chain child ships, `/saki-builder:build` flips the parent to `Shipped` (see build's Completion
+Output); the roadmap view renders it `recut → superseded` until then.
 
 ### Step 5 — Continue on the MVP only (the rest stay Planned)
 Re-point the run to the **MVP child**: update the state file's `slug` / `prd` / `title` to the MVP child,

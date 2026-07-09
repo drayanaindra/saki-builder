@@ -545,6 +545,11 @@ Advance the saved header `Status: Draft → In Review`, then suggest next steps 
 - Then (only once **Locked**): *"Run `/saki-builder:build tasks/prd-[slug].md` — it plans each slice with
   `/saki-builder:rplan` and ships it. `/saki-builder:build` won't start until the PRD is Locked."*
 
+> When this PRD is on the roadmap (`Item:` set), `/saki-builder:proto` and `/saki-builder:build` also accept
+> the **item id** — `proto E3` and `proto tasks/prd-[slug].md` are equivalent (the id resolves via the
+> roadmap `Child PRD:` link). Prefer the id form to match `/saki-builder:pickup`'s handoff; the path form is
+> the standalone (no-item) fallback.
+
 Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s job. The disciplined path is
 `/saki-builder:pickup <id>` → `/saki-builder:proto <id>` (locks) → `/saki-builder:build <id>` (`<id>` = E<n>/F<n>).
 

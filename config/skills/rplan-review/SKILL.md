@@ -1,7 +1,7 @@
 ---
 name: rplan-review
 description: Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Leads on implementation reality (each step's failure paths + the build work it implies but omits), grounds every finding to a cited step and verifies blockers against the code before they count, and requires experts to prescribe the exact plan edit. Gates on failure-surface completeness. Blocks on missing sections. Run after /saki-builder:rplan before /saki-builder:approved.
-user-invocable: false
+user-invocable: true
 ---
 
 # Plan Review — Structural Scan + Parallel Expert Review

@@ -16,8 +16,11 @@ load-bearing seam claim against the actual file text** before recording it. No p
 > **B-2** (`build`, `approved`, `qa`, `rplan`), **B-4**/**B-5** (`build`). **B-1** (manifest path) is also
 > closed by consolidating **all** workflow artifacts (plans + `-context.md`/`-flow.md`) under `tasks/`
 > (they were in the project root) — this also fixed a latent `proto`↔`rplan` flow-file mismatch (`proto`
-> already read `tasks/*-flow.md` while `rplan` wrote to root). Remaining open (LOW, deferred): **B-3, P-2,
-> P-3, P-4, B-6**.
+> already read `tasks/*-flow.md` while `rplan` wrote to root). The 5 LOW findings (**B-3, P-2, P-3, P-4,
+> B-6**) are now **also fixed**: B-3 `approved` Blocking-Set gate; P-2 `prd` id-form alignment; P-3 `pickup`
+> advances the PRD doc Status `Draft → In Review`; P-4 `pickup` `Superseded by:` marker + `build` parent-close
+> when the last phase-chain child ships + roadmap render; B-6 `rplan-review` made `user-invocable: true`
+> (matching the README/description/`rplan` references). **All 14 findings resolved.**
 > `node test/validate.js` passes. See the per-finding **Fix** blocks for what changed.
 
 **Verdict.** The **spine holds** — the two seams most likely to silently break a chain are actually sound:

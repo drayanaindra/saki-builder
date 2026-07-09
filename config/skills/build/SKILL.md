@@ -503,7 +503,13 @@ PRD's item to `Shipped` in `tasks/roadmap.md`** (if one exists). Identify the it
 
 If a matching item is found and it is not already `Shipped`, set its `**Status:**` to `Shipped` and
 `**Updated:**` to today (`date +%F`) — the roadmap lifecycle closes here (Planned → In-progress → Shipped).
-If **no** item references this PRD (a standalone PRD build), skip silently — there is nothing to flip. Then output:
+If **no** item references this PRD (a standalone PRD build), skip silently — there is nothing to flip.
+
+**Phase-chain parent close (recut initiatives).** If the just-Shipped item (`F<n>`) appears in some parent
+`### <id>` block's `**Phase chain:**` / `**Superseded by:**` line, check every phase id in that chain: once
+**all** are `Shipped`, flip the **parent** to `Shipped` too (`**Status:** Shipped`, `**Updated:**` today) —
+closing the recut umbrella so the parent isn't stranded at `In-progress` forever. If any sibling phase is
+still `Planned`/`In-progress`, leave the parent as-is. Then output:
 
 ```
 --- /saki-builder:build COMPLETE ---

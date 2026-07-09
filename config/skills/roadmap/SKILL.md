@@ -42,6 +42,9 @@ Add or manage items with **`/saki-builder:add`** (this skill never adds items �
 2. Parse every `### <id> · <title>` block and its `**Type:**` / `**Status:**` fields.
 3. Print a compact portfolio grouped by status (Planned · In-progress · Shipped · Blocked). Show each
    item's Type inline. If there are zero items → `Roadmap is empty — add one with /saki-builder:add.`
+   A parent carrying a `**Phase chain:**` / `**Superseded by:**` line renders with a
+   `(recut → superseded by <chain>)` suffix so it reads as decomposed, not stranded — it closes to
+   `Shipped` once its last phase ships.
 
 ```
 ROADMAP — <product name>   (updated <YYYY-MM-DD>)
