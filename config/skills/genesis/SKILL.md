@@ -114,7 +114,8 @@ Reuse `/deep-research` (preferred) or `WebSearch`. Answer only:
 
 1. **Reference stack & conventions** for this product *type* (what comparable MVPs are built with).
 2. **The thinnest viable architecture** — the one load-bearing decision this product forces (e.g.
-   server-rendered vs SPA, sync vs job-queue, single service vs split).
+   server-rendered vs SPA, sync vs job-queue). *(The frontend/backend split itself is NOT a decision —
+   it's a hard rule; see G3. This is about the architecture WITHIN that split, and the backend language.)*
 3. **Include vs defer** — what a comparable MVP ships in v1 vs pushes to later.
 
 **Bound it** — a few targeted queries, not an open-ended survey (avoid the rabbit-hole; the point is to
@@ -146,13 +147,19 @@ Set `phase:"foundations"`. Decide the **detailed requirements of what to build**
 recorded with a **cited rationale + the rejected alternative** (`/saki-builder:prd` §7 Decision-Log
 discipline). Ground every choice in G1 research + the G2 vision + the MVP goal.
 
-**Stack — house defaults auto-applied; backend is ARCHITECTURE-GATED (ask only when a separate service is warranted):**
+**⛔ HARD RULE — frontend/backend separation (from scratch, NON-NEGOTIABLE).** Every genesis product is
+laid out as **two separate top-level folders — `frontend/` and `backend/`** — from the very first commit.
+This applies to **EVERY** MVP, however simple, and it **overrides any unified full-stack default**: there is
+**no** single Next.js app that serves both the UI and the API. Frontend and backend never share one app or
+one folder. The split is fixed; only the backend *language* is chosen at the gate below.
+
+**Stack — house defaults auto-applied; the `frontend/`+`backend/` split is fixed, only the backend LANGUAGE is chosen at G3 (always prompted unless already specified):**
 
 | Layer | Default (auto-applied) | How chosen |
 |-------|------------------------|-----------|
-| **Frontend** | **Next.js + Tailwind + shadcn/ui** | House default — matches `/saki-builder:proto` GATE 2's shadcn/Tailwind path, so proto recognizes the scaffold. Override only if G1/the vision clearly points elsewhere. |
-| **Database** | **Postgres** | House default. Override only with a clear reason from G1. |
-| **Backend** | **architecture-gated** | From **G1's architecture**, decide first: does the MVP need a **separate backend service**? **YES** → prompt the human *"Backend language — **Go, Rust, or Python**?"*, record the pick + one-line why (never silently default the language). **NO** — full-stack Next.js (route handlers / server actions) covers it → **`none`**, and defer the language to a **trigger-gated roadmap item** (G5) that fires when the first async job / non-web client appears (the language is chosen *then*). Never bolt a separate service onto an MVP that doesn't need one. |
+| **Frontend** (`frontend/`) | **Next.js + Tailwind + shadcn/ui** | House default, scaffolded into the `frontend/` folder — matches `/saki-builder:proto` GATE 2's shadcn/Tailwind path, so proto recognizes the scaffold. Override only if G1/the vision clearly points elsewhere. |
+| **Database** (`backend/`) | **Postgres** | House default, owned by the backend. Override only with a clear reason from G1. |
+| **Backend** (`backend/`) | **always a separate service; language ALWAYS prompted unless already specified** | A separate `backend/` service is **always** created (the hard rule above — never folded into the frontend). The **language** is resolved so: **(1)** if the prompt/idea **or a project file** (G1 research, the G2 vision, any existing requirement/stack doc) **already specifies the backend language/stack → use that requirement** — record it + cite the source, do **not** prompt. **(2)** Otherwise → **always PROMPT the human**: *"Backend language — **Go, Rust, Python, or TypeScript/Node**?"* Never silently default. Ground the recommendation in G1's architecture (async/job-queue/compute-heavy → Go/Rust/Python; UI-adjacent API → TypeScript/Node) but still ask. Record the pick + one-line why. |
 
 **Also decide (each: decision · why · rejected alternative):**
 - **Design-system approach** — shadcn/ui primitives + Tailwind tokens is the default; note any bespoke
@@ -181,17 +188,19 @@ skeleton, a **real design system (tokens + primitives + app shell)**, and the **
 
 **Slice 1 does NOT auto-run the scaffold** (it is the irreversible file-creation step — automated in
 Slice 2). Instead, print a concrete, copy-pasteable checklist derived from the approved `foundations.md`,
-e.g. (for the default frontend + the chosen backend):
+e.g. (default frontend in `frontend/` + the separate backend in `backend/`):
 
 ```
 G4 — Scaffold checklist (run these, then continue with /saki-builder:init-env):
-  Frontend + design system:
-    [ ] npx create-next-app@latest . --ts --tailwind --app --eslint
-    [ ] npx shadcn@latest init            # tokens + primitives (matches proto GATE 2)
+  ⛔ HARD RULE: frontend and backend are SEPARATE top-level folders — never one app.
+  Frontend + design system  (frontend/):
+    [ ] npx create-next-app@latest frontend --ts --tailwind --app --eslint
+    [ ] (cd frontend && npx shadcn@latest init)     # tokens + primitives (matches proto GATE 2)
     [ ] add the app shell (nav/header/sidebar) + the vision's implied primitives from design.md
-  Backend (<Go|Rust|Python>):
-    [ ] scaffold the service skeleton for <language> (one load-bearing arch decision from foundations.md)
-  Database (Postgres):
+  Backend  (backend/  —  <TypeScript/Node | Go | Rust | Python>):
+    [ ] scaffold the service skeleton for <language> under backend/ (one load-bearing arch decision from foundations.md)
+    [ ] expose the API base URL to the frontend via an env var (never hardcode the backend origin)
+  Database (Postgres — owned by backend/):
     [ ] create the initial schema/migration for the entities in foundations.md (shape only)
   Claude dev env:
     [ ] /saki-builder:init-env         # CLAUDE.md, hooks, agents, memory (Claude env — not the product)
@@ -251,15 +260,18 @@ Maintain `tasks/.genesis-state.json`. Update after every phase transition. Times
 
 - **Genesis is Phase 0 — it produces the loop's inputs, never forks the loop.** Downstream is
   `/saki-builder:pickup` → `/saki-builder:prd` → `/saki-builder:proto` → `/saki-builder:build`, unchanged.
-- **One human gate, at G3 (foundations).** G0 is a lean confirm; the backend is decided in G3 (Go/Rust/Python
-  prompted only when G1's architecture warrants a separate service); everything else is autonomous. Never write
+- **One human gate, at G3 (foundations).** G0 is a lean confirm; the frontend/backend split is fixed and the
+  backend *language* is decided in G3 — **always prompt Go/Rust/Python/TypeScript-Node, unless the prompt or a
+  file already specifies it** (then honor that, no prompt); everything else is autonomous. Never write
   `foundations.md`/`design.md` or scaffold before G3 approval.
 - **Reuse-first.** GATE 1 refuses to genesis a repo that already has a product. Reuse `frontend-design`,
   `/deep-research`, `/saki-builder:init-env`, `/saki-builder:roadmap`, `/saki-builder:add` — never re-implement them.
-- **Backend is architecture-gated, not auto-defaulted.** From G1: a separate service is warranted →
-  **prompt Go / Rust / Python** (never silently pick a language); full-stack Next.js covers it → **`none`**,
-  and defer the language to a trigger-gated roadmap item. Frontend (Next.js + Tailwind + shadcn/ui) and DB
-  (Postgres) are house defaults, overridable with a clear reason from G1/the vision.
+- **Frontend and backend are ALWAYS separate top-level folders (`frontend/` + `backend/`) — HARD RULE, no
+  exceptions.** From scratch there is no unified full-stack app; a `backend/` service always exists. The
+  backend **language** is **always prompted** (*Go / Rust / Python / TypeScript-Node*) — **unless the prompt
+  or a project file already specifies it**, in which case honor that stated requirement and skip the prompt.
+  Never silently default the language. Frontend (Next.js + Tailwind + shadcn/ui) and DB (Postgres, owned by
+  the backend) are house defaults, overridable with a clear reason from G1/the vision.
 - **The vision (G2) is throwaway and system-LESS** — it drives the foundation choice; it is not the deliverable.
 - **Never fabricate research or foundations.** If G1 is offline, say so and proceed on the defaults + vision.
 - **Always persist state before ending a turn** so a resume (context clear, killed turn) lands on the right phase.
@@ -270,7 +282,8 @@ Maintain `tasks/.genesis-state.json`. Update after every phase transition. Times
 |---|---|
 | Running genesis on a repo that already has a stack/code | GATE 1 refuses — use `/saki-builder:add` → `/saki-builder:pickup` for an existing product |
 | Writing `foundations.md` / scaffolding before the human approves G3 | G3 is the single BLOCKING gate — present, get approval, then write |
-| Bolting a Go/Rust/Python service onto an MVP that doesn't need one | Gate on G1: separate service needed → ask Go/Rust/Python; full-stack Next.js covers it → `none`, defer the language to a trigger-gated roadmap item |
+| Co-mingling frontend and backend in one app/folder (e.g. a single full-stack Next.js serving UI + API) | HARD RULE: always split into top-level `frontend/` + `backend/` from scratch — even a simple MVP; there is no unified-app option |
+| Silently defaulting the backend language (or skipping the prompt) | The split is mandatory; the language is **always prompted** — Go/Rust/Python/TypeScript-Node — UNLESS the prompt or a project file already specifies it (then honor that requirement, cite the source, don't prompt) |
 | Making the G2 vision high-fidelity or treating it as the deliverable | It's a throwaway, system-less directional mock that informs G3 — full fidelity is `/saki-builder:proto` after scaffold |
 | Letting G1 research rabbit-hole into a report | Time-box it — a few targeted queries to ground G3, nothing more |
 | Auto-scaffolding in Slice 1 | Slice 1 prints the G4 checklist; auto-scaffold is Slice 2 (G4 is the irreversible step) |
