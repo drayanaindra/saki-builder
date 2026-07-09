@@ -162,8 +162,17 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
 | **Backend** (`backend/`) | **always a separate service; language ALWAYS prompted unless already specified** | A separate `backend/` service is **always** created (the hard rule above — never folded into the frontend). The **language** is resolved so: **(1)** if the prompt/idea **or a project file** (G1 research, the G2 vision, any existing requirement/stack doc) **already specifies the backend language/stack → use that requirement** — record it + cite the source, do **not** prompt. **(2)** Otherwise → **always PROMPT the human**: *"Backend language — **Go, Rust, Python, or TypeScript/Node**?"* Never silently default. Ground the recommendation in G1's architecture (async/job-queue/compute-heavy → Go/Rust/Python; UI-adjacent API → TypeScript/Node) but still ask. Record the pick + one-line why. |
 
 **Also decide (each: decision · why · rejected alternative):**
-- **Design-system approach** — shadcn/ui primitives + Tailwind tokens is the default; note any bespoke
-  component families the vision (G2) implies (fed to G4 as the primitive set + app-shell spec).
+- **Design-system approach — run Part 0 of the Design System Contract**
+  (`${CLAUDE_PLUGIN_ROOT}/config/docs/design-system-contract.md`). This is the *one* time it runs.
+  - **Part 0 Step 1** — pin the DIRECTIONAL REFERENCE: 1–2 concrete anchors from the product's own world
+    (materials, vernacular, artifacts), never an adjective ("modern/clean"), and never an AI-default look
+    (Part F) unless the reference actually asks for it.
+  - **Part 0 Step 2** — derive the token values from that direction (palette 4–6 hex · ≤6-step type scale ·
+    8px spacing · radius/elevation/motion), then critique against the brief: revise any token that reads
+    like the generic default you'd produce for *any* similar project, and say what changed. shadcn/ui
+    primitives + Tailwind tokens is the default binding (Part B "Format binding").
+  - The surviving tokens + the DIRECTIONAL REFERENCE + any bespoke component families the G2 vision implies
+    become the **Part A block** written to `design.md` (below), and feed G4 as the primitive/app-shell spec.
 - **Architecture** — the ONE load-bearing decision from G1 (not a component diagram). Cite `docs/modular-architecture.md`.
 - **Initial DB schema** — entities + relations at **shape altitude** (the nouns and how they relate),
   NOT full DDL. Full migrations are `/saki-builder:rplan`'s job later. Cite `docs/ddd-patterns.md`.
@@ -171,8 +180,11 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
 **Write two artifacts** (only after the human approves — see the gate):
 - `foundations.md` (repo root) — the foundations spec + Decision Log. This is also the **greenfield-mode
   marker** the loop's touch-ups key off (`/saki-builder:prd` reads it instead of grepping empty code).
-- `design.md` (repo root) — seed the design system doc `/saki-builder:proto` GATE 2 option (a) references
-  (tokens + the primitive/app-shell set the vision implies).
+- `design.md` (repo root) — the project's **Part A block** from the Design System Contract, filled with the
+  Part 0-derived values (PROJECT · PRIMARY LANGUAGE · DIRECTIONAL REFERENCE · the eight color roles +
+  type/spacing/radius/elevation/motion tokens · and a `GOLD-STANDARD COMPONENT:` line left as
+  `<pending — built in G4>`). This is the design system doc `/saki-builder:proto` GATE 2 reads; Parts B–F stay
+  invariant in the contract and are never copied here.
 
 **THE GATE (BLOCKING — HIGH risk, hard to reverse).** Present the foundations to the human in plain
 English — stack (incl. the backend pick), the architecture decision, the schema shape, the design-system
@@ -196,7 +208,12 @@ G4 — Scaffold checklist (run these, then continue with /saki-builder:init-env)
   Frontend + design system  (frontend/):
     [ ] npx create-next-app@latest frontend --ts --tailwind --app --eslint
     [ ] (cd frontend && npx shadcn@latest init)     # tokens + primitives (matches proto GATE 2)
+    [ ] write the design.md Part A tokens into frontend/app/globals.css as --color-<role> vars + @theme
+        (Design System Contract Part B "Format binding" — the 8 roles proto GATE 2 checks)
     [ ] add the app shell (nav/header/sidebar) + the vision's implied primitives from design.md
+    [ ] build the GOLD-STANDARD component (Part 0 Step 3: Button or Input) fully to the
+        Design System Contract Part C, via the Part E layers, with a human review — then record its
+        path in design.md's `GOLD-STANDARD COMPONENT:` line (every later component is built its way)
   Backend  (backend/  —  <TypeScript/Node | Go | Rust | Python>):
     [ ] scaffold the service skeleton for <language> under backend/ (one load-bearing arch decision from foundations.md)
     [ ] expose the API base URL to the frontend via an env var (never hardcode the backend origin)

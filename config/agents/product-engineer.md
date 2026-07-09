@@ -34,6 +34,10 @@ Use the existing skills — don't reimplement them:
 - **Implementation discipline** → `/saki-builder:approved` (TDD, commit-per-step, YAGNI)
 - **Verification** → `/saki-builder:qa` (acceptance-criteria check)
 - **Review** → `/saki-builder:reviewer` (fresh-context review before commit)
+- **UI components** → build to the **Design System Contract**
+  (`${CLAUDE_PLUGIN_ROOT}/config/docs/design-system-contract.md`): tokens-only (Part B), every
+  applicable state + the quality floor (Part C/F), built "the way the gold-standard is built" (Part A).
+  No ad-hoc styling, no raw values. Use `/saki-builder:component` to generate one.
 
 ## 1. Understand before building
 

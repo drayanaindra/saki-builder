@@ -297,7 +297,11 @@ This gate is the entire reason "1:1" is true rather than aspirational. Detect:
   Mantine / Ant Design / Radix in `package.json`; or a local `src/components/` (or `app/components`)
   library with reusable primitives.
 - **Tokens** — Tailwind `@theme` directive / `tailwind.config.*`; CSS custom properties
-  (`--color-*`, `:root` vars); a `tokens.*` / `theme.*` file.
+  (`--color-*`, `:root` vars); a `tokens.*` / `theme.*` file. The canonical shape is the
+  **Design System Contract Part B** role schema (`${CLAUDE_PLUGIN_ROOT}/config/docs/design-system-contract.md`):
+  the eight color roles (`primary · surface · surface-raised · border · text · text-muted · danger · success`)
+  should exist as `--color-<role>` / `theme.colors.<role>`. If `design.md` (the project's Part A block) is
+  present, read it — it names the token source. Tokens that exist but don't fill the Part B roles = **Partial**.
 - **Framework / harness** — React, Next.js, Vite, Remix, Vue, SvelteKit (from `package.json` +
   config files) — decides how to mount a preview route, and whether Storybook is present.
 - **App shell / layout** — the real page chrome the feature will live inside: a root `layout.*`
@@ -564,8 +568,20 @@ Apply each confirmed ⚠️/❌ from Step 2.5 using the resolution path its spec
   Token additions:          - tokens.status.review: '#a371f7'  (or --color-status-review: #a371f7)
   ```
 
-**Gate:** typecheck the new components/tokens before Step 5 — they are imported next, so a broken one crashes
-every frame. Codify the ✅-confirmed ⚠️/❌ **and any BIG design-only 🔶 that Step 2.5 auto-decided** (it is now
+**Build every NEW/⚠️ component to the Design System Contract** (`${CLAUDE_PLUGIN_ROOT}/config/docs/design-system-contract.md`):
+tokens-only (Part B roles, no raw values), every applicable state (Part C.3), the Part F quality floor, and
+built the way the project's **gold-standard component** (`design.md` Part A) is built. Real component, not an
+approximation — that's the whole point of codifying before render.
+
+**Gate (BLOCKING — a component that fails is NOT done):**
+1. **Part C self-check** passes for each new/⚠️ component — zero hardcoded values (all trace to Part B
+   tokens) · `default·hover·focus·active·disabled` present + `loading·error·empty` where reachable · contrast
+   ≥ 4.5:1 · touch target ≥ 44px · visible focus ring · keyboard-operable + correct ARIA · matches the
+   gold-standard. Any unchecked box → fix before Step 5, do not render an incomplete component.
+2. **Typecheck** the new components/tokens before Step 5 — they are imported next, so a broken one crashes
+   every frame.
+
+Codify the ✅-confirmed ⚠️/❌ **and any BIG design-only 🔶 that Step 2.5 auto-decided** (it is now
 a concrete set of component/layout changes — build it here, per its recorded decision). **Never build a
 scope-altering 🔶** — that one routed to `/saki-builder:prd`, not here. If 2.5 found no ⚠️/❌/🔶 to build, state
 "No additions to codify" and continue to Step 3.
