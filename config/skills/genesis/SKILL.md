@@ -173,6 +173,11 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
     primitives + Tailwind tokens is the default binding (Part B "Format binding").
   - The surviving tokens + the DIRECTIONAL REFERENCE + any bespoke component families the G2 vision implies
     become the **Part A block** written to `design.md` (below), and feed G4 as the primitive/app-shell spec.
+- **Analytics / measurement** — **GA4 is the default** so the product is measurable from release day:
+  wire `gtag.js` into the app shell behind a `NEXT_PUBLIC_GA_MEASUREMENT_ID` env (no-op when the env is
+  empty — same feature-flag-via-empty-env discipline as every optional integration). Feeds G4 as a
+  scaffold step and is the default measurement Method for `/saki-builder:prd` §5 metrics. Override only
+  with a clear reason from G1 (e.g. a privacy-first product picks a cookieless analytics stack).
 - **Architecture** — the ONE load-bearing decision from G1 (not a component diagram). Cite `docs/modular-architecture.md`.
 - **Initial DB schema** — entities + relations at **shape altitude** (the nouns and how they relate),
   NOT full DDL. Full migrations are `/saki-builder:rplan`'s job later. Cite `docs/ddd-patterns.md`.
@@ -188,7 +193,7 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
 
 **THE GATE (BLOCKING — HIGH risk, hard to reverse).** Present the foundations to the human in plain
 English — stack (incl. the backend pick), the architecture decision, the schema shape, the design-system
-approach — and ask: *"Approve these foundations to scaffold, or adjust?"* Do **NOT** write `foundations.md`
+approach, the analytics default (GA4) — and ask: *"Approve these foundations to scaffold, or adjust?"* Do **NOT** write `foundations.md`
 / `design.md` or advance to G4 until the human approves. On approval, write both artifacts, set
 `phase:"scaffold-ready"`, and record the approval in the state file (the durable proof — Step G4 trusts it).
 
@@ -214,6 +219,9 @@ G4 — Scaffold checklist (run these, then continue with /saki-builder:init-env)
     [ ] build the GOLD-STANDARD component (Part 0 Step 3: Button or Input) fully to the
         Design System Contract Part C, via the Part E layers, with a human review — then record its
         path in design.md's `GOLD-STANDARD COMPONENT:` line (every later component is built its way)
+  Analytics (measurement — default GA4):
+    [ ] wire gtag.js into the app shell reading NEXT_PUBLIC_GA_MEASUREMENT_ID (no-op when env is empty)
+    [ ] expose a typed track(event, params) helper — the call site for §5 metric events
   Backend  (backend/  —  <TypeScript/Node | Go | Rust | Python>):
     [ ] scaffold the service skeleton for <language> under backend/ (one load-bearing arch decision from foundations.md)
     [ ] expose the API base URL to the frontend via an env var (never hardcode the backend origin)
