@@ -2,6 +2,18 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.15.0 — 2026-07-10
+
+- **`/scaffold-library` is now polyglot (Go · Python · Rust · Node · TypeScript · Ruby).** Previously the
+  skill assumed Node/TypeScript — in a Go, Rust, Python, or Ruby project it produced a wrong (npm) scaffold.
+  It now detects the language from the manifest (`go.mod` / `Cargo.toml` / `pyproject.toml` / `package.json`
+  → Node vs TypeScript via `tsconfig.json` / `*.gemspec`|`Gemfile`), mirroring the detection-branch pattern
+  already used by `/scaffold-cli` and `/scaffold-tui`, and scaffolds each language's manifest, build tool,
+  source layout, public-API surface, tests, linter, and CI. Ruby is net-new (canonical Bundler skeleton:
+  `lib/<name>.rb` + `version.rb` + `<name>.gemspec` + RSpec). A `language` input (default `auto`) drives the
+  greenfield case; the existing `runtime`/`format` inputs are preserved and scoped to Node/TypeScript.
+  Single entry point unchanged.
+
 ## 0.14.0 — 2026-07-09
 
 - **`/genesis` — a greenfield entry point that starts a product FROM SCRATCH.** The normal
