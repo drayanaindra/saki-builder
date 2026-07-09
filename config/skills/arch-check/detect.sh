@@ -43,7 +43,7 @@ count_sibling_imports() {
   grep -rhoE "(from modules\.[A-Za-z_][A-Za-z0-9_]*|@/features/[A-Za-z_][A-Za-z0-9_-]*)" \
       "$module_dir" 2>/dev/null \
     | sed -E 's#.*(modules\.|@/features/)##' \
-    | grep -vx "$self_name" \
+    | grep -Fvx "$self_name" \
     | sort -u | grep -c .
 }
 
