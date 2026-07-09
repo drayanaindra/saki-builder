@@ -286,31 +286,24 @@ Layer 4: LAYOUTS (extract at 2+ uses)
 
 ## CI Tripwire (Optional)
 
-Add to CI or pre-commit to get early warnings:
+The mechanical triggers above are implemented as a real, tested detector —
+`config/skills/arch-check/detect.sh`, driven by the `/saki-builder:arch-check` skill. It measures the
+per-module Stage 2→3 triggers (module `service.*` LOC, cross-module import count) **and** the Stage 1→2
+app metrics, then reports which fired per module — well beyond the file-size warning this section used to
+inline. It is read-only (detect + recommend, never rewrites code).
+
+Run it on demand:
 
 ```bash
-#!/bin/bash
-# arch-check.sh — warns when you're outgrowing your stage
-WARN=0
+bash config/skills/arch-check/detect.sh [repo-root]   # read-only; prints per-module metrics
+```
 
-# Backend: Python files over 300 lines
-while IFS= read -r file; do
-  lines=$(wc -l < "$file")
-  if [ "$lines" -gt 300 ]; then
-    echo "⚠ $file: $lines lines (consider splitting)"
-    WARN=1
-  fi
-done < <(find src -name "*.py" -not -path "*/migrations/*")
+To wire it into CI or pre-commit as an early warning, call the same script and treat any `fired=yes` line
+as a nudge (warn only, don't block — outgrowing a stage is a signal, not a failure):
 
-# Frontend: TSX files over 500 lines
-while IFS= read -r file; do
-  lines=$(wc -l < "$file")
-  if [ "$lines" -gt 500 ]; then
-    echo "⚠ $file: $lines lines (consider splitting into feature/)"
-    WARN=1
-  fi
-done < <(find src -name "*.tsx")
-
+```bash
+bash config/skills/arch-check/detect.sh . | grep -qE 'fired=yes' \
+  && echo "⚠ a module is outgrowing its stage — run /saki-builder:arch-check"
 exit 0  # warn only, don't block
 ```
 
