@@ -219,6 +219,11 @@ source**, don't merely restate the target), `benchmark` (an external/comparable 
 empty/absent Basis is fabricated precision; a `baseline N→M` whose starting number N has no cited
 source is a **circular basis** (it restates the target instead of grounding it) — cite N's source or
 tag the row `aspirational`.
+**Method** — how each metric is captured. **Default to a GA4 event** for any product-usage metric
+(`GA4 event <name>`) so the outcome is measurable the day the product ships (GA4 is the house analytics
+default, wired by `/saki-builder:genesis` foundations). Use a DB/query method only for server-side state
+GA4 can't see. A metric whose Method is a GA4 event MUST be backed by a §9 `observability` acceptance
+criterion asserting that event fires — that is how the default GA4 instrumentation actually reaches the build.
 Counter-metric must name the specific failure mode it guards (e.g. "guards 5.1: faster onboarding
 gamed by skipping verification → locked-out users"); in the §5 table its `JTBD` cell reads
 `guards 5.x` (the metric(s) it protects), not a `Jn`.

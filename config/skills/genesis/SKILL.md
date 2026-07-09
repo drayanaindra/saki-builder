@@ -157,6 +157,11 @@ discipline). Ground every choice in G1 research + the G2 vision + the MVP goal.
 **Also decide (each: decision · why · rejected alternative):**
 - **Design-system approach** — shadcn/ui primitives + Tailwind tokens is the default; note any bespoke
   component families the vision (G2) implies (fed to G4 as the primitive set + app-shell spec).
+- **Analytics / measurement** — **GA4 is the default** so the product is measurable from release day:
+  wire `gtag.js` into the app shell behind a `NEXT_PUBLIC_GA_MEASUREMENT_ID` env (no-op when the env is
+  empty — same feature-flag-via-empty-env discipline as every optional integration). Feeds G4 as a
+  scaffold step and is the default measurement Method for `/saki-builder:prd` §5 metrics. Override only
+  with a clear reason from G1 (e.g. a privacy-first product picks a cookieless analytics stack).
 - **Architecture** — the ONE load-bearing decision from G1 (not a component diagram). Cite `docs/modular-architecture.md`.
 - **Initial DB schema** — entities + relations at **shape altitude** (the nouns and how they relate),
   NOT full DDL. Full migrations are `/saki-builder:rplan`'s job later. Cite `docs/ddd-patterns.md`.
@@ -169,7 +174,7 @@ discipline). Ground every choice in G1 research + the G2 vision + the MVP goal.
 
 **THE GATE (BLOCKING — HIGH risk, hard to reverse).** Present the foundations to the human in plain
 English — stack (incl. the backend pick), the architecture decision, the schema shape, the design-system
-approach — and ask: *"Approve these foundations to scaffold, or adjust?"* Do **NOT** write `foundations.md`
+approach, the analytics default (GA4) — and ask: *"Approve these foundations to scaffold, or adjust?"* Do **NOT** write `foundations.md`
 / `design.md` or advance to G4 until the human approves. On approval, write both artifacts, set
 `phase:"scaffold-ready"`, and record the approval in the state file (the durable proof — Step G4 trusts it).
 
@@ -189,6 +194,9 @@ G4 — Scaffold checklist (run these, then continue with /saki-builder:init-env)
     [ ] npx create-next-app@latest . --ts --tailwind --app --eslint
     [ ] npx shadcn@latest init            # tokens + primitives (matches proto GATE 2)
     [ ] add the app shell (nav/header/sidebar) + the vision's implied primitives from design.md
+  Analytics (measurement — default GA4):
+    [ ] wire gtag.js into the app shell reading NEXT_PUBLIC_GA_MEASUREMENT_ID (no-op when env is empty)
+    [ ] expose a typed track(event, params) helper — the call site for §5 metric events
   Backend (<Go|Rust|Python>):
     [ ] scaffold the service skeleton for <language> (one load-bearing arch decision from foundations.md)
   Database (Postgres):
