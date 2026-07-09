@@ -2,6 +2,38 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.14.0 — 2026-07-09
+
+- **`/genesis` — a greenfield entry point that starts a product FROM SCRATCH.** The normal
+  roadmap→pickup→prd→proto→build loop can't start on an empty repo (`/proto` hard-STOPs with no design
+  system; `/prd` has no stack to ground against). `/genesis "<idea>"` manufactures those preconditions in
+  the order a product is born: G0 MVP goal → G1 bounded research → G2 a throwaway vision mock → G3 the
+  foundations spec (stack · design system · architecture · schema) behind **one** human approval gate →
+  G4 scaffold → G5 seed `tasks/roadmap.md` with the MVP epic and stop. It produces the loop's inputs, then
+  converges onto the existing loop unchanged. Frontend/backend are always separate top-level folders and
+  the backend language is always prompted; the **Design System Contract** is wired in so the scaffold
+  matches `/proto`'s GATE 2. (Slice 1: G4 is a printed checklist the human runs; auto-scaffold is Slice 2.)
+- **§5 success metrics are now instrumented end-to-end, not just declared (I1).** `/prd` classifies each
+  §5 `Method` as `query` / `event` / `external` and requires an event-class Method to name the event it
+  emits; `/prd-review` flags an unnamed one; `/rplan` ingests each event-class Method as a build step +
+  firing criterion; `/qa` gains an `EVENT` criterion type (asserts the emit fires on the trigger, not on
+  the error path); `/reviewer` flags a declared-but-never-fired metric; `/approved` treats an emit step as
+  Test-Along. A metric the PRD declares now ships as built, verified instrumentation.
+- **Built products default to GA4 analytics** so they are measurable at release without extra setup.
+- **Workflow seam audit — all 14 findings fixed** (trace in `dryrun-e2e-audit.md`). A dry-run of both entry
+  chains (greenfield + existing project) surfaced 14 handoff gaps between skills; all are resolved:
+  `/genesis` probes the real scaffold state and reports `GENESIS_READY` honestly (no false "GATE 2 passes"),
+  forces `--epic` for a deterministic `E1`, and runs its sub-skills non-interactively; `/pickup` pins the
+  PRD filename/slug and advances the PRD doc Status; the plan-track (`/rplan` → `/qa`) now seeds from and
+  closes out its roadmap `I/B` item (`Planned → In-progress → Shipped`); `/build` pins each slice's plan,
+  guards against empty-diff false-greens, binds the `Shipped` flip to `PRD_BUILD_COMPLETE`, blocks e2e-absent
+  on a multi-slice PRD, and closes a recut parent when its last phase ships; `/approved` enforces the
+  Blocking-Set readiness gate; `/rplan-review` is now `user-invocable`.
+- **All workflow artifacts now live under `tasks/`** (plans, `-context.md`, `-flow.md`) instead of the
+  project root — one folder alongside the PRDs, roadmap, and state files. Also fixes a latent mismatch where
+  `/proto` already read `tasks/*-flow.md` while `/rplan` wrote flow files to root. *Behavior change:* a fresh
+  `/rplan` writes `tasks/<task>-plan.md`; the readers (`/approved`, `/qa`, `/rplan-review`) look there.
+
 ## 0.13.0 — 2026-07-08
 
 - **`/pickup` now acts as a Senior PM when a PRD review dead-ends on scope — it recuts the initiative
