@@ -12,14 +12,14 @@ Trivial tasks (typo fix, single-line change) can skip to EXECUTE with inline con
 
 - Use planner subagent or plan mode
 - Read all relevant files before proposing changes
-- Write findings to `[task]-context.md` in project root (NOT in chat)
+- Write findings to `tasks/[task]-context.md` (NOT in chat)
 - Output: context file with file paths, current behavior, relevant patterns
 
 ## Phase 2: PLAN (structured)
 
 - Use plan template at `~/.claude/skills/rplan/template.md`
 - Build the Blocking Evidence Set, count unknowns, declare branch points
-- Write to `[task]-plan.md` in project root
+- Write to `tasks/[task]-plan.md`
 - Output: plan file ready for human annotation
 
 ### Readiness (Blocking Evidence Set)

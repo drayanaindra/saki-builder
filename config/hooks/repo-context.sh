@@ -61,9 +61,9 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
 	fi
 fi
 
-# Active plan files: top-level *-plan.md only (aligns with /rplan workflow).
+# Active plan files: tasks/*-plan.md (where /rplan writes) + top-level *-plan.md (repo dev plans).
 plans_line=""
-plans=$(find . -maxdepth 1 -name '*-plan.md' -type f 2>/dev/null | sort | sed 's|^\./||')
+plans=$(find . tasks -maxdepth 1 -name '*-plan.md' -type f 2>/dev/null | sort | sed 's|^\./||')
 if [ -n "$plans" ]; then
 	plans_line=$(echo "$plans" | paste -sd ',' - | sed 's/,/, /g')
 fi

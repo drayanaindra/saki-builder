@@ -25,7 +25,9 @@ print('Model set to claude-sonnet-4-6')
 
 ## Step 2: Load the plan + its research context
 
-Find the most recent `*-plan.md` in the project root. Read it. Extract:
+**If the caller (e.g. `/saki-builder:build`) named a specific plan file, use that exact path** — it pins
+implementation to the intended slice, not whichever `*-plan.md` is newest. Otherwise find the most recent
+`*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it. Extract:
 - All steps with their Test column and Committable flag
 - The **Evidence Ledger** — index every blocking item by the step number it cites. Items without a step number go in a "global" bucket.
 

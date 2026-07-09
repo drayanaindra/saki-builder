@@ -145,11 +145,15 @@ the parent's name.
 
 1. Init the state file (`phase:"prd"`, stamp `started_at`, `epic`, `slug`, `title`, `prd`).
 2. **Flip the item `Planned → In-progress`** in `tasks/roadmap.md` (update its `**Status:**` and `**Updated:**`).
-3. Invoke the `prd` skill, passing the **item seed** as the feature intent — compose a rich intent string
-   from the item so `/saki-builder:prd`'s Step 0/0.5/1 consume it autonomously (no human gate here — the shape
-   phase takes its autonomous fallback under `/saki-builder:pickup`):
+3. Invoke the `prd` skill. **Pass the item _title_ verbatim as the `feature` input** — nothing else folded
+   in. `feature` is the filename driver (`/saki-builder:prd` saves `tasks/prd-<slugify(feature)>.md`), so the
+   bare title is what makes the PRD land at exactly `tasks/prd-<slug>.md` and match the `**Child PRD:**` link
+   you record in step 5 (see the slug note above). Supply the rest of the **item seed** as
+   `/saki-builder:prd`'s grounding context — **NOT concatenated into `feature`** — so its Step 0/0.5/1 consume
+   it autonomously (no human gate here; the shape phase takes its autonomous fallback under
+   `/saki-builder:pickup`). The seed grounds the shape:
    - item **Goal** → the problem / desired outcome
-   - item **Target user & Job** → the JTBD (§3)
+   - item **Target user & Job** → the JTBD (§3) (also the `audience`)
    - item **User flow** → the recommended solution shape
    - item **Success signal** → an outcome/metric seed (§5) and appetite hint
 4. When `/saki-builder:prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Item: <id>`**

@@ -240,28 +240,56 @@ resumes at G5) — or continue to seed the roadmap now and scaffold in parallel.
 
 Seed the disciplined loop's entry artifact and stop.
 
-1. `/saki-builder:roadmap init` — scaffold `tasks/roadmap.md` (product name = the G0 product; default the repo name).
-2. Register the **MVP as the first epic/feature** via `/saki-builder:add` — compose a rich intent from the
-   G0 framing (goal · target user & job · the walking-skeleton flow · the success signal) so `/add` takes
-   its autonomous fallback (no prompts). Capture the assigned id (`E1`/`F1`).
+1. `/saki-builder:roadmap init "<product>"` — scaffold `tasks/roadmap.md`, **passing the G0 product name** so
+   init does not prompt (it only asks when no name is supplied; default the repo name).
+2. Register the **MVP as the first epic** via `/saki-builder:add --epic "<rich intent>"` — compose the rich
+   intent from the G0 framing (goal · target user & job · the walking-skeleton flow · the success signal) as a
+   **complete PRD-track shape**. **Pass `--epic` explicitly**: with a complete shape it triggers `/add`'s
+   autonomous-orchestrator fallback (recorded with **no prompt**) AND makes the id deterministic — on a
+   just-initialized roadmap the MVP is always **E1**. Capture the id (it will be `E1`) and use it verbatim below.
 3. **Trigger-gate the follow-on scope** — anything the G0 "NOT in the MVP" list or G1 "defer" bucket
    named goes on the roadmap as `Planned` with an **objective trigger** (a prod signal/query, not a date),
    reusing `/saki-builder:pickup`'s recut/trigger-gate philosophy. Register each via `/saki-builder:add`
    **sequentially** (the id counter collides on parallel adds).
 
-Set `phase:"handed-off"`, write state, and print:
+Before the handoff, **probe whether the design system is actually on disk** — the same signal
+`/saki-builder:proto` GATE 2 checks (a real component library + a token source), **not** `design.md` (only a
+doc). This stops the sentinel from claiming a precondition that isn't there:
 
-```
-GENESIS_READY: <product> — foundations approved · roadmap seeded (E1 = MVP)
-
-✅ Product foundations set. Next:
-   1. Run the G4 scaffold checklist above (if not done) — creates the real stack + design system + schema.
-   2. /saki-builder:pickup E1   — writes & reviews the MVP PRD (grounds on the scaffold).
-   3. /saki-builder:proto E1     — GATE 2 now PASSES (real design system exists); designs the UI + LOCKS the PRD.
-   4. /saki-builder:build E1     — ships the MVP slice-by-slice.
+```bash
+{ [ -f components.json ] || ls src/components/ui/* >/dev/null 2>&1; } \
+  && { ls tailwind.config.* >/dev/null 2>&1 || grep -rqs -- '--color-' .; } \
+  && echo SCAFFOLD_DONE || echo SCAFFOLD_PENDING
 ```
 
-`GENESIS_READY` on its own line is the terminal success sentinel.
+Set `phase:"handed-off"`, write state, and print — **branch the message on the probe** so the human is never
+told `/saki-builder:proto` can run when it can't:
+
+**If `SCAFFOLD_DONE`:**
+```
+GENESIS_READY: <product> — foundations approved · roadmap seeded (E1 = MVP) · scaffold: done
+
+✅ Product foundations set — the real design system is on disk. Next:
+   1. /saki-builder:pickup E1   — writes & reviews the MVP PRD (grounds on the scaffold).
+   2. /saki-builder:proto E1    — GATE 2 passes (design system exists); designs the UI + LOCKS the PRD.
+   3. /saki-builder:build E1    — ships the MVP slice-by-slice.
+```
+
+**If `SCAFFOLD_PENDING`** (the Slice-1 default — G4 is a printed checklist the human still runs):
+```
+GENESIS_READY: <product> — foundations approved · roadmap seeded (E1 = MVP) · scaffold: PENDING
+
+✅ Product foundations decided. ⚠ The design system is NOT on disk yet — /saki-builder:proto will stop at
+   GATE 2 until you scaffold it. Next:
+   1. Run the G4 scaffold checklist above FIRST, then /saki-builder:init-env — creates the real stack +
+      design system + schema. (Re-run /saki-builder:genesis afterward to re-probe, or just continue once done.)
+   2. /saki-builder:pickup E1   — writes & reviews the MVP PRD.
+   3. /saki-builder:proto E1    — GATE 2 passes ONCE the scaffold exists; designs the UI + LOCKS the PRD.
+   4. /saki-builder:build E1    — ships the MVP slice-by-slice.
+```
+
+`GENESIS_READY` on its own line is the terminal success sentinel — **both** branches emit it; the `scaffold:`
+field and the body tell the human whether `/saki-builder:proto` can run yet.
 
 ---
 

@@ -13,10 +13,14 @@ For Playwright edge cases (auth fixture imports, `addInitScript` safety, teardow
 
 ## Step 0: Find the active plan
 
-Find the most recently modified `*-plan.md` in the project root:
+**If the caller (e.g. `/saki-builder:build`) passed a specific plan-file path, use that exact file** — it pins
+QA to the intended slice instead of whichever `*-plan.md` is newest (a multi-slice build keeps several in the
+same dir). Otherwise find the most recently modified `*-plan.md` in `tasks/` (workflow artifacts live under
+`tasks/`, not the project root):
 
 ```bash
-ls -t $(pwd)/*-plan.md 2>/dev/null | head -1
+# caller-provided path wins; else newest in tasks/
+PLAN_FILE="${PLAN_FILE:-$(ls -t $(pwd)/tasks/*-plan.md 2>/dev/null | head -1)}"
 ```
 
 If no plan file found → stop: "No plan file found. Run /saki-builder:rplan first."
@@ -637,5 +641,11 @@ Criteria with no expected outcome (add to plan):
 - `NO_SPEC` is a warning — criterion had no `Playwright:` stub and no `Manual:` steps to derive from.
 - If a criterion says "verify X works" with no specifics → derive the test from the plan wiring.
 - After reporting, update the plan file's Success Criteria checkboxes: `[ ]` → `[x]` for PASS, `[!]` for FAIL.
+- **Plan-track roadmap close-out.** If the plan header carries `**Item:** I<n>` or `**Item:** B<n>` (a
+  Plan-track item seeded by `/saki-builder:rplan` Step 0.6) AND the final verdict is `✅ ALL PASS` (no FAIL,
+  no unresolved CRITICAL), flip that item to `Shipped` in `tasks/roadmap.md` (`**Status:** Shipped`,
+  `**Updated:**` today via `date +%F`). This closes the Plan-track lifecycle (Planned → In-progress →
+  Shipped), mirroring what `/saki-builder:build` does for PRD-track. Only for an `I<n>`/`B<n>` id, only on
+  all-pass — never for an `E<n>`/`F<n>` slice plan (those ship via `/saki-builder:build`), never on a FAIL.
 - **Never hardcode project paths.** All paths derived from `$(pwd)`, `FRONTEND_ROOT`, `PROJECT_ROOT`.
 - **MCP Playwright tools are only for `/saki-builder:qa` and explicit debug sessions.** Do not invoke `mcp__playwright__*` tools during regular coding work. This keeps the "on-demand" contract even though the MCP server is always loaded at session start.

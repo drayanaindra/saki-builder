@@ -58,6 +58,24 @@ Boundary? [what to skip / not include in this scope]
 
 ---
 
+### Step 0.6: Roadmap item seed (Plan-track — Improvement/Bug)
+
+If the invocation names a roadmap item id (`I<n>` or `B<n>`), or the prompt clearly refers to one:
+
+1. Read `tasks/roadmap.md` and find the `### <id>` block. If there's no match, say so and plan the prompt as-is.
+2. **Seed from the item — do NOT make the user restate it:** its **What** → the task / desired outcome, its
+   **Repro / Context** → the starting evidence. Confirm the item is Plan-track (an `E<n>`/`F<n>` id belongs to
+   `/saki-builder:pickup`, not here — redirect and stop).
+3. **Flip the item `Planned → In-progress`** in `tasks/roadmap.md` (update `**Status:**` + `**Updated:**` via
+   `date +%F`) — the Plan-track analogue of what `/saki-builder:pickup` does for PRD-track, so the roadmap
+   reflects that work started.
+4. **Stamp the plan** with `**Item:** <id>` in its header (Step 7) so `/saki-builder:qa` can close the loop
+   back to the roadmap (flip the item to `Shipped`) when every criterion passes.
+
+If no id is given (a raw standalone task), skip this and plan the prompt directly — unchanged behavior.
+
+---
+
 Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config/skills/rplan/template.md` (the sibling `template.md` in this skill's directory — glob for it if the variable isn't expanded).
 
 ## Process
@@ -91,7 +109,7 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
   - What API they call
   - What service logic runs
   - What DB state changes
-- Document findings in `[task]-context.md` in project root
+- Document findings in `tasks/[task]-context.md` (`mkdir -p tasks` first — alongside the plan under `tasks/`)
 
 **Spike Protocol (XP):** If during research you encounter an unknown that cannot be resolved by reading code (e.g., third-party API behavior, performance characteristics, library compatibility), run a timeboxed spike:
 1. Spawn a subagent with a 15-minute timebox question. For genuinely **external** unknowns (third-party API/library behavior, current pricing/limits, ecosystem facts), the spike may use `WebSearch` / `/deep-research` / a connected MCP server — not only code reading.
@@ -116,7 +134,7 @@ Fill in the plan template with:
 
 ### 2.5. User Flow Spec (user-facing tasks only)
 
-**Skip** if the task is backend-only (no UI change, no endpoint a user/role directly hits through the app). Otherwise, write `[task]-flow.md` alongside the plan.
+**Skip** if the task is backend-only (no UI change, no endpoint a user/role directly hits through the app). Otherwise, write `tasks/[task]-flow.md` alongside the plan (same `tasks/` dir).
 
 Purpose: behavior checkpoint the user reads before approval to verify the plan will behave as expected. Also consumable by `/saki-builder:qa` to lift Playwright scenarios.
 
@@ -408,7 +426,11 @@ Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking i
 
 ### 7. Output with Next Action Recommendation
 
-- Write full plan to `[task]-plan.md` in project root
+- Write full plan to `tasks/[task]-plan.md` (`mkdir -p tasks` first — every workflow artifact lives under
+  `tasks/`, not the project root). **If a `/saki-builder:build` slice invocation supplied a slice-scoped name,
+  honor it** — write `tasks/<prd-slug>-slice<N>-plan.md` so each slice's plan is a distinct file, not a
+  newest-wins `*-plan.md` several slices share. **If seeded from a roadmap item (Step 0.6), stamp
+  `**Item:** <id>` in the plan header** so `/saki-builder:qa` can flip that item to `Shipped` on all-pass.
 - Present plan summary in chat with:
   - Blocking count (0 = ready)
   - Risk level
