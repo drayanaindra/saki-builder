@@ -164,9 +164,14 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
 **Also decide (each: decision · why · rejected alternative):**
 - **Design-system approach — run Part 0 of the Design System Contract**
   (`${CLAUDE_PLUGIN_ROOT}/config/docs/design-system-contract.md`). This is the *one* time it runs.
-  - **Part 0 Step 1** — pin the DIRECTIONAL REFERENCE: 1–2 concrete anchors from the product's own world
-    (materials, vernacular, artifacts), never an adjective ("modern/clean"), and never an AI-default look
-    (Part F) unless the reference actually asks for it.
+  - **Part 0 Step 1** — pin the DIRECTIONAL REFERENCE by **eliciting** it (the human can't invent one from a
+    blank prompt): ask about the product's *world* not its look — and for abstract products with no physical
+    world (analytics/infra/B2B), the second gear is what it *replaces* + the moment of use; reject BOTH adjectives AND default looks
+    (check the Part F tell-list explicitly — e.g. "dark + red accent" = the near-black+acid tell) then redirect to the world,
+    and use `design-reference-menu.md` only as a last-resort axis-calibrator + springboard back to own-world —
+    never the destination (a raw archetype pick reproduces a Part F tell). See the contract's Step 1 method.
+    Result: 1–2 concrete anchors from the product's own world (materials, vernacular, artifacts), never an
+    adjective ("modern/clean"), and never an AI-default look (Part F) unless the reference actually asks for it.
   - **Part 0 Step 2** — derive the token values from that direction (palette 4–6 hex · ≤6-step type scale ·
     8px spacing · radius/elevation/motion), then critique against the brief: revise any token that reads
     like the generic default you'd produce for *any* similar project, and say what changed. shadcn/ui
