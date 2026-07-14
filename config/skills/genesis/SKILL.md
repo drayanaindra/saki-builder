@@ -137,6 +137,13 @@ exists. This is deliberately low-fidelity and **throwaway**; its job is to set t
 - This is the genesis analogue of `/saki-builder:proto`'s directional-mock option, **promoted to a
   first-class artifact**. Full-fidelity design-with-mock-data stays in `/saki-builder:proto` *after* G4
   scaffolds the real system — genesis does not duplicate it.
+- **Part F tell-check on the rendered mock (BLOCKING — it anchors G3).** Before showing the human, grade
+  `vision.html` against the Design System Contract **Part F tell-list** (gradient hero · emoji-as-icons ·
+  equal-weight grid / no hierarchy · everything-centered · cream+serif+terracotta · near-black+acid ·
+  generic copy). No DIRECTIONAL REFERENCE exists yet (it's pinned in G3 Part 0 Step 1), so this is the
+  **checklist half only** — it stops an obvious AI-default look from anchoring a sloppy G3 choice; the full
+  reference-judge runs later on the real screens (`/saki-builder:proto` Step 6.5). A tell → re-render the
+  mock; never let a default look set the product's direction.
 
 State plainly: *"This is a throwaway vision of the end-state to align on look + inform the foundations —
 the real design system gets scaffolded next."*

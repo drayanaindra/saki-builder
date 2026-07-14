@@ -95,6 +95,8 @@ Run the Design System Contract Part C self-check before declaring done:
 - [ ] Contrast ≥ 4.5:1 (text), touch target ≥ 44px, focus ring visible, `prefers-reduced-motion` respected?
 - [ ] Keyboard-operable, correct ARIA roles/labels?
 - [ ] Built the way the **gold-standard component** (Part A) is built — same structure, token usage, file layout?
+- [ ] **No Part F tell** — reads as the pinned **DIRECTIONAL REFERENCE** (`design.md` Part A), not an
+      AI-default look (cream+serif+terracotta · near-black+acid · emoji-as-icon · gratuitous gradient/shadow)?
 - [ ] Usage notes + one explicit "do not" rule included?
 - [ ] Component renders without error; TypeScript types correct (no `any`); tests passing.
 
