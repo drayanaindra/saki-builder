@@ -2,6 +2,17 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.17.1 — 2026-07-15
+
+- **`/saki-builder:n8n` Phase-1 now elicits `Bindings` + all `Branches` — so a requirement can reach the
+  SAME result as a reference workflow, not just a similar shape.** Reversing a real 26-node workflow into a
+  spec and rebuilding showed a plain requirement is lossy: it captures behavior but drops (a) the **bindings**
+  — the exact data sources (sheet + tab ids), target ids (channel/list/label ids), and AI **model + guardrail**
+  the result depends on — and (b) the **non-happy branches** (spam / unrelated / escalate / forward / skip),
+  so a rebuild reads different data and silently omits paths → a different result. Phase 1's elicitation and
+  the spec template now require both; the template notes a spec must carry Bindings + all Branches to
+  reproduce an existing workflow's result. Behavior is portable; bindings pin the result.
+
 ## 0.17.0 — 2026-07-14
 
 - **New skill `/saki-builder:n8n` — autonomous n8n automation builder.** Understands the expectation

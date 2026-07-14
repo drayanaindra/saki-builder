@@ -91,6 +91,12 @@ spec down before building**. Ask only what you can't infer:
   mark live-verification MANUAL.)
 - **Input** — the payload/shape the trigger receives (a concrete example).
 - **Steps / external services** — which nodes, in what order; which need credentials.
+- **Branches** — enumerate EVERY guard→action path, not just the happy one (spam / unrelated / escalate /
+  forward / skip). A dropped branch is the #1 reason a rebuilt automation diverges from the intended result.
+- **Bindings** — the exact references the RESULT depends on: data sources (sheet + tab ids, DB tables),
+  target ids (channel / list / label ids), the AI **model**, and for an AI step its **job + guardrail**. A
+  spec with the right *behavior* but no bindings builds a correct-shaped automation that reads *different
+  data* → a different result. Bindings are config (ids, not secrets) — record them; secrets still come from env.
 - **Success** — the exact observable that proves it worked (output field == X, an HTTP 2xx to service Y).
 - **Failure handling** — what should happen on error (if the spec cares).
 
@@ -98,13 +104,18 @@ Write `tasks/n8n-<slug>-spec.md`:
 ```markdown
 # n8n automation: <name>
 Trigger: Webhook POST /webhook/<path>   Input: <example payload>
+Bindings: <data sources (sheet+tab / table) · target ids (channel/list/label) · AI model>   # same-result refs
+Branches: <guard → action, for EVERY path — happy + spam/unrelated/escalate/forward/skip>
 Nodes: <node A> → <node B> → …
-Acceptance criteria (each observable in an execution):
+Acceptance criteria (each observable in an execution, ONE per branch):
 - [ ] AC1: given <input>, execution status=success AND <observable>
 - [ ] AC2: …
 Credentials needed: <type> (secret via env <VAR> | create in UI) | none
 ```
 Build **exactly** these criteria — do not add nodes, error branches, or features the spec didn't ask for (faithful).
+To reproduce an EXISTING workflow's result, a spec must carry its **Bindings** (same data/targets/model)
+and **all Branches** — behavior alone builds a correct-shaped automation that reads different data → a
+different result.
 
 ---
 
