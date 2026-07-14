@@ -1263,6 +1263,42 @@ produced; surface both in the Completion Output.
 
 ---
 
+## Step 6.5 — Part F tell-check on the rendered output (BLOCKING fidelity gate)
+
+GATE 2 grades *tokens* and Step 2.6 grades *components* — neither can see slop that emerges only
+when real components are **composed into a screen**: a gradient hero, emoji-as-icons, an equal-weight
+card grid with no hierarchy, everything centered, generic filler copy, or a palette that drifted onto
+an AI-default look. Those are **rendered-level tells** (Design System Contract Part F), invisible to a
+token check. This is the enforcement that catches them on the **captured screenshots** — *before* the
+human sees them in Step 7, so the human reviews design intent, not slop the skill should have caught.
+
+**Run on every PNG captured in Step 6a.** Grade each screenshot against two keys:
+
+1. **The Part F tell-list** (color + composition) — cream+serif+terracotta · near-black+acid ·
+   broadsheet-hairline+zero-radius · gradient hero · emoji-as-icons · equal-weight grid / no
+   hierarchy · everything-centered · lorem/generic copy. A hit is a **fidelity defect**, not a taste
+   quibble.
+2. **The pinned DIRECTIONAL REFERENCE** (`design.md` Part A) — the reference-judge question:
+   *"Given the reference = <design.md DIRECTIONAL REFERENCE>, does this screen read as **that**, or as
+   the mean any app would produce?"* The reference is the grading key — never a fixed checklist alone
+   (a checklist passes costume-slop; only the reference catches the tasteful-but-generic drift).
+
+**Legitimacy escape (Part F's own rule):** a tell is a defect only when it's a *default drift*. If the
+pinned DIRECTIONAL REFERENCE genuinely asks for it (a neon-signage product truly is near-black+acid),
+it passes — cite the reference line that licenses it.
+
+**Verdict + routing (BLOCKING):**
+- **CLEAN** (no tell, or every tell licensed by the reference) → proceed to Step 7.
+- **TELL FOUND** → fix at its source (color-level → re-token via Step 2.6; layout/copy-level →
+  re-compose in the Step 5 harness), **re-capture that screen (Step 6a)**, and re-run this gate. Never
+  present a screen carrying an unlicensed tell to the human.
+
+Under `/saki-builder:build` (autonomous) this routes and re-runs like proto's other fidelity gates; in
+a manual run, surface the per-screen tell + one-line fix. Step 7's human review is for *journey +
+design intent* — never for catching slop this gate exists to stop.
+
+---
+
 ## Step 7 — Present + expectation check
 
 ### 7a. Serve a clickable local preview (terminal runs only)

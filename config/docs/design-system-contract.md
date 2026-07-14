@@ -288,6 +288,12 @@ decoration.
   cream `#F4F1EA` + serif + terracotta `~#D97757`; near-black + single acid accent;
   broadsheet hairline-rules + zero radius. Legitimate only if the project's
   DIRECTIONAL REFERENCE actually asks for one. Otherwise, don't spend a free axis on them.
+- **Composition tells** — slop that survives *clean tokens* because it lives in the layout,
+  not the palette: a gradient hero banner; emoji used as functional icons; an equal-weight
+  card grid with no hierarchy (nothing dominates); everything centered; lorem / generic filler
+  copy ("Welcome back!", "Your Stats"). A token gate can't see these — they're composed at the
+  *screen* level, so they must be caught on the **rendered output** (`/saki-builder:proto` Step 6.5),
+  not just in tokens. Same legitimacy escape: allowed only if the DIRECTIONAL REFERENCE asks for it.
 - **One-shotting a finished screen** when structure-first would surface the hierarchy
   for cheap correction.
 
