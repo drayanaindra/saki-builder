@@ -30,9 +30,67 @@ A new project has no tokens and no exemplar yet. Part 0 creates both. It runs a
 single time (inside `/saki-builder:genesis` G3–G4); after it, you're in steady state and never touch it again.
 
 **Step 1 — Pin the subject and direction.** Name the product, its user, the device,
-and the page's single job. Choose a DIRECTIONAL REFERENCE from the subject's own
+and the page's single job. Then pin a DIRECTIONAL REFERENCE from the subject's own
 world (its materials, vernacular, artifacts) — a concrete anchor, never an adjective.
 Do *not* spend a free design axis on an AI-default look (see Part F).
+
+*Eliciting the reference* — a non-designer cannot invent one from a blank prompt.
+Extract it; don't ask for it:
+
+1. **Ask about the world, not the design.** Never "what should it look like?" (you'll
+   get "modern/clean"). Ask where the product lives in real life: *"When and where does
+   a user do this? What objects, places, or surfaces are around them in that moment —
+   what do they touch or read?"* Those concrete answers ARE the reference material —
+   e.g. a language app → "café chalkboards, worn phrasebooks, metro signage"; a fishing
+   log → "tide charts, weathered tackle, marine brass."
+2. **When the world is thin, ask what it *replaces* and *when* it's opened** — the second
+   gear for abstract products (analytics, infra, B2B tools have no garage). *"What did the
+   user do before this existed? What's the exact moment they open it?"* The incumbent it
+   replaces and the moment-of-use carry the signal the product category can't — e.g. a
+   metrics dashboard → "the messy spreadsheet it replaces; the Monday review where the CEO
+   asks why a number moved." This surfaces a *situation*; feed that into the next prompt.
+3. **The physical-object prompt** (when a visual anchor still hasn't landed): *"If this
+   product — or that moment — were a place or object, what's it made of? What's on the
+   walls?"* Metaphor → materials. For abstract products, run it on the **situation** from
+   the second gear, not the product category: *"what physical thing gives you that
+   one-glance, everything-current feeling?"* → e.g. an airport departures board.
+4. **Reject two things; redirect both to the world.** Don't accept either kind of answer —
+   and don't rely on memory to spot the second: consult the checklist explicitly.
+   - **Adjectives** — "modern / clean / premium / sleek / playful." Carry no information.
+   - **A default look reached for *before* any own-world grounding** — concrete-sounding
+     but the tell every project falls into regardless of brief. Check the answer against the
+     **Part F tell-list** (echoed here so it's consulted at the point of decision, not recalled):
+       - cream / warm-paper + serif + terracotta
+       - near-black + a single acid / neon accent   ← catches *"dark theme, red accent"*
+       - broadsheet hairline-rules + zero radius
+     A tell is only a tell when it's the **default reach**. It's legitimate if the product's
+     own-world reference *genuinely* lands there (a neon-signage product may truly be
+     near-black + acid) — but arriving before the world-questions run means it's a default,
+     not a choice.
+   Redirect either kind the same way: *"That's what every app defaults to — what real thing
+   from THIS product's world has the feeling you're after?"* (Same discipline as rewriting a
+   vague acceptance criterion: redirect, don't merely flag.)
+5. **Menu only as a last-resort unblock — to calibrate, then spring back.** If the human
+   still can't name an own-world anchor, offer `design-reference-menu.md` as a pick-1
+   *axis* calibrator (warm↔cool · dense↔airy · quiet↔loud) via `AskUserQuestion`. The
+   archetype is a **springboard, never the destination**: *"Closest to Aesop-restrained?
+   Good — now what in YOUR product's world gives that restraint?"* A raw archetype pick
+   reproduces the Part F tell (Aesop → cream+serif+terracotta); the own-world anchor is
+   what makes it specific.
+6. **Restate and confirm** (react beats author): *"Directional reference: café chalkboards
+   + worn phrasebooks — hand-lettered, warm, a little imperfect. Right?"* Capture 1–2
+   anchors plus their concrete qualities — that is exactly what Step 2 derives from and
+   critiques against.
+
+   **Abstract path — pin the *quality*, not the family.** Abstract products (analytics, ops,
+   infra) converge on the same anchor *family* — the board / dashboard / control-room / feed.
+   "A control room" is not yet a reference: every ops tool is a control room. The differentiator
+   is the **quality** — analytics → a departures board (*glanceable, current*); CI/CD → a
+   mission-control console (*calm-under-load, go/no-go*). **Test before you accept it:** could
+   this exact restate describe a competitor's product too? If yes, it's family-only — push once
+   more: *"What makes THIS one's feeling different from every other status board?"* Only a
+   quality that survives that test reaches Step 2; the family name alone would make two ops
+   tools look identical.
 
 **Step 2 — Derive the token values.** From that direction, propose the Part A token
 block: palette as 4–6 named hex values, two-to-three type faces with a ≤6-step scale,
@@ -230,6 +288,12 @@ decoration.
   cream `#F4F1EA` + serif + terracotta `~#D97757`; near-black + single acid accent;
   broadsheet hairline-rules + zero radius. Legitimate only if the project's
   DIRECTIONAL REFERENCE actually asks for one. Otherwise, don't spend a free axis on them.
+- **Composition tells** — slop that survives *clean tokens* because it lives in the layout,
+  not the palette: a gradient hero banner; emoji used as functional icons; an equal-weight
+  card grid with no hierarchy (nothing dominates); everything centered; lorem / generic filler
+  copy ("Welcome back!", "Your Stats"). A token gate can't see these — they're composed at the
+  *screen* level, so they must be caught on the **rendered output** (`/saki-builder:proto` Step 6.5),
+  not just in tokens. Same legitimacy escape: allowed only if the DIRECTIONAL REFERENCE asks for it.
 - **One-shotting a finished screen** when structure-first would surface the hierarchy
   for cheap correction.
 
