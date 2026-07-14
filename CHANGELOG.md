@@ -2,6 +2,24 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.17.0 — 2026-07-14
+
+- **New skill `/saki-builder:n8n` — autonomous n8n automation builder.** Understands the expectation
+  (a one-line goal → elicits gaps → writes `tasks/n8n-<slug>-spec.md`, OR an existing spec/PRD file →
+  builds directly), authors the workflow JSON, deploys it against a **live** n8n instance via the REST
+  API, triggers a real execution through the workflow's production webhook, reads the execution result,
+  and self-corrects ("auto resolve") until a real run passes the spec's acceptance criteria — then stops
+  with `N8N_AUTOMATION_COMPLETE`. **Safety is built in from the first run** (per the retry-engine
+  discipline): exponential backoff, a circuit-breaker gated on a progress signal, a hard attempt budget
+  (`N8N_MAX_ATTEMPTS`, default 8), and search-by-name idempotency so retries/feedback re-runs update the
+  **same** workflow instead of duplicating it. Reuses `iterating-to-completion` (completion promise +
+  scratchpad + loop detection) and the `/prd`·`/proto` elicitation tone rather than re-implementing them.
+  Grounded on the verified n8n public API (no ad-hoc execute endpoint → trigger via production webhook;
+  create body is `{name,nodes,connections,settings}` only; execution errors read from
+  `data.resultData` with a version-drift fallback). Requires `N8N_BASE_URL` + `N8N_API_KEY` in env; the
+  key is a secret and is never routed through chat. Faithful (builds exactly the spec) and concise.
+  Auto-discovered via the `config/skills/` glob — no `plugin.json` skills-array change.
+
 ## 0.16.0 — 2026-07-14
 
 - **Design anti-slop: `/genesis` now *elicits* a real design direction instead of accepting adjectives.**
