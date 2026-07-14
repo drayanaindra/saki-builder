@@ -2,6 +2,30 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.16.0 — 2026-07-14
+
+- **Design anti-slop: `/genesis` now *elicits* a real design direction instead of accepting adjectives.**
+  The Design System Contract's **Part 0 Step 1** gains a 6-step elicitation method so a non-designer is
+  guided to a concrete DIRECTIONAL REFERENCE from the product's own world (materials, vernacular, artifacts)
+  rather than a blank prompt that yields "modern/clean" slop: ask about the *world*, not the look; a **second
+  gear** ("what does it replace + the moment of use") for abstract products with no physical world
+  (analytics, infra, B2B); a physical-object metaphor prompt; reject both adjectives **and** named AI-default
+  *tells* via an inline Part F checklist; a new `config/docs/design-reference-menu.md` used only as a
+  last-resort axis-calibrator + springboard (never a destination — a raw archetype pick reproduces a tell);
+  and a restate step with a **competitor-test** that forces the differentiating *quality* over a repeating
+  anchor family.
+- **Rendered-output enforcement — tells are caught on the composed screen, not just the tokens.** Part F
+  gains a **"Composition tells"** anti-pattern (gradient hero · emoji-as-icons · equal-weight grid / no
+  hierarchy · everything-centered · generic copy) — slop that survives clean tokens because it lives in the
+  layout. `/proto` gains **Step 6.5**, a BLOCKING rendered-output tell-check between screenshot capture and
+  human review that grades each screen against the Part F tell-list **and** the pinned DIRECTIONAL REFERENCE
+  (a reference-judge — a fixed checklist alone passes tasteful "costume" slop), keeping Part F's legitimacy
+  escape. The same enforcement is applied *proportionately* to the other design-producing skills: `/genesis`
+  G2 checklist-checks the vision mock (no reference exists yet), and `/component` gains a Part F tell /
+  reference-drift box in its Part C self-check. Together the pipeline is elicitation → token critique →
+  vision/component/screen enforcement: guided toward good own-world design, blocking any surface that drifts
+  onto a tell.
+
 ## 0.15.0 — 2026-07-10
 
 - **`/scaffold-library` is now polyglot (Go · Python · Rust · Node · TypeScript · Ruby).** Previously the
