@@ -71,6 +71,11 @@ TDD mode breakdown: [N] Test-First, [N] Test-Along, [N] Test-After
 
 Then immediately begin executing step by step using the XP cycle below.
 
+**Resume manifest (best-effort):** if `tasks/.<slug>-state.json` exists (manual chain; `<slug>` = the plan
+filename minus `-plan.md`), stamp `approved=in-progress` now via the **Stamp** snippet in
+`${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` (`PLAN_FILE` = this plan). Absent file or error →
+skip silently.
+
 ---
 
 ## XP Implementation Cycle (per plan step)
@@ -173,6 +178,12 @@ fi
 ```
 
 Print results. For any FAIL/DOWN/missing, surface the exact remediation command in the completion summary so the user can fix it before invoking `/saki-builder:qa`. Do NOT fix it automatically — env setup is the user's call.
+
+### Phase 9: Stamp resume manifest (best-effort)
+
+If a manual-chain manifest exists for this plan (`tasks/.<slug>-state.json`), stamp `approved=done` with the
+final commit via the **Stamp** snippet in `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md`
+(`PLAN_FILE` = this plan, `EXTRA='{"lastCommit":"<final sha>"}'`). Absent file or error → skip silently.
 
 ### Completion summary
 

@@ -209,6 +209,11 @@ Used when no `.claude/agents/reviewer.md` exists.
 - **REQUEST CHANGES** → list HIGH items, fix before committing
 - **Any surviving secret-scan hit → automatic REQUEST CHANGES.** Remove the credential, move it to an
   env var / secret manager, and rotate it (assume it leaked the moment it was committed) before commit.
+- **Resume manifest (best-effort):** if a manual-chain manifest exists, stamp `reviewer=done` on APPROVE or
+  `reviewer=changes-requested` on REQUEST CHANGES. The reviewer works on a git diff, not a plan file — resolve
+  the manifest the same way `/saki-builder:wrap` does (newest manual-chain manifest; glob in
+  `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md`), then run its **Stamp** snippet. Absent or
+  error → skip silently; it never affects the verdict.
 
 ## Rules
 

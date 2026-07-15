@@ -630,6 +630,13 @@ Criteria with no expected outcome (add to plan):
 
 ---
 
+## Step 7: Stamp the resume manifest (best-effort)
+
+If a manual-chain manifest exists for this plan (`tasks/.<slug>-state.json`, `<slug>` = the Step 0
+`PLAN_FILE` minus `-plan.md`), stamp `qa=done` when the final verdict is ✅ ALL PASS, else `qa=red`. Use the
+**Stamp** snippet in `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` (`PLAN_FILE` = the plan
+selected in Step 0). Absent file or error → skip silently; it never changes the QA verdict.
+
 ## Rules
 
 - **Never stop because a tool is not installed.** Run what exists; classify what cannot run.

@@ -305,8 +305,8 @@ tests account for it. **Tell `/saki-builder:rplan` to name the plan `<prd-slug>-
 slice-distinct `tasks/<prd-slug>-slice<N>-plan.md` (a multi-slice build keeps several plans in `tasks/`;
 newest-wins selection would otherwise let a later step bind to the wrong slice's plan). `/saki-builder:rplan`
 will research, build the plan, and populate its Evidence Ledger. Record that exact plan path in the state
-manifest's `artifact` and **pass it explicitly to `/saki-builder:approved` (step 3) and `/saki-builder:qa`
-(step 4)**. **Do not wait for approval** — read the resulting plan and its Blocking Set yourself.
+manifest's `artifact` and **pass it explicitly to `/saki-builder:rplan-review` (step 2), `/saki-builder:approved` (step 3), and
+`/saki-builder:qa` (step 4)**. **Do not wait for approval** — read the resulting plan and its Blocking Set yourself.
 
 ### 2. `/saki-builder:rplan-review` — *only if needed*
 Run the `rplan-review` skill when any of these hold; otherwise skip straight to step 3:
@@ -314,8 +314,9 @@ Run the `rplan-review` skill when any of these hold; otherwise skip straight to 
 - the slice is HIGH risk (auth, DB migration, deletes, money, security boundary), **or**
 - the slice spans >2 modules or has >3 acceptance criteria.
 
-`/saki-builder:rplan-review` hardens the plan (criteria → test commands, domain-expert pass). After it,
-re-read the plan.
+Invoke it **passing this slice's plan path from step 1** so it reviews *this* slice's plan, not the newest
+`*-plan.md`. `/saki-builder:rplan-review` hardens the plan (criteria → test commands, domain-expert pass).
+After it, re-read the plan.
 
 ### 3. `/saki-builder:approved` — implement
 **First load the `clean-code` skill** (Skill tool, `skill: clean-code`) so the slice is written to

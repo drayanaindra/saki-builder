@@ -16,7 +16,7 @@ There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely
 
 ## Step 0: Load the active plan
 
-Find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
+**If the caller (e.g. `/saki-builder:build`) passed a specific plan-file path, use that exact file** — it pins the review to the intended slice, not whichever `*-plan.md` is newest (a multi-slice build keeps several plans in `tasks/`; mtime-based "newest-wins" selection would otherwise bind the review to the wrong slice's plan). Otherwise find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
 
 Print:
 ```
@@ -423,6 +423,16 @@ Verdict:
      - [blocking item 2]
      Next: Fix blocking items → re-run /saki-builder:rplan-review
 ```
+
+---
+
+## Stamp the resume manifest (best-effort)
+
+If a manual-chain manifest exists for this plan (`tasks/.<slug>-state.json`, `<slug>` = plan filename minus
+`-plan.md`), stamp this review's outcome so the chain can resume after a context clear: `rplan-review=done`
+on **APPROVED**, `rplan-review=not-ready` otherwise. Run the **Stamp** snippet from
+`${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` (`PLAN_FILE` = the reviewed plan). Skip silently
+if the file is absent or on any error — it never changes the verdict.
 
 ---
 
