@@ -2,6 +2,23 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.18.0 — 2026-07-15
+
+- **New skill `/saki-builder:resume` + a `state.json`-style resume manifest for the manual chain — so a
+  hand-run `/rplan → /rplan-review → /approved → /qa → /reviewer → /wrap` survives a context clear the way
+  `/saki-builder:build` already does.** Each chain skill stamps its step into `tasks/.<slug>-state.json`
+  (best-effort — a missing/unreadable manifest changes nothing, it is never a new gate, and it never clobbers
+  `/saki-builder:build`'s `.build-*` manifest). The schema, init/stamp/reader snippets, `/wrap` glob
+  resolution, and the orientation protocol live in one place: `config/docs/manual-chain-resume.md`.
+  `/saki-builder:resume [<slug>|<plan-path>]` is a **read-only** reader that reports each step's status and the
+  exact next command to run — re-entering a `red`/`not-ready`/`changes-requested` step, and treating an absent
+  optional `rplan-review`/`security` step as satisfied. Auto-discovered via the `config/skills/` glob — no
+  `plugin.json` skills-array change.
+- **Closed the last mtime-dependent seam in the plan handoff.** `/saki-builder:rplan-review` now pins to a
+  caller-passed plan file exactly like `/saki-builder:qa` and `/saki-builder:approved` already do, and
+  `/saki-builder:build` passes each slice's plan into the review step — so a multi-slice build can no longer
+  bind the review to the wrong slice's `*-plan.md`.
+
 ## 0.17.1 — 2026-07-15
 
 - **`/saki-builder:n8n` Phase-1 now elicits `Bindings` + all `Branches` — so a requirement can reach the
