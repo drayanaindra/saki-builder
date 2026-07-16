@@ -22,8 +22,10 @@
 #     rounds; (3) delegated_rounds — the FRESH (mtime-windowed) rounds of the /prd-review loop pickup
 #     delegated to, read from tasks/.prd-review-<slug>-state.json (pickup burns no budget while that
 #     loop legitimately progresses in its own turns); (4) recut_progress — the Phase-2b recut stage
-#     ordinal + capped len(phases[]) so each /add credits the breaker. Non-recut runs fold 0 for (3)
-#     and (4), so they and the existing tests are byte-identical to the pre-fold score.
+#     ordinal + capped len(phases[]) so each /add credits the breaker. Signal (4) is 0 for any non-recut
+#     run; signal (3) is 0 only when there is no fresh sibling (a normal delegating `review` run legitimately
+#     folds (3) > 0 — that IS the point). A run with NO sibling AND NO recut folds 0 for both → byte-identical
+#     to the pre-fold score (the existing tests, whose fixtures omit the sibling, stay green unedited).
 #   - SESSION-OWNED: sidecar records the owning session_id; never trap a different session.
 #   - FAIL-OPEN everywhere: missing/stale/unparseable state, can't-persist sidecar, no python3 →
 #     allow. SubagentStop-safe (agent_id present → no-op). Stale runs ignored (mtime > window).

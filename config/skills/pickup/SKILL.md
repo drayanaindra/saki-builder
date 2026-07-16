@@ -56,11 +56,12 @@ single cursor — a run with **no `recut` block is NEVER treated as a recut**):
 | 3 | a `recut` block with `recut.stage` == `registering` | The `/add` loop was interrupted mid-registration — **continue Phase 2b Step 3**, using `recut.phases[]` (and the roadmap) to skip already-registered phases (dedup). Never restart the loop. |
 | 4 | a `recut` block with `recut.stage` == `driving` | The MVP is being driven. **Resume the CHILD from the PERSISTED state seed** — `state.slug` / `prd` / `title` already point at the MVP; drive its Phase 1/2 at the recorded top-level `phase`. **Do NOT re-resolve the invoked parent id via GATE 1, do NOT re-init `state.slug`.** The once-guard holds: `state["slug"]` == `recut.active_slug` → never recut again. |
 | 5 | **no `recut` block**, `phase` == `prd` | Normal run — re-run Phase 1 from where the PRD was incomplete (re-resolving the invoked id is correct — it IS the run). |
-| 5 | **no `recut` block**, `phase` == `review` | Normal run — resume Phase 2 (re-invoke autonomous `/saki-builder:prd-review`, read its terminal sentinel). |
-| 6 | (no state file) | Fresh start → Phase 1. |
+| 6 | **no `recut` block**, `phase` == `review` | Normal run — resume Phase 2 (re-invoke autonomous `/saki-builder:prd-review`, read its terminal sentinel). |
+| 7 | (no state file) | Fresh start → Phase 1. |
+| — | anything else (unknown/empty top-level `phase` with a state file, or a `recut` block with an absent/unknown `stage`) | **Fall through to the best-effort catch-all below** — treat as a normal fresh run; never hard-fail. |
 
-**Best-effort + safe:** a missing/partial state file degrades to a normal fresh run — never hard-fail on it.
-Always write the state file before ending a turn so resume lands on the right phase.
+**Best-effort + safe:** a missing/partial/unrecognized state file degrades to a normal fresh run — never
+hard-fail on it. Always write the state file before ending a turn so resume lands on the right phase.
 
 ---
 
