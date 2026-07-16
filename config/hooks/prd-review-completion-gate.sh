@@ -34,7 +34,8 @@ STDIN_JSON="$(cat 2>/dev/null)"
 [ -z "$STDIN_JSON" ] && exit 0
 
 printf '%s' "$STDIN_JSON" | PRD_REVIEW_GATE_ACTIVE_MINUTES="${PRD_REVIEW_GATE_ACTIVE_MINUTES:-45}" \
-	PRD_REVIEW_GATE_MAX_BLOCKS="${PRD_REVIEW_GATE_MAX_BLOCKS:-5}" python3 -c '
+	PRD_REVIEW_GATE_MAX_BLOCKS="${PRD_REVIEW_GATE_MAX_BLOCKS:-5}" \
+	PRD_REVIEW_GATE_HARD_CAP="${PRD_REVIEW_GATE_HARD_CAP:-4}" python3 -c '
 import json, sys, os, glob, time, re
 
 def out_allow():            # allow the stop: no stdout, exit 0
@@ -53,6 +54,7 @@ cwd = payload.get("cwd") or os.getcwd()
 session = str(payload.get("session_id", "")) or "nosession"
 window_min = float(os.environ.get("PRD_REVIEW_GATE_ACTIVE_MINUTES", "45"))
 max_np = int(os.environ.get("PRD_REVIEW_GATE_MAX_BLOCKS", "5"))
+hard_cap = int(os.environ.get("PRD_REVIEW_GATE_HARD_CAP", "4"))  # 1 over the prose 3-round cap
 
 def norm(v):
     return re.sub(r"[\s_]+", "-", str(v).strip().lower())
@@ -63,8 +65,13 @@ ACTIVE = ("reviewing",)
 # unknown/empty (never trap — a gate must release).
 
 def review_score(state):
+    # CONTRACT: this state file'"'"'s review.rounds is ALSO read by pickup-completion-gate.sh
+    # (delegated_rounds fold) — do not rename/remove review.rounds without updating that reader.
     # Progress = review rounds incrementing (phase is single-active, so the ordinal is a constant
-    # floor; rounds are the real signal that a pass completed).
+    # floor; rounds are the real signal that a pass completed). CLAMP rounds at hard_cap so the score
+    # PLATEAUS once past the cap: a model that keeps looping past the cap (rounds 5,6,7…) then stops
+    # raising the score → no_progress climbs → the breaker deterministically releases (instead of the
+    # score rising every stop and resetting no_progress → wedged forever).
     ordinal = {"reviewing": 1}.get(norm(state.get("phase", "")), 0)
     rounds = 0
     rv = state.get("review")
@@ -73,7 +80,7 @@ def review_score(state):
             rounds = int(rv.get("rounds", 0))
         except Exception:
             rounds = 0
-    return ordinal + rounds
+    return ordinal + min(rounds, hard_cap)
 
 def sanitize(txt, n=70):
     t = re.sub(r"\s+", " ", str(txt)).strip()
@@ -155,16 +162,34 @@ if np > max_np:
     out_allow()
 
 # ── Block the stop and tell the model to continue the loop-to-green ─────────────
-slug = sanitize(state.get("slug", "the run"))
-reason = (
-    "PRD-REVIEW INCOMPLETE — do not stop yet. The autonomous /prd-review state file (%s) is in the "
-    "\"reviewing\" phase. Continue the loop-to-green: run the review core, and if the PRD is not green "
-    "(Verdict SHIP AND Readiness READY), apply the prescribed fixes to the PRD and re-review — until "
-    "green or a hard blocker (DISCOVERY-FIRST / structural NOT READY / non-convergence). Cap at 3 "
-    "rounds; never fabricate grounding. Update tasks/.prd-review-%s-state.json after the transition and "
-    "set phase to \"green\" (SHIP·READY) or \"blocked\" — this gate will release then."
-    % (os.path.relpath(path, cwd), slug)
-)
+# Extract RAW rounds (un-clamped) for the hard-cap trigger — read from state, not review_score.
+raw_rounds = 0
+_rv = state.get("review")
+if isinstance(_rv, dict):
+    try:
+        raw_rounds = int(_rv.get("rounds", 0))
+    except Exception:
+        raw_rounds = 0
+
+if raw_rounds >= hard_cap:
+    # Hit the round cap still not green → STOP looping. Constant reason (no state echo); the unique
+    # token "round cap" is ABSENT from the generic reason below, so a test can discriminate on it.
+    reason = (
+        "PRD-REVIEW ROUND CAP REACHED — you have hit the round cap and the PRD is not green. STOP "
+        "looping: do NOT run another review round. Set phase to \"blocked\", tag it non-convergence, "
+        "and emit the PRD_REVIEW_BLOCKED sentinel now — this gate will release then."
+    )
+else:
+    slug = sanitize(state.get("slug", "the run"))
+    reason = (
+        "PRD-REVIEW INCOMPLETE — do not stop yet. The autonomous /prd-review state file (%s) is in the "
+        "\"reviewing\" phase. Continue the loop-to-green: run the review core, and if the PRD is not green "
+        "(Verdict SHIP AND Readiness READY), apply the prescribed fixes to the PRD and re-review — until "
+        "green or a hard blocker (DISCOVERY-FIRST / structural NOT READY / non-convergence). Cap at 3 "
+        "rounds; never fabricate grounding. Update tasks/.prd-review-%s-state.json after the transition and "
+        "set phase to \"green\" (SHIP·READY) or \"blocked\" — this gate will release then."
+        % (os.path.relpath(path, cwd), slug)
+    )
 print(json.dumps({"decision": "block", "reason": reason}))
 sys.exit(0)
 '
