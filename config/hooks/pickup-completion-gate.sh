@@ -15,9 +15,15 @@
 #     human's turn to run /proto), blocked (terminal — a human decides), or any unknown/empty phase.
 #     An unknown/empty/typo'd phase ALLOWS — the safe direction here is to NOT trap, because a gate
 #     must always be able to release; the build-gate is the strict backstop downstream.
-#   - PROGRESS-AWARE circuit breaker: per-manifest sidecar tracks a score (phase ordinal + review
-#     rounds). no_progress resets when the score rises; gives up after PICKUP_GATE_MAX_BLOCKS
-#     no-progress stops (genuinely stuck) so a wedged front half can still report.
+#   - PROGRESS-AWARE circuit breaker: per-manifest sidecar tracks a score. no_progress resets when
+#     the score rises; gives up after PICKUP_GATE_MAX_BLOCKS no-progress stops (genuinely stuck) so a
+#     wedged front half can still report. The score folds FOUR progress signals so pickup is not
+#     false-wedged while it delegates or recuts: (1) phase ordinal (prd->review); (2) pickup review
+#     rounds; (3) delegated_rounds — the FRESH (mtime-windowed) rounds of the /prd-review loop pickup
+#     delegated to, read from tasks/.prd-review-<slug>-state.json (pickup burns no budget while that
+#     loop legitimately progresses in its own turns); (4) recut_progress — the Phase-2b recut stage
+#     ordinal + capped len(phases[]) so each /add credits the breaker. Non-recut runs fold 0 for (3)
+#     and (4), so they and the existing tests are byte-identical to the pre-fold score.
 #   - SESSION-OWNED: sidecar records the owning session_id; never trap a different session.
 #   - FAIL-OPEN everywhere: missing/stale/unparseable state, can't-persist sidecar, no python3 →
 #     allow. SubagentStop-safe (agent_id present → no-op). Stale runs ignored (mtime > window).
@@ -62,8 +68,10 @@ ACTIVE = ("prd", "review")
 # Everything else releases the stop: proto-ready (PRD green — the human runs /proto), blocked
 # (terminal), unknown/empty (never trap — a gate must release).
 
-def pickup_score(state):
-    # Progress = phase advancing (prd -> review) or review rounds incrementing.
+def pickup_score(state, cwd):
+    # Progress = phase advancing (prd -> review), review rounds incrementing, the delegated
+    # /prd-review loop making rounds (so pickup is not false-wedged while it delegates), and
+    # recut-phase progress (so the multi-turn Phase-2b recut is credited each /add).
     ordinal = {"prd": 1, "review": 2}.get(norm(state.get("phase", "")), 0)
     rounds = 0
     rv = state.get("review")
@@ -72,7 +80,8 @@ def pickup_score(state):
             rounds = int(rv.get("rounds", 0))
         except Exception:
             rounds = 0
-    return ordinal + rounds
+    # RAW slug for the FS lookup (the raw state slug, never the sanitized display slug).
+    return ordinal + rounds + delegated_rounds(cwd, state.get("slug", "")) + recut_progress(state)
 
 def sanitize(txt, n=70):
     t = re.sub(r"\s+", " ", str(txt)).strip()
@@ -86,6 +95,48 @@ def load(path):
             return json.load(f)
     except Exception:
         return None
+
+def delegated_rounds(cwd, slug):
+    # Fold the delegated /prd-review loop'\''s rounds into pickup'\''s score so pickup is not
+    # false-wedged while /prd-review runs in its own turns. FRESH only (mtime window) so a stale
+    # sibling can'\''t inflate the score. Fully fail-safe: 0 on ANY error.
+    # CONTRACT: reads tasks/.prd-review-<slug>-state.json -> review.rounds (written by /prd-review;
+    # see prd-review-completion-gate.sh). Do not rename that field without updating this reader.
+    try:
+        safe = re.sub(r"[^a-z0-9-]", "", norm(slug))   # kills ../ * / . -> path-safe; empty on junk
+        if not safe:
+            return 0
+        p = os.path.join(cwd, "tasks", ".prd-review-" + safe + "-state.json")
+        base = os.path.realpath(os.path.join(cwd, "tasks"))
+        if not (os.path.realpath(p) + os.sep).startswith(base + os.sep):
+            return 0                                    # realpath-confine under tasks/
+        if (time.time() - os.path.getmtime(p)) / 60.0 > window_min:
+            return 0                                    # stale sibling -> do not fold
+        st = load(p)
+        if not isinstance(st, dict):
+            return 0
+        rv = st.get("review")
+        if not isinstance(rv, dict):
+            return 0
+        return max(0, int(rv.get("rounds", 0)))
+    except Exception:
+        return 0
+
+def recut_progress(state):
+    # Credit the multi-turn Phase-2b recut deterministically: each stage transition and each /add
+    # (len(phases) grows) raises the score, so the recut can'\''t starve the breaker mid-loop.
+    # Credit len(phases[]) CAPPED at the fan-out (5), NOT a free counter -- an unclamped rising
+    # counter would defeat the wedge breaker the same way review_score'\''s unclamped rounds would.
+    try:
+        recut = state.get("recut")
+        if not isinstance(recut, dict):
+            return 0
+        stage_ord = {"phasing": 1, "registering": 2, "driving": 3}.get(norm(recut.get("stage", "")), 0)
+        phases = recut.get("phases")
+        n = len(phases) if isinstance(phases, list) else 0
+        return stage_ord + min(n, 5)
+    except Exception:
+        return 0
 
 def sidecar(path):
     return path + ".gate.json"
@@ -138,7 +189,7 @@ path, state, phase = chosen
 
 # ── Progress-aware circuit breaker (per-manifest sidecar) ──────────────────────
 side = read_side(path) or {}
-score = pickup_score(state)
+score = pickup_score(state, cwd)
 last = side.get("score")
 np = 0 if (isinstance(last, int) and score > last) else int(side.get("no_progress", 0)) + 1
 try:
