@@ -2,6 +2,32 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.19.0 — 2026-07-16
+
+- **`/saki-builder:pickup`'s Phase-2b scope recut now actually auto-resolves** — previously the run
+  starved and stopped mid-recut, needing a manual re-invocation. Root cause: the `pickup-completion-gate.sh`
+  Stop hook was false-wedged while `/pickup` delegated to `/saki-builder:prd-review` (it burned its
+  no-progress budget on stops that were really the delegated loop's progress), so by the time the run reached
+  the recut the gate was exhausted and released it. Fixed by folding the FRESH (mtime-windowed) delegated
+  `review.rounds` **and** a capped recut-progress signal into the gate's score, so pickup is credited for
+  delegating and for each `/add` during the recut. Slug is whitelisted + realpath-confined before the
+  sibling-file read (no path traversal); every new path is fully fail-open.
+- **The 3-round review cap is now harness-enforced, not prose.** `prd-review-completion-gate.sh` clamps its
+  score at a hard cap (`PRD_REVIEW_GATE_HARD_CAP`, default 4) so a loop that runs past the cap plateaus and
+  the circuit-breaker deterministically releases with a terminal "round cap → emit non-convergence"
+  instruction — instead of the score rising every stop and wedging the loop forever.
+- **Redesigned recut state-machine (single source of truth).** One parent-named `tasks/.pickup-<slug>-state.json`
+  for the whole recut (never renamed, so GATE 0 resume-by-item-id always resolves); a `recut.stage`
+  cursor (`phasing → registering → driving`); fresh MVP breaker budget via deleting the gate sidecar in place
+  (not renaming the file); the once-guard compares the loaded `state.slug` to `recut.active_slug` so a child
+  MVP never recuts again; a run with no `recut` block is never treated as a recut.
+- **New `senior-pm` `MVP-Phasing Decision` artifact** (5-field-per-phase shape returned inline, objective
+  triggers, decide-not-ask) that `/pickup` embeds verbatim in its Phase-2b spawn, plus a deterministic
+  `/saki-builder:add --autonomous` no-prompt path with strict shape-field sanitization (a model-generated
+  phase field can't forge a roadmap block or override the always-`Planned` status).
+- 80 discriminating regression tests across the two gates (verified to fail against the un-fixed gate) +
+  a markdown-contract test locking the skill/agent behaviors.
+
 ## 0.18.0 — 2026-07-15
 
 - **New skill `/saki-builder:resume` + a `state.json`-style resume manifest for the manual chain — so a
