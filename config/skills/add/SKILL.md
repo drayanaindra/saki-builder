@@ -38,6 +38,11 @@ the caller can force the categorization with a CLI flag (`--epic` / `--feature` 
 - `/saki-builder:add "<intent>"` — auto-categorize (propose Type + Track), **confirm**, then record + route.
 - `/saki-builder:add --<type> "<intent>"` — force the type (`--epic|--feature|--improvement|--bug`); skip
   the propose step, still confirm the shape.
+- `/saki-builder:add --<type> --autonomous "<full shape>"` — **orchestrator-internal** (used by
+  `/saki-builder:pickup`'s Phase-2b recut): skip BOTH the propose step AND the shape confirmation — record
+  without any prompt. Preserves every other invariant (status always `Planned`, append-only ids). The caller
+  passes a complete shape; each field is **sanitized before templating** (see Step 3) so it can't forge a
+  roadmap block.
 - `/saki-builder:add --list` — print the portfolio grouped by Status with Type shown inline (thin alias of
   `/saki-builder:roadmap`).
 
@@ -78,9 +83,19 @@ a shipped/deleted item's number is not recycled, and existing `E<n>` roadmaps st
 
 Accept terse answers; the human may answer all at once. Keep it lean — this is intake, not a PRD/plan.
 
-An **orchestrator caller** (e.g. `/saki-builder:pickup`'s Phase-2b recut) may pass a **complete shape**
-(all fields) inside a `--<type>` intent — treat that as "answered all at once" and record without
-prompting (the autonomous fallback, same convention `/saki-builder:prd` uses under `/saki-builder:pickup`).
+An **orchestrator caller** (e.g. `/saki-builder:pickup`'s Phase-2b recut) passes a **complete shape**
+(all fields) with the **`--autonomous`** flag → record without ANY prompt (the deterministic no-prompt path;
+`--autonomous` is what keys it, not a soft judgement about whether the shape "looks complete").
+
+**Sanitize every field before templating it into `tasks/roadmap.md` (STRICT — an `--autonomous` shape is
+model-generated and could carry roadmap-control tokens):** for each field value, apply in order —
+(1) `re.sub(r"\s+", " ", v).strip()` — collapse ALL whitespace (incl. `\r\n`) to single spaces;
+(2) `v.replace("*", "")` — strip bold markers so no `**Status:**` / `**Track:**` / `**Type:**` /
+`**Child PRD:**` token can form on the value line; (3) `re.sub(r"^[#>|\-\*\+]+\s*", "", v)` — neutralize
+leading structural chars (`#` header, `>` quote, `|` table, list markers); (4) cap length `v[:200]`. After
+(1)+(2) a field cannot forge a second item block, set an arbitrary `**Status:**`, or corrupt the id counter —
+regardless of how the downstream status/track parser is anchored. The item's `**Status:**` is ALWAYS written
+`Planned` by the template; `--autonomous` never lets a field override it.
 
 **PRD-track (Epic / Feature)** — the outcome-first shape (same as the old epic):
 1. **Title** — a short noun phrase.

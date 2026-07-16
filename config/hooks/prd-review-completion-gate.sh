@@ -65,6 +65,8 @@ ACTIVE = ("reviewing",)
 # unknown/empty (never trap — a gate must release).
 
 def review_score(state):
+    # CONTRACT: this state file'"'"'s review.rounds is ALSO read by pickup-completion-gate.sh
+    # (delegated_rounds fold) — do not rename/remove review.rounds without updating that reader.
     # Progress = review rounds incrementing (phase is single-active, so the ordinal is a constant
     # floor; rounds are the real signal that a pass completed). CLAMP rounds at hard_cap so the score
     # PLATEAUS once past the cap: a model that keeps looping past the cap (rounds 5,6,7…) then stops

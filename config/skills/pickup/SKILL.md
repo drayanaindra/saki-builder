@@ -44,16 +44,20 @@ The single human gate is at proto — **running `/saki-builder:proto E<n>` desig
 ## GATE 0 — Resume check (deterministic)
 
 On every invocation, parse the item id (`E<n>` / `F<n>`), then read `tasks/.pickup-<slug>-state.json` if it
-exists (the `<slug>` is recorded in the item's `Child PRD:` link, or in the state file). Branch on `phase`:
+exists (the `<slug>` is recorded in the item's `Child PRD:` link, or in the state file). **The state file is
+named by the PARENT slug for the whole run — including through a recut — and is never renamed**, so this
+lookup always resolves. Resolve resume by **explicit precedence** (evaluate top-down; `recut.stage` is the
+single cursor — a run with **no `recut` block is NEVER treated as a recut**):
 
-| `phase` on entry | Action |
-|------------------|--------|
-| (no state file) | Fresh start → Phase 1. |
-| `prd` | Re-run Phase 1 from the point the PRD was incomplete (the PRD file may be partial). |
-| `review` | Resume Phase 2 — re-invoke autonomous `/saki-builder:prd-review` (it owns the loop-to-green) and read its terminal sentinel. |
-| `prd`/`review` **+ a `recut` block** | A scope recut already ran — resume by resolving `recut.active` (`F<n>`) from `tasks/roadmap.md` and continuing its Phase 1/2 at the recorded `phase` (the MVP child has its own seed + PRD); the parent is already decomposed. **Never recut again** (the once-guard: `slug` == `recut.active`). |
-| `proto-ready` | Already green. Re-print the ready handoff (Phase 3); do nothing else. |
-| `blocked` | Re-print the BLOCKED report; a human decides. Do not silently retry. |
+| Precedence | Condition | Action |
+|------------|-----------|--------|
+| 1 | top-level `phase` ∈ {`proto-ready`, `blocked`} | Terminal — re-print the ready handoff (Phase 3) or the BLOCKED report; do nothing else. |
+| 2 | a `recut` block with `recut.stage` == `phasing` | A recut was entered but no phase registered yet — re-run **Phase 2b Steps 1–2** (senior-pm phasing + verify). Idempotent (no roadmap writes yet). |
+| 3 | a `recut` block with `recut.stage` == `registering` | The `/add` loop was interrupted mid-registration — **continue Phase 2b Step 3**, using `recut.phases[]` (and the roadmap) to skip already-registered phases (dedup). Never restart the loop. |
+| 4 | a `recut` block with `recut.stage` == `driving` | The MVP is being driven. **Resume the CHILD from the PERSISTED state seed** — `state.slug` / `prd` / `title` already point at the MVP; drive its Phase 1/2 at the recorded top-level `phase`. **Do NOT re-resolve the invoked parent id via GATE 1, do NOT re-init `state.slug`.** The once-guard holds: `state["slug"]` == `recut.active_slug` → never recut again. |
+| 5 | **no `recut` block**, `phase` == `prd` | Normal run — re-run Phase 1 from where the PRD was incomplete (re-resolving the invoked id is correct — it IS the run). |
+| 5 | **no `recut` block**, `phase` == `review` | Normal run — resume Phase 2 (re-invoke autonomous `/saki-builder:prd-review`, read its terminal sentinel). |
+| 6 | (no state file) | Fresh start → Phase 1. |
 
 **Best-effort + safe:** a missing/partial state file degrades to a normal fresh run — never hard-fail on it.
 Always write the state file before ending a turn so resume lands on the right phase.
@@ -122,28 +126,43 @@ Maintain `tasks/.pickup-<slug>-state.json`. **Update it after every phase transi
   "started_at": 1730000000,
   "prd_written": false,
   "review": { "rounds": 0, "verdict": "", "readiness": "", "phase1": "", "blockers_fixed": 0 },
-  "recut": { "parent": "F3", "phases": ["F7","F8","F9"], "active": "F7", "pm_rounds": 0 }
+  "recut": {
+    "parent": "E3",
+    "stage": "phasing|registering|driving",
+    "phases": [ {"id":"F7","slug":"<child-slug>","role":"mvp"}, {"id":"F8","slug":"<child-slug>","role":"deferred"} ],
+    "active": "F7", "active_slug": "<mvp-slug>",
+    "registered": 3, "pm_rounds": 0
+  }
 }
 ```
 
-`phase` is the cursor the Stop gate keys off:
+`phase` (top-level) is the cursor the Stop gate keys off:
 - `prd` / `review` → front-half work in progress → the Stop gate **keeps you running**.
 - `proto-ready` → PRD is green (`SHIP · READY`), waiting for the human to run `/saki-builder:proto` → the Stop
   gate **releases** (the human's turn). This is the terminal success state for `/saki-builder:pickup`.
 - `blocked` → a hard stop you reported → the Stop gate **releases**.
 
-`recut` is **optional** and present only after a Phase-2b scope recut. There is **no** `phase:"recut"`
-value — a recut runs *while `phase` stays `review` → `prd` → `review`* (so the Stop gate keeps the run
-alive with no hook change). The block records the `parent` id, the registered phase ids (`phases`), the
-`active` child being driven (the MVP), and the senior-pm re-prompt count (`pm_rounds`). After a recut the
-state file's `slug` / `prd` / `title` point at the **MVP child** (the run continues on it); the file keeps
-the parent's name.
+`recut` is **optional** and present only after a Phase-2b scope recut. **Its presence ⇔ "this run is a
+recut"; its absence ⇔ never a recut** (the guard that stops a normal `/pickup` being read as a recut).
+There is **no** `phase:"recut"` value — a recut runs *while top-level `phase` stays `review` → `prd` →
+`review`* (so the Stop gate keeps the run alive with no hook change); **`recut.stage` is the single resume
+cursor** (`phasing` → `registering` → `driving`), a sub-field the Stop gate never gates block/release on.
+The gate DOES fold `recut.stage` + capped `len(recut.phases[])` into its progress score so the multi-turn
+recut can't starve it. `recut.phases[]` records each registered phase as `{id, slug, role}` (the MVP is
+pinned by `role:"mvp"`, never id-order); `active`/`active_slug` name the MVP being driven; `registered` is
+the confirmed count. After the re-point (stage→`driving`) the state file's `slug` / `prd` / `title` point at
+the **MVP child** (the run continues on it), but **the FILE keeps the parent's name and is NEVER renamed** —
+fresh MVP budget comes from deleting the `.gate.json` sidecar in place (Phase 2b Step 5), so GATE 0's
+lookup-by-parent-id always resolves.
 
 ---
 
 ## Phase 1 — `/saki-builder:prd`  (seeded by the item)
 
-1. Init the state file (`phase:"prd"`, stamp `started_at`, `epic`, `slug`, `title`, `prd`).
+1. Init the state file (`phase:"prd"`, stamp `started_at`, `epic`, `slug`, `title`, `prd`). **On a RESUME
+   (the state file already exists with a `slug`), PRESERVE the existing `slug` / `prd` / `title` — stamp them
+   only on a FRESH start.** (A `driving`-stage recut resume re-enters here on the MVP child; re-stamping would
+   overwrite `state.slug` with the parent slug and break the once-guard — see GATE 0 precedence 4.)
 2. **Flip the item `Planned → In-progress`** in `tasks/roadmap.md` (update its `**Status:**` and `**Updated:**`).
 3. Invoke the `prd` skill. **Pass the item _title_ verbatim as the `feature` input** — nothing else folded
    in. `feature` is the filename driver (`/saki-builder:prd` saves `tasks/prd-<slugify(feature)>.md`), so the
@@ -217,21 +236,23 @@ Entered from Phase 2 when the review dead-ends because the initiative is **too b
 (a scope problem), not because its premise is unproven. Acting as a Senior PM, you recut it into an MVP
 plus trigger-gated follow-on phases, register each on the roadmap, and drive **only the MVP** to green.
 
-**Recut at most once per pickup run — detected via the state file.** If the state file already carries a
-`recut` block AND the current `slug` == `recut.active` (you are already driving a recut child), a scope
-blocker does **not** re-enter this phase — route it to the plain-blocked path in Phase 2 (flip the child
-Blocked, emit `PICKUP_BLOCKED`). A child MVP that still won't converge is a genuine `blocked` (a human
-decides). This bounds decomposition — no recursive recut, no infinite decomposition.
+**Recut at most once per pickup run — detected via the state file (the once-guard).** If the current run is
+already a recut child (`recut.stage == "driving"` AND the loaded `state["slug"]` == `recut.active_slug`), a
+scope blocker does **not** re-enter this phase — route it to the plain-blocked path in Phase 2 (flip the
+child Blocked, emit `PICKUP_BLOCKED`). A child MVP that still won't converge is a genuine `blocked` (a human
+decides). This bounds decomposition — no recursive recut, no infinite decomposition. **Compare the LOADED
+`state["slug"]`, never an id-derived slug** (on a resume the id-derived slug is the parent's, which would
+make the guard miss and re-recut).
 
 **Do NOT introduce a `phase:"recut"` value** — the Stop gate (`pickup-completion-gate.sh`) keeps a run
-alive only while `phase ∈ {prd, review}` and releases on any unknown phase. The whole recut runs while
-`phase` stays `review` → (Step 5) `prd`, so the gate needs no change and never drops the run mid-recut.
+alive only while top-level `phase ∈ {prd, review}` and releases on any unknown phase. The whole recut runs
+while `phase` stays `review` → (Step 5) `prd`; `recut.stage` is a sub-field the gate never gates on.
 
-**Keep the circuit breaker fed — bump `review.rounds` on every state-file write during Phase 2b** (entering
-recut, after the senior-pm returns, after each `/add`). The Stop gate scores progress as
-*phase-ordinal + `review.rounds`*; the recut runs at a **flat** phase (`review`), so without a rising
-`rounds` a multi-turn recut (senior-pm spawn + verify + several `/add`s) can hit the gate's no-progress
-limit and **release the run mid-recut**. A monotonically rising `rounds` keeps it alive across those turns.
+**The circuit breaker is fed DETERMINISTICALLY by the gate** — it folds `recut.stage` (ordinal) + capped
+`len(recut.phases[])` into its progress score, so each stage transition (`phasing`→`registering`→`driving`)
+and each `/add` (which appends to `recut.phases[]`) raises the score and keeps the multi-turn recut alive
+with no manual counter. You do **not** hand-bump `review.rounds` here anymore. Just write the correct
+`recut.stage` + append to `recut.phases[]` at each transition (Steps 1/3/5).
 
 ### Step 0 — Confirm it is a scope blocker (classify `readiness: blocker`)
 - `non-convergence` → scope blocker → proceed.
@@ -243,9 +264,13 @@ limit and **release the run mid-recut**. A monotonically rising `rounds` keeps i
 - `DISCOVERY-FIRST` never reaches here.
 
 ### Step 1 — Ask the Senior PM to phase it
-Spawn the `senior-pm` agent (Agent tool) with: the **item seed**, the non-converged PRD
-(`tasks/prd-<slug>.md`), and the **review ledger** (`tasks/prd-<slug>-review.md` — the accumulated
-blockers). Ask for an **MVP phasing decision**:
+**First write `recut = {parent:<id>, stage:"phasing", phases:[], registered:0}` to the state file** (this
+marks the run as a recut so GATE 0 resumes it correctly, and starts crediting the gate). Then spawn the
+`senior-pm` agent (Agent tool) with: the **item seed**, the non-converged PRD (`tasks/prd-<slug>.md`), and
+the **review ledger** (`tasks/prd-<slug>-review.md`). Ask for its **`MVP-Phasing Decision`** artifact
+(`config/agents/senior-pm.md`), and **embed the exact output template verbatim in the spawn prompt**
+(belt-and-suspenders, so autonomy holds even if the agent file drifts) — instruct it to **decide, not ask**,
+and to return the shape **inline**. The decision is an **MVP phasing**:
 - **Phase 1 — MVP:** the thinnest vertical slice that delivers the PRD's **primary §3 job + primary §5
   outcome**, sized **within the PRD's §6 appetite**, and a **walking skeleton** (ships user-visible value,
   not plumbing).
@@ -267,19 +292,25 @@ Read the senior-pm output against the actual PRD:
 - each phase's cited slices/outcomes **exist** in `tasks/prd-<slug>.md`;
 - the MVP is genuinely a **walking skeleton within appetite** (not the full build re-labelled);
 - each deferred phase carries an **objective trigger**.
-If it invented scope, or the MVP still exceeds appetite → **re-prompt the senior-pm once** with the
-specific defect (bump `recut.pm_rounds`). If it still fails → abandon the recut, fall through to the
+If it invented scope, or the MVP still exceeds appetite → **re-prompt the senior-pm once, CORRECTIVELY** —
+re-invoke it with the exact 5-field-per-phase template AND the **specific verification defect inline** (e.g.
+"Phase 2 cites §8.4 which is not in the PRD" / "the MVP still carries 6 slices, over the §6 appetite of 3"),
+not a bare "try again" (bump `recut.pm_rounds`). If it still fails → abandon the recut, fall through to the
 plain-blocked path (record the reason).
 
 ### Step 3 — Register each phase via `/saki-builder:add`
-Register the phases **sequentially, never in parallel** — each `/saki-builder:add` scans `tasks/roadmap.md`
-for the next free `F<n>`, so a parallel batch would collide on the id counter; each call must see the prior
-one's appended item. For each phase, invoke the `add` skill as `/saki-builder:add --feature "<rich intent>"`.
-Compose the intent from the phase's **full five-field shape** (Step 1) — title · Goal · Target user & Job ·
-User flow · Success signal — a complete shape lets `/add` take its autonomous fallback (no human prompts),
-exactly as Phase 1 seeds `/saki-builder:prd`. Prefix each title `<parent-id> · Phase k (<MVP | trigger: …>):
-<title>`; for a deferred phase, carry its trigger in the Goal / Success-signal so the item records it.
-Capture each assigned id (`F<n>`).
+**Set `recut.stage = "registering"`** before the first `/add` (marks the loop for GATE 0 resume + credits the
+gate). Register the phases **one `/add` per turn, never in parallel** (a MUST, not prose) — each
+`/saki-builder:add` scans `tasks/roadmap.md` for the next free `F<n>`, so a parallel batch would collide on
+the id counter; **read back the assigned `F<n>` before the next**. **Cap the fan-out at ≤ 5 phases** (a
+runaway/injected phasing can't spam the roadmap). Invoke the `add` skill as
+`/saki-builder:add --feature --autonomous "<rich intent>"` — the **`--autonomous` flag** is the deterministic
+no-prompt path (`config/skills/add/SKILL.md`). **Idempotent (dedup):** before each `/add`, skip a phase
+already recorded in `recut.phases[]` OR already present on the roadmap; append each registered phase to
+`recut.phases[]` as `{id, slug, role}` (`role:"mvp"` for the MVP, `role:"deferred"` otherwise) and bump
+`recut.registered`. Compose the intent from the phase's **full five-field shape** (Step 1) — title · Goal ·
+Target user & Job · User flow · Success signal; prefix each title `<parent-id> · Phase k (<MVP | trigger: …>):
+<title>`; for a deferred phase carry its trigger in the Goal / Success-signal.
 
 ### Step 4 — Record the phase chain
 Under the **parent** `### <id>` block in `tasks/roadmap.md`, add
@@ -292,14 +323,16 @@ fresh PRD when picked up. Do not re-point or delete it. The parent is **not stra
 phase-chain child ships, `/saki-builder:build` flips the parent to `Shipped` (see build's Completion
 Output); the roadmap view renders it `recut → superseded` until then.
 
-### Step 5 — Continue on the MVP only (the rest stay Planned)
-Re-point the run to the **MVP child**: update the state file's `slug` / `prd` / `title` to the MVP child,
-add the `recut` block (see the state schema), set `phase:"prd"`, and **re-enter Phase 1**
-(`/saki-builder:prd` seeded by the MVP item) → Phase 2 (`/saki-builder:prd-review` to green). **Carry
-`review.rounds` forward — do not reset it to 0** (it feeds the Stop-gate breaker; resetting it right after
-the recut fed it would drop the score. The MVP review's *true* round count lives in its own
-`tasks/.prd-review-<mvp-slug>-state.json`). Because the MVP is appetite-sized it converges; stop at
-`proto-ready` **for the MVP** as normal (Phase 3).
+### Step 5 — Re-point to the MVP, delete the sidecar for a fresh budget (the rest stay Planned)
+Re-point the run to the **MVP child**: set `recut.stage = "driving"`, `recut.active = <mvp F-id>`,
+`recut.active_slug = <mvp-slug>`; update the state's `slug` / `prd` / `title` FIELDS to the MVP child; set
+`phase:"prd"`. **Do NOT rename the state file — it keeps the parent's name so GATE 0's lookup-by-parent-id
+always resolves.** Instead, **give the MVP sub-run a fresh breaker budget by deleting the sidecar in place:**
+`rm -f tasks/.pickup-<parent-slug>-state.json.gate.json` (idempotent — a missing sidecar is fine). Then
+**re-enter Phase 1** (`/saki-builder:prd` seeded by the MVP item) → Phase 2 (`/saki-builder:prd-review` to
+green). (The MVP's own review rounds live in its own `tasks/.prd-review-<mvp-slug>-state.json`, which the
+gate now folds via `delegated_rounds` since `state.slug` = mvp-slug.) Because the MVP is appetite-sized it
+converges; stop at `proto-ready` **for the MVP** as normal (Phase 3).
 The deferred phases stay `Planned` with their triggers — a later `/saki-builder:pickup F8` picks up phase 2
 when its trigger fires. `/pickup` does **not** drive them here.
 
