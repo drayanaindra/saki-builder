@@ -271,6 +271,7 @@ by the risk of the step it belongs to (§4c). Every Blocking item is binary and 
 | Implementation Checklist `[ ]` unchecked on a state-changing step | Blocking |
 | Missing user role coverage | Blocking |
 | Step missing Test column entry (business-logic step) | Blocking |
+| Capability claim uncited (no probe run — "I don't have tool X") | Blocking |
 | Step Committable=No without grouping note | Advisory |
 | Implementation Checklist `[ ]` unchecked on a LOW cosmetic step | Advisory |
 | Style / polish / non-load-bearing gap | Advisory |
@@ -294,7 +295,8 @@ can't reduce to a binary yes/no + citation goes to Advisory instead.
 | ------------------------------ | ----------------------------------------------------------- |
 | Blocking Set empty             | Present plan, wait for approval                             |
 | Blocking Set non-empty         | Resolve each cited blocking item, re-check — do NOT present  |
-| Many blocking items, wide gaps | Stop, write context file, ask user for direction            |
+| Many blocking items, wide gaps | **Research harder — do NOT escalate.** Nearly every blocking predicate in §4b is research-resolvable (grep the anchor, name the file+function, trace the role, run the probe). A wide gap means the research phase was too shallow, not that the user owes you direction: write the context file, then go read the code and re-check. Escalate ONLY the residue that survives — see the row below. |
+| Intent-shaped unknown survives research | **Pause — ask ONE specific question.** An unknown is intent-shaped only if it is *not derivable from any file*: what the user wants, which trade-off they prefer, a missing `Concrete Example Output`. Never an A/B/C menu; never a give-up. (Everything else — file paths, wiring, existing shape — is yours to resolve.) |
 | Unscored (no Evidence Ledger)  | Return to research                                          |
 
 **Max unresolved unknowns before presenting:** 2 (an open MED/HIGH unknown is itself a Blocking item).
@@ -304,6 +306,7 @@ can't reduce to a binary yes/no + citation goes to Advisory instead.
 #### 4e. Honesty rules
 
 - Every Blocking item MUST cite evidence (`path:line`, grep result, or step number). An uncited item is invalid — resolve it or move it to Advisory (never leave it uncited in Blocking).
+- **A capability claim needs a citation like any other predicate — probe before claiming absence.** "I don't have tool X" / "there's no way to run Y" is uncited, and therefore invalid, until a probe fails. Ladder, cheapest first: deferred tool (`ToolSearch` — most `mcp__*` tools load on demand) → CLI on PATH (`command -v gh`) → installable (`brew`/`npx` — a missing binary is a LOW-tier action, not a blocker) → env present (`[ -n "$VAR" ]` — test presence, **never print the value**). Cite the probe that failed: `BLOCKED: N8N_API_KEY unset ([ -n "$N8N_API_KEY" ] → empty)`. **Never probe around a refusal** — a denied permission, a missing credential, and interactive auth are genuine human handoffs, not obstacles to route around.
 - An empty Blocking Set requires the Evidence Ledger to state explicitly: *"All anchors verified, all targets have anchor parents and creating steps, all checklist items on state-changing steps satisfied, no unknowns above LOW."*
 - Before marking any checklist item `[x]`, ask: can I cite the plan line that satisfies it? If not, leave it `[ ]` — and if it sits on a state-changing step, it is Blocking.
 - The gate is honest emptiness, not an empty-looking table. **Demoting a Blocking item to Advisory without resolving it is the failure mode this gate exists to prevent** — the only way out of Blocking is to do the work and cite where.

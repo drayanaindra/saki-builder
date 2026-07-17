@@ -55,7 +55,32 @@ A section is PRESENT only if it has real content — not headings, not "N/A", no
 PHASE 1 PASSED — proceeding to Phase 2
 ```
 
-**If ANY ❌:**
+**If ANY ❌ — route, don't terminate.** The gate is right; the *addressee* depends on who called you.
+A structural gap is `/saki-builder:rplan`'s to fix (never fix it here — see the Phase 1.5 rule below:
+rewriting in two places drifts). But "the plan author must rewrite" is a human-shaped instruction, and
+inside `/saki-builder:build` the plan author IS the agent — so hand back to `/saki-builder:rplan` and
+re-review rather than stopping the chain.
+
+**If a caller passed a plan-file path (Step 0) — self-route:**
+```
+PHASE 1 FAILED — STRUCTURAL BLOCKERS FOUND (attempt [K]/3)
+
+Missing/incomplete:
+  ❌ [section]: [specific gap]
+
+Routing back to /saki-builder:rplan with the cited gaps → will re-review.
+```
+Re-run `/saki-builder:rplan` on the same plan file, passing every cited gap, then re-run Phase 1.
+**Loop guard — 3 strikes** (matching `/saki-builder:build`'s loop guard): if Phase 1 fails the same way
+~3 times, stop hammering it. Output `BLOCKED: rplan-review — Phase 1 structural gap survived 3 rounds:
+[cited gap]` and return control to the caller. Never loop silently past 3.
+
+**Exception — the one gap that must NOT be self-routed.** If the gap is **intent-shaped** (not derivable
+from any file), pause instead: a missing/placeholder `Concrete Example Output` is the canonical case —
+`config/skills/rplan/SKILL.md:350` already blocks on it and must keep blocking. Never fabricate it, never
+route it back to `/saki-builder:rplan` expecting the agent to invent it. Ask the user for the example.
+
+**If NO caller passed a path (human-invoked review) — stop and report:**
 ```
 PHASE 1 FAILED — STRUCTURAL BLOCKERS FOUND
 
