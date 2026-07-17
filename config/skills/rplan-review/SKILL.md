@@ -59,6 +59,10 @@ A section is PRESENT only if it has real content — not headings, not "N/A", no
 ```
 PHASE 1 PASSED — proceeding to Phase 2
 ```
+**Then clear the attempt counter** — delete the `<!-- rplan-review-phase1-attempts: K -->` line from the
+plan file (or set it to `0`) — so a later re-review of this plan starts fresh. This is the ONLY place the
+counter is cleared; it must happen here, on the path that actually runs. A counter that only ever
+increments would make the next legitimate review start at a stale `K` and emit a false `BLOCKED`.
 
 **If ANY ❌ — route, don't terminate.** The gate is right; the *addressee* depends on who called you.
 A structural gap is `/saki-builder:rplan`'s to fix (never fix it here — see the Phase 1.5 rule below:
@@ -66,7 +70,25 @@ rewriting in two places drifts). But "the plan author must rewrite" is a human-s
 inside `/saki-builder:build` the plan author IS the agent — so hand back to `/saki-builder:rplan` and
 re-review rather than stopping the chain.
 
-**If a caller passed a plan-file path (Step 0) — self-route:**
+**Loop guard — 3 strikes, counted durably. Apply this BEFORE routing.** The counter must survive
+compaction and re-invocation, so it lives in the plan file, not in your head:
+
+```
+<!-- rplan-review-phase1-attempts: K -->
+```
+
+Step 0 already read it (absent → `K=0`). **Now increment it and write it back to the plan file — do this
+before you route, not after.** Then check the bound: **if K reaches 3, do NOT route.** Stop instead —
+regardless of whether the gaps are the same ones. A rotating gap set (fix A → B appears → fix B → C
+appears) is still a loop, and it is the exact case a "same failure ~3 times" predicate never catches:
+
+```
+BLOCKED: rplan-review — Phase 1 structural gaps survived 3 rounds: [cited gaps, all rounds]
+```
+
+Return control to the caller. Never loop silently past 3.
+
+**If K < 3 AND a caller passed a plan-file path (Step 0) — self-route:**
 ```
 PHASE 1 FAILED — STRUCTURAL BLOCKERS FOUND (attempt [K]/3)
 
@@ -76,24 +98,6 @@ Missing/incomplete:
 Routing back to /saki-builder:rplan with the cited gaps → will re-review.
 ```
 Re-run `/saki-builder:rplan` on the same plan file, passing every cited gap, then re-run Phase 1.
-
-**Loop guard — 3 strikes, counted durably.** Before routing, read the attempt counter and increment it.
-The counter must survive compaction and re-invocation, so it lives in the plan file, not in your head:
-
-```
-<!-- rplan-review-phase1-attempts: K -->
-```
-
-Read it at Step 0 (absent → K=0). Increment and write it back on every Phase 1 failure. **If K reaches 3,
-stop — regardless of whether the gaps are the same ones.** A rotating gap set (fix A → B appears → fix B →
-C appears) is still a loop, and it is the exact case a "same failure ~3 times" predicate never catches:
-
-```
-BLOCKED: rplan-review — Phase 1 structural gaps survived 3 rounds: [cited gaps, all rounds]
-```
-
-Then return control to the caller. Never loop silently past 3. Clear the counter on a Phase 1 PASS so a
-later re-review starts fresh.
 
 **Exception — the one gap that must NOT be self-routed.** If the gap is **intent-shaped** (not derivable
 from any file), pause instead: a missing/placeholder `Concrete Example Output` is the canonical case —
