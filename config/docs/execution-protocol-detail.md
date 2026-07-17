@@ -173,7 +173,7 @@ START SESSION
 |   |-- Plan (Blocking Set, unknowns, branch points)
 |   |-- Annotate (human reviews, 1-6 cycles)
 |   |-- Execute (autonomous within hooks)
-|   |-- Branch point? ----- Pause, present options, wait
+|   |-- Branch point? ----- Decide (reversible) / Pause, ONE question (intent) / BLOCKED (guardrail)
 |   +-- Verify (tests, reviewer subagent, human review)
 |
 +-- End of session -------- /retro (Stop hook reminds you)

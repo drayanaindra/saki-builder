@@ -18,11 +18,16 @@ There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely
 
 **If the caller (e.g. `/saki-builder:build`) passed a specific plan-file path, use that exact file** — it pins the review to the intended slice, not whichever `*-plan.md` is newest (a multi-slice build keeps several plans in `tasks/`; mtime-based "newest-wins" selection would otherwise bind the review to the wrong slice's plan). Otherwise find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
 
+Also read the Phase 1 attempt counter — `<!-- rplan-review-phase1-attempts: K -->` anywhere in the plan
+file (absent → `K=0`). It bounds the Phase 1 self-route loop below and must be read here, before any
+routing decision, so the bound survives a compaction or a fresh invocation.
+
 Print:
 ```
 --- PLAN LOADED ---
 File: [filename]
 Initial blocking count: [N]
+Phase 1 attempts so far: [K]/3
 ```
 
 ---
@@ -71,9 +76,24 @@ Missing/incomplete:
 Routing back to /saki-builder:rplan with the cited gaps → will re-review.
 ```
 Re-run `/saki-builder:rplan` on the same plan file, passing every cited gap, then re-run Phase 1.
-**Loop guard — 3 strikes** (matching `/saki-builder:build`'s loop guard): if Phase 1 fails the same way
-~3 times, stop hammering it. Output `BLOCKED: rplan-review — Phase 1 structural gap survived 3 rounds:
-[cited gap]` and return control to the caller. Never loop silently past 3.
+
+**Loop guard — 3 strikes, counted durably.** Before routing, read the attempt counter and increment it.
+The counter must survive compaction and re-invocation, so it lives in the plan file, not in your head:
+
+```
+<!-- rplan-review-phase1-attempts: K -->
+```
+
+Read it at Step 0 (absent → K=0). Increment and write it back on every Phase 1 failure. **If K reaches 3,
+stop — regardless of whether the gaps are the same ones.** A rotating gap set (fix A → B appears → fix B →
+C appears) is still a loop, and it is the exact case a "same failure ~3 times" predicate never catches:
+
+```
+BLOCKED: rplan-review — Phase 1 structural gaps survived 3 rounds: [cited gaps, all rounds]
+```
+
+Then return control to the caller. Never loop silently past 3. Clear the counter on a Phase 1 PASS so a
+later re-review starts fresh.
 
 **Exception — the one gap that must NOT be self-routed.** If the gap is **intent-shaped** (not derivable
 from any file), pause instead: a missing/placeholder `Concrete Example Output` is the canonical case —
