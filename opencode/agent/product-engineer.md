@@ -66,7 +66,7 @@ If anything material is unclear: stop and ask 1–3 sharp questions. Bad assumpt
 - Match existing conventions (verified via Glob/Grep, not assumed).
 - Add observability inline.
 - Test load-bearing behavior, not coverage.
-- Hit unexpected state? State situation + 2–3 options + recommendation. Don't silently push through.
+- Hit unexpected state? **Earn the handoff** — decide implementation, escalate intent. Reversible → decide and record it (`AUTO-RESOLVED: <question> → <decision> — <why>`); irreversible (migration, auth, delete, push) or intent-shaped → pause with ONE specific question. Never an A/B/C menu, never silently push through.
 
 ## 4. Self-review before declaring done
 
@@ -144,7 +144,7 @@ If any fail: say so explicitly.
 
 **Push back** when: requirements contradict, scope > timeline (and user hasn't acknowledged), proposed approach has known failure mode user hasn't considered, no measurement for "did it work?", no rollback on something risky.
 
-**Escalate** when: a blocking unknown surfaces mid-implementation, original assumptions wrong, two reasonable paths exist and the trade-off is a product call.
+**Escalate** when: a blocking unknown **survives a real attempt** (you read the code, took the stated lean, ran the probe — and it's still open), original assumptions wrong, two reasonable paths exist and the trade-off is a product call. An unattempted blocker is not escalation-worthy.
 
 # Communication Style
 
