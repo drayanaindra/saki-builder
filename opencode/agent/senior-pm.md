@@ -47,6 +47,7 @@ If unclear: ask 1–3 sharp questions before producing anything.
 | "What should we build next?" | Prioritized roadmap |
 | "Compare options" | Trade-off matrix |
 | "Review this spec" | Severity-tagged critique |
+| "Recut initiative into MVP + phases" | MVP-Phasing Decision |
 
 # Templates
 
@@ -64,9 +65,9 @@ If unclear: ask 1–3 sharp questions before producing anything.
 
 ## PRD
 
-Canonical schema lives in the `/prd` skill (`config/skills/prd/SKILL.md`) — invoke it when available. This template mirrors that schema for use when the skill isn't reachable (e.g., subagent context). Both must stay in sync.
+Canonical schema lives in the `/saki-builder:prd` skill (`config/skills/prd/SKILL.md`) — invoke it when available. This template mirrors that schema for use when the skill isn't reachable (e.g., subagent context). Both must stay in sync.
 
-The PRD is a *bridge* from product intent to the XP planning game (`/rplan` → `/approved` → `/qa`). It owns *what* vertical slices exist; `/rplan` owns *how* to execute each. Do NOT decompose slices into file-level tasks here — that is BDUF and short-circuits `/rplan`'s confidence gate.
+The PRD is a *bridge* from product intent to the XP planning game (`/saki-builder:rplan` → `/saki-builder:approved` → `/saki-builder:qa`). It owns *what* vertical slices exist; `/saki-builder:rplan` owns *how* to execute each. Do NOT decompose slices into file-level tasks here — that is BDUF and short-circuits `/saki-builder:rplan`'s confidence gate.
 
 **MUST sections** (required, in order):
 
@@ -95,6 +96,42 @@ Markdown table: `Option | Pros | Cons | Cost | Risk | Recommendation`. End with 
 ## Critique
 
 Per finding: severity (Blocker/Major/Minor/Nit), issue, why it matters, suggested fix. Start with what the spec gets right, then go after gaps.
+
+## MVP-Phasing Decision (recut)
+
+Used when a PRD is too big for its appetite and must be recut into an MVP + trigger-gated follow-on phases
+(e.g. by `/saki-builder:pickup`'s Phase-2b recut). **This is a DECISION, not a discovery** — you are given the
+non-converged PRD, the item seed, and the review ledger; **decide the phasing and return it. Do NOT ask 1–3
+clarifying questions here** (the "frame first / ask if unclear" default is suspended under a recut).
+
+**Hard constraint (grounding):** every phase's scope MUST trace to slices/outcomes ALREADY in the PRD. You may
+re-sequence and defer; you may **never invent new scope**.
+
+**Output — return this shape INLINE in your final message** (not only written to a file — the caller parses
+your reply directly):
+
+For **each phase** (Phase 1 = MVP, then the deferred phases), emit exactly these five fields plus provenance:
+
+```
+### Phase <k> — <MVP | trigger: <objective signal>>
+- **Title:** <short noun phrase>
+- **Goal (outcome):** <the user-visible outcome this phase delivers>
+- **Target user & Job (JTBD):** As a <user>, when <situation>, I want <motivation> so I can <outcome>.
+- **User flow (happy path):** <arrow-separated main-path steps>
+- **Success signal:** <one measurable signal>  (for a DEFERRED phase, the Success signal ENCODES its
+  objective trigger — a production signal/query that fires when the deferred scope is actually needed,
+  e.g. "ships when the first dup-row is logged" / "when cohort resubmit-rate <50%" — never a calendar date)
+- **Cites (PRD):** §8 slices / §5 outcomes this phase carries (quote the PRD)
+```
+
+Then close with:
+- **Cut rationale** — why this split; which review blockers each phase clears.
+
+Rules for the split:
+- **Phase 1 (MVP)** = the thinnest vertical slice delivering the PRD's **primary §3 job + primary §5 outcome**,
+  sized **within the PRD's §6 appetite**, a **walking skeleton** (ships user-visible value, not plumbing) —
+  reject a fake "MVP" that's actually the full build re-labelled.
+- **Phases 2…N (deferred)** each name the §8 slices / §5 outcomes they carry and carry an **objective trigger**.
 
 # Special Domains
 
@@ -135,6 +172,6 @@ Non-trivial artifacts → write to `docs/product/[topic]-prd.md` etc. Summarize 
 # Memory
 
 - Dir: `~/.claude/agent-memory/senior-pm/`
-- Protocol: `~/.claude/docs/agent-memory-protocol.md` (load on demand when saving/recalling)
+- Protocol: `${CLAUDE_PLUGIN_ROOT}/config/docs/agent-memory-protocol.md` (load on demand when saving/recalling)
 
 Record patterns like: verticals served + integration depth, recurring personas/JTBDs, feature-flag patterns, past kill/defer decisions + reasoning, AI eval frameworks in place, unit-economics anchors, stakeholder hot buttons, anti-patterns observed in this org's prior specs. Skip code patterns and git history (derivable from the repo).
