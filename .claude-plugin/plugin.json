@@ -1,7 +1,7 @@
 {
   "name": "saki-builder",
   "displayName": "SAKI Builder",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "A personal-scale shared toolkit for Claude Code: research\u2192plan\u2192build\u2192qa\u2192review skills, adversarial reviewers, domain agents, safety hooks, an execution protocol, and a split learning loop (team baseline + private overlay). Run /saki-builder:init to tailor a project.",
   "author": {
     "name": "drayanaindra",

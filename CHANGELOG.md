@@ -2,6 +2,32 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.21.0 — 2026-07-18
+
+- **`/saki-builder:build` gains a PLAN mode — plan-track items (Improvement `I<n>` / Bug `B<n>`) now run
+  autonomously, the same as PRD-track.** Previously only Epic/Feature PRDs had a one-command executor; an
+  Improvement or Bug meant running `/saki-builder:rplan → rplan-review → approved → qa → reviewer → wrap`
+  by hand. `/saki-builder:build I<n>` · `B<n>` · `<plan-file>` now runs that whole chain **once** over a
+  single plan-track item. The same skill picks its mode from the argument (id prefix + roadmap `**Track:**`,
+  or file shape): **PRD mode is unchanged**; **PLAN mode** drops the PRD-only gates (no lock check, no slice
+  iteration, no proto-fidelity gate) and runs a single-plan loop that reuses the same underlying skills —
+  no behavior re-implemented. A missing plan is **created** (PLAN mode runs `/saki-builder:rplan` itself),
+  not a stop, since the roadmap item is the pre-existing scope unit and plan-track has no human lock gate.
+  Completion prints `PLAN_BUILD_COMPLETE` and flips the item `Shipped`.
+- **UI changes in a plan-track item are handled inline, auto-picked.** The `/saki-builder:reviewer` step
+  always runs a **design-system reuse check** (a component that hand-rolls raw markup in place of an existing
+  primitive is a blocking finding; composition and genuinely-new primitives are exempt). When a plan touches
+  more than one screen or introduces a new visible state, a **screenshot glance** of those screens is
+  captured after `/saki-builder:approved` and surfaced in the completion output. `/saki-builder:proto` is
+  PRD-bound (it can't consume a plan), so PLAN mode never calls it — the reuse check plus the glance cover it.
+- **Cross-skill wiring for the new mode.** `/saki-builder:qa` skips its own `Shipped` flip when driven by
+  `/saki-builder:build` (keyed off a concrete `BUILD-DRIVEN` token in the invocation) so build owns the
+  terminal flip after reviewer + wrap converge — no premature `Shipped` at qa-pass. `/saki-builder:rplan`
+  Step 0.6 now records `**Child plan:**` back to the roadmap (the primary item→plan link; the `**Item:**`
+  header stamp remains the fallback), and its Step 7 manual-chain seed is skipped for any build-driven run
+  (PRD slice or PLAN item). `/saki-builder:add` and the README surface `/saki-builder:build <id>` as the
+  autonomous Plan-track option.
+
 ## 0.20.0 — 2026-07-18
 
 - **"Earn the handoff" replaces the A/B/C option menu at every branch point.** When an agent hit an
