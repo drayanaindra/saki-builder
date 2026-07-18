@@ -438,8 +438,9 @@ Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking i
   honor it** — write `tasks/<prd-slug>-slice<N>-plan.md` so each slice's plan is a distinct file, not a
   newest-wins `*-plan.md` several slices share. **If seeded from a roadmap item (Step 0.6), stamp
   `**Item:** <id>` in the plan header** so `/saki-builder:qa` can flip that item to `Shipped` on all-pass.
-- **Seed the manual-chain resume manifest** (skip for a `/saki-builder:build` slice invocation — build owns
-  its own `.build-<prd-slug>-state.json`): after writing the plan, run the **Init** snippet from
+- **Seed the manual-chain resume manifest** (skip for **any** `/saki-builder:build`-driven invocation —
+  PRD-mode slice *or* PLAN-mode item — build owns its own `.build-<slug>-state.json`; the invocation says it
+  is build-driven): after writing the plan, run the **Init** snippet from
   `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` with `PLAN_FILE` = the plan just written and
   `ITEM` = the Step 0.6 id (or empty). It creates `tasks/.<slug>-state.json` and stamps `rplan=done` so the
   manual chain (`/rplan → … → /wrap`) survives a context clear. Best-effort — skip silently on error.

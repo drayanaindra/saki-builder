@@ -77,7 +77,9 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
   **PLAN mode** reuses this exact shape with a `"mode":"plan"` discriminator, an `"item":"<id>"` field,
   and a **single-element** `slices` array (`n:1`, `title` = the item/plan title) whose `steps` add
   `rplan` (the plan-creation step, done when the plan file exists). The resume logic (GATE 2) is unchanged —
-  a 1-element array is just the degenerate case of the slice loop.
+  a 1-element array is just the degenerate case of the slice loop. In PLAN mode `<slug>` (in the
+  `tasks/.build-<slug>-{state.json,progress.md}` names) derives from the item id lowercased (e.g. `b7`) for an
+  id launch, or the plan filename minus `-plan.md` for a plan-file launch — there is no `<prd-slug>`.
 - **Loop guard.** If the same slice fails the same way ~3 times, stop hammering it: write
   the reason to the scratchpad, output `BLOCKED: slice <N> — <reason>`, then move on to any
   independent remaining slices before reporting.
@@ -123,7 +125,9 @@ given. The `/saki-builder:prd` skill saves to `tasks/prd-<feature>.md`, so `task
 authority; an `E<n>`/`F<n>` id belongs to PRD mode above). Resolve its plan file, in order:
 (1) its `**Child plan:**` link (written by `/saki-builder:rplan` Step 0.6 when it's set — the clean primary);
 (2) fallback — grep `tasks/*-plan.md` headers for `**Item:** <id>` (the stamp `/saki-builder:rplan` always
-writes). If **neither** resolves (the item has no plan yet, `Child plan: —` and no stamped plan), do **NOT**
+writes); if more than one file matches, take the **newest** (most-recently-modified). If **neither** resolves
+(the item has no plan yet, `Child plan: —` and no stamped plan — including a legacy plan predating the
+`**Item:**` stamp, for which the fix is to pass the plan file path directly), do **NOT**
 stop — **PLAN mode runs `/saki-builder:rplan` itself** to create the plan (see The Single-Plan Loop, step
 P1). This differs from the PRD `no-PRD` stop on purpose: the roadmap **item** (created by `/saki-builder:add`)
 is the pre-existing scope unit here — the analogue of the PRD — and plan-track has no human lock gate, so a
@@ -146,6 +150,12 @@ Set an internal `MODE ∈ {PRD, PLAN}` from the argument, then follow the rest o
 | `I<n>` / `B<n>` id | **PLAN** | id prefix + roadmap `**Track:** Plan` (Track field wins if they ever disagree) |
 | `*-plan.md`, or a `.md` containing an `Evidence Ledger` / rplan Steps table | **PLAN** | file shape |
 | id not found on `tasks/roadmap.md` | — | **STOP**: `<id> not found on roadmap — /saki-builder:add it, or run /saki-builder:rplan on a plan file` |
+
+**Precedence when a file matches more than one row** (e.g. `prd-foo-plan.md`, or a `.md` carrying both a
+`## Vertical Slices` heading and an `Evidence Ledger`): the **content** shape wins over the **filename**, and
+the **plan** shape wins the tie — an `Evidence Ledger` / rplan Steps table ⇒ **PLAN**, regardless of filename.
+A `.md` matching **neither** shape (no slices, no Evidence Ledger) is ambiguous — **STOP** and ask
+`is <file> a PRD or a plan? (couldn't infer)` rather than defaulting to PRD and hard-stopping later at the lock gate.
 
 **PLAN mode changes exactly these things vs PRD mode, nothing else:** it **skips GATE 1.5** (PRD-lock — a
 plan-track item is never locked), runs **The Single-Plan Loop** instead of The Per-Slice Loop (one unit, no
@@ -514,9 +524,10 @@ flip (P6 / Completion Output), never here.
 ### P1. `/saki-builder:rplan` — plan the item (only if no plan yet)
 If GATE 1 resolved an existing plan file, **skip this step** (resume). Otherwise invoke the `rplan` skill
 (Skill tool, `skill: rplan`) seeded from the roadmap item — pass the `<id>` so rplan reads its **What** /
-**Repro / Context** and stamps `**Item:** <id>` in the plan header. **Tell rplan that `/saki-builder:build`
-owns the resume state** so it skips its own manual-chain state seed (rplan Step 7 already honors this for a
-build invocation). `/saki-builder:rplan` normally stops for a human; here — TRUST MODE — **auto-approve any
+**Repro / Context** and stamps `**Item:** <id>` in the plan header. **Tell rplan the invocation is
+build-driven (`/saki-builder:build` owns the resume state)** so it skips its own manual-chain state seed
+(rplan Step 7 honors any build-driven invocation, PRD slice or PLAN item). `/saki-builder:rplan` normally
+stops for a human; here — TRUST MODE — **auto-approve any
 plan whose Blocking Set is empty** and proceed. Record the plan path in the state manifest's `artifact` and
 **pass it explicitly to every step below.**
 
@@ -552,9 +563,12 @@ gate proto provides is unnecessary here; the reuse check + this glance cover it.
 
 ### P4. `/saki-builder:qa` — test against the plan's criteria
 Invoke `qa` (pass this plan's path). It runs the plan's acceptance criteria as real tests; every criterion
-must pass. **Pass qa the directive that it is running under `/saki-builder:build`** so it does **not** flip
-the roadmap item to `Shipped` itself — build owns the terminal flip after reviewer + wrap converge (qa's
-close-out honors this). If any criterion fails → fix in place and re-run `qa`. Do not proceed while red.
+must pass. **In the qa invocation, include the literal directive line `BUILD-DRIVEN: /saki-builder:build owns
+the terminal Shipped flip — do NOT flip the roadmap`** — a concrete, checkable token (not a vague hint; qa's
+close-out greps its invocation for `BUILD-DRIVEN`). This makes qa skip its own `Shipped` flip so build can own
+the **terminal** flip after reviewer + wrap converge — otherwise qa would mark the item `Shipped` at P4, while
+P5/P5.5 might still surface a blocker. If any criterion fails → fix in place and re-run `qa`. Do not proceed
+while red.
 
 ### P5. `/saki-builder:reviewer` — fresh-context review + design-system-reuse check
 **First confirm the item actually committed** — `git diff BASE..HEAD` must be non-empty (an empty committed
@@ -569,21 +583,28 @@ proto notes plan-track doesn't have):
 #   config/docs/design-system-contract.md Part B
 # Then, for each UI file the plan touched:
 grep -nE "import .* from ['\"](@/components/ui|@mui|@chakra-ui|<design-system-root>)" <touched-file>
-# A touched component that renders UI but imports NO design-system primitive ⇒ it hand-rolled/re-invented
-# one ⇒ BLOCKING finding (same bar as a /saki-builder:reviewer correctness block).
+# A touched component that renders raw primitive markup (its own <button>/<input>/<div>-styled control)
+# instead of the design system's ⇒ it hand-rolled/re-invented one ⇒ BLOCKING finding (same bar as a
+# /saki-builder:reviewer correctness block).
 ```
 
-If a touched UI component re-invented a primitive the design system already provides, that is **blocking** —
-fix in place (import/reuse the design-system component), then re-run P4 → P5. Legitimate exception: a genuinely
-new primitive the design system lacks (log it as a design-system gap, not a block). If reviewer reports other
-blocking issues (correctness, security, data-loss): fix, then re-run P4 → P5 until clean. Non-blocking nits:
-fix if cheap, else log.
+A touched UI file is a **violation only if it renders a raw primitive it should have imported** (its own
+styled `<button>`/`<input>`/card/modal where the design system already provides one). It is **NOT** a
+violation — do not block — when: **(a) composition** — it composes other local components (`<ProductCard/>`,
+`<Section/>`) that themselves reuse the design system, so it imports no primitive directly but reuses it
+transitively; or **(b) a genuinely new primitive** the design system lacks (log it as a design-system gap).
+So: a bare "imports no `@/components/ui`" is not itself the finding — the finding is *hand-rolled raw markup
+in place of an existing primitive*. On a real violation: fix in place (import/reuse the design-system
+component), then re-run P4 → P5. If reviewer reports other blocking issues (correctness, security, data-loss):
+fix, then re-run P4 → P5 until clean. Non-blocking nits: fix if cheap, else log.
 
 ### P5.5. Security audit — security-relevant items only
 Identical to the Per-Slice Loop's step 5.5: run **only when** the item touches a security surface (auth /
 session, money, PII, a new public endpoint, file upload, crypto, raw SQL/shell, untrusted input); otherwise
 skip and log `SECURITY: n/a (no security surface)`. A security HIGH is blocking and auto-resolved via the
-same shallowest-skill routing (implementation → `/saki-builder:approved`; design → re-plan from P1;
+same shallowest-skill routing (implementation → `/saki-builder:approved`; design → re-run `/saki-builder:rplan`
+on the existing plan carrying the finding as an explicit requirement, then `/saki-builder:rplan-review` →
+`/saki-builder:approved` — P1's "skip if a plan exists" does not apply to a deliberate security re-plan;
 dependency-CVE → bump). Re-run the tail (P4 → P5 → this) until clean. Never fake-green a security hole.
 
 ### P6. Done
@@ -637,7 +658,8 @@ Two outcomes:
 - **Clean** → the DoD gate passed (possibly after heals) and the tree converged to `main`. Proceed to
   Completion Output and print `PRD_BUILD_COMPLETE` (PRD mode) / `PLAN_BUILD_COMPLETE` (PLAN mode).
 - **`BLOCKED: DoD/<gate>`** → a gate survived wrap's 3-strike honesty backstop (or a real secret was
-  found). Do **NOT** print `PRD_BUILD_COMPLETE` and do **NOT** converge. Surface it as a build blocker
+  found). Do **NOT** print the completion sentinel (`PRD_BUILD_COMPLETE` / `PLAN_BUILD_COMPLETE`) and do
+  **NOT** converge. Surface it as a build blocker
   (same honesty bar as a blocked slice): report the gate, the offending files, and the exact fix. A
   leaked live secret is human-only — never route it through chat.
 
@@ -697,10 +719,11 @@ In PLAN mode the completion sentinel is **`PLAN_BUILD_COMPLETE`** (distinct from
 automation can tell the two apart), written only once FINAL GATE 2 returned **Clean** — `/saki-builder:qa`
 green, `/saki-builder:reviewer` clean (incl. the reuse check), any security audit clean-or-`n/a`,
 e2e green-or-waived, and the DoD gate passed. In the **same step** you print it, **flip the item to
-`Shipped`** in `tasks/roadmap.md` (`**Status:** Shipped`, `**Updated:**` today) — **never on a `BLOCKED:`
-path, never before it.** Identify the item by: the remembered `<id>` from the Input step; else, for a
-plan-file launch, the plan header's `**Item:** <id>`. If neither exists (a standalone plan with no item),
-skip the flip silently. **No phase-chain parent close applies** to plan-track. Then output:
+`Shipped`** in `tasks/roadmap.md` (`**Status:** Shipped`, `**Updated:**` today), **if it is not already
+`Shipped`** — **never on a `BLOCKED:` path, never before it.** Identify the item by: the remembered `<id>`
+from the Input step; else, for a plan-file launch, the plan header's `**Item:** <id>`. If neither exists (a
+standalone plan with no item), skip the flip silently. **No phase-chain parent close applies** to plan-track.
+Then output:
 
 ```
 --- /saki-builder:build COMPLETE (PLAN mode) ---

@@ -183,8 +183,8 @@ existing behavior skips the PRD + proto and goes straight to planning:
 /add "<intent>"      -> categorize -> Improvement/Bug (Track: Plan), assign I<n>/B<n>        [Planned]
 /rplan               -> structured plan (seeded from the item) -> /approved -> /qa
    — OR, one command, walk away —
-/build I<n>          -> PLAN mode: /rplan (if no plan) -> /rplan-review? -> /approved -> /qa   [Shipped]
-                        -> /reviewer (+ design-system reuse check) -> security? -> /wrap --heal
+/build I<n>          -> PLAN mode: /rplan (if no plan) -> /rplan-review? -> /approved -> /qa
+                        -> /reviewer (+ design-system reuse check) -> security? -> /wrap --heal   [Shipped]
 ```
 
 `/build I<n>` / `/build B<n>` (or `/build <plan-file>`) is the Plan-track analogue of `/build E<n>`: it runs
