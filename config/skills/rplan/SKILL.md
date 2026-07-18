@@ -71,6 +71,10 @@ If the invocation names a roadmap item id (`I<n>` or `B<n>`), or the prompt clea
    reflects that work started.
 4. **Stamp the plan** with `**Item:** <id>` in its header (Step 7) so `/saki-builder:qa` can close the loop
    back to the roadmap (flip the item to `Shipped`) when every criterion passes.
+5. **Record `**Child plan:** <plan-file>`** under the `### <id>` block in `tasks/roadmap.md` (mirror what
+   `/saki-builder:pickup` does with `**Child PRD:**` for PRD-track), once the plan file path is known
+   (Step 7). This gives `/saki-builder:build` PLAN mode a clean primary item→plan link; the `**Item:** <id>`
+   stamp from (4) stays the fallback if `Child plan` is `—`.
 
 If no id is given (a raw standalone task), skip this and plan the prompt directly — unchanged behavior.
 
@@ -434,8 +438,9 @@ Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking i
   honor it** — write `tasks/<prd-slug>-slice<N>-plan.md` so each slice's plan is a distinct file, not a
   newest-wins `*-plan.md` several slices share. **If seeded from a roadmap item (Step 0.6), stamp
   `**Item:** <id>` in the plan header** so `/saki-builder:qa` can flip that item to `Shipped` on all-pass.
-- **Seed the manual-chain resume manifest** (skip for a `/saki-builder:build` slice invocation — build owns
-  its own `.build-<prd-slug>-state.json`): after writing the plan, run the **Init** snippet from
+- **Seed the manual-chain resume manifest** (skip for **any** `/saki-builder:build`-driven invocation —
+  PRD-mode slice *or* PLAN-mode item — build owns its own `.build-<slug>-state.json`; the invocation says it
+  is build-driven): after writing the plan, run the **Init** snippet from
   `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` with `PLAN_FILE` = the plan just written and
   `ITEM` = the Step 0.6 id (or empty). It creates `tasks/.<slug>-state.json` and stamps `rplan=done` so the
   manual chain (`/rplan → … → /wrap`) survives a context clear. Best-effort — skip silently on error.

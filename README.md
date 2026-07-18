@@ -162,8 +162,8 @@ existing behavior skips the PRD + proto and goes straight to planning:
 | ------------- | ------ | ---------- | ------------------------------------------------------------------- |
 | **Epic**        | `E<n>` | **PRD**  | `/pickup E<n>` → `/prd` (loop `/prd-review` to green) → `/proto` → `/build` |
 | **Feature**     | `F<n>` | **PRD**  | `/pickup F<n>` → `/prd` (loop `/prd-review` to green) → `/proto` → `/build` |
-| **Improvement** | `I<n>` | **Plan** | `/rplan` → `/approved` → `/qa`                                       |
-| **Bug**         | `B<n>` | **Plan** | `/rplan` (or fix directly if trivial) → `/qa`                        |
+| **Improvement** | `I<n>` | **Plan** | `/rplan` → `/approved` → `/qa`  · **or** `/build I<n>` (whole chain, autonomous) |
+| **Bug**         | `B<n>` | **Plan** | `/rplan` (or fix directly if trivial) → `/qa`  · **or** `/build B<n>` (autonomous) |
 
 **PRD-track** (Epic / Feature) — the disciplined assembly line, each command boundary a review gate:
 
@@ -182,7 +182,15 @@ existing behavior skips the PRD + proto and goes straight to planning:
 ```
 /add "<intent>"      -> categorize -> Improvement/Bug (Track: Plan), assign I<n>/B<n>        [Planned]
 /rplan               -> structured plan (seeded from the item) -> /approved -> /qa
+   — OR, one command, walk away —
+/build I<n>          -> PLAN mode: /rplan (if no plan) -> /rplan-review? -> /approved -> /qa
+                        -> /reviewer (+ design-system reuse check) -> security? -> /wrap --heal   [Shipped]
 ```
+
+`/build I<n>` / `/build B<n>` (or `/build <plan-file>`) is the Plan-track analogue of `/build E<n>`: it runs
+the same `/rplan → … → /wrap` chain you'd otherwise run by hand, once over the single item — no PRD-lock
+gate, no slices, no proto. UI changes are handled inline (design-system reuse check always; a quick
+screenshot glance when >1 screen or a new visible state is touched).
 
 **The gate is structural.** All work enters through `/add` — there is no cold-intent path. On the
 PRD-track, `/pickup` requires an `E<n>`/`F<n>` id, loops the PRD to green autonomously, and escapes to
@@ -220,6 +228,23 @@ business-rule `🔒 INVARIANT`s — verified in `/qa` and blocking in `/reviewer
 
 Plain `/build E3` also self-iterates (completion signal + progress scratchpad + loop guard), but the
 `/goal` wrapper is what guarantees it never stops early.
+
+**PLAN mode — `/build I<n>` / `/build B<n>` / `/build <plan-file>`:** the same executor runs a plan-track
+item (Improvement/Bug) as **one unit**, not a slice list:
+
+```
+/build B7
+  -> resolves B7 -> its plan (or runs /rplan to create one) -> The Single-Plan Loop, once:
+       /rplan (if no plan) -> (/rplan-review if needed) -> /approved -> /qa
+       -> /reviewer (+ design-system reuse check; a hand-rolled primitive is a blocking finding)
+       -> security audit (only if a security surface) -> loop until green + clean
+  -> UI: reuse-check always; a screenshot glance when >1 screen or a new visible state is touched
+  -> e2e -> /wrap --heal -> flips the item to Shipped, prints PLAN_BUILD_COMPLETE
+```
+
+PLAN mode drops the PRD-only gates (no lock check, no slice iteration, no proto-fidelity gate); everything
+else — TRUST MODE, resume, e2e, converge-to-clean — is identical. It never calls `/proto` (that's PRD-bound);
+the reuse check + glance cover UI instead.
 
 ## Plan Quality Gates (4-gate system)
 
