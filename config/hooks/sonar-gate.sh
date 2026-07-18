@@ -21,7 +21,17 @@ fi
 STATE_FILE="$HOME/.sonar/sonarqube-cli/state.json"
 TOKEN_FILE="$HOME/.sonar/sonarqube-cli/user"
 
-SONAR_TOKEN="${SONAR_TOKEN:-$(cat "$TOKEN_FILE" 2>/dev/null)}"
+# Token: env var > keychain (sonarqube-cli) > keychain (sonar-token) > file fallback
+SONAR_TOKEN="${SONAR_TOKEN:-}"
+if [ -z "$SONAR_TOKEN" ]; then
+  SONAR_TOKEN="$(security find-generic-password -s "sonarqube-cli" -w 2>/dev/null || true)"
+fi
+if [ -z "$SONAR_TOKEN" ]; then
+  SONAR_TOKEN="$(security find-generic-password -s "sonar-token" -w 2>/dev/null || true)"
+fi
+if [ -z "$SONAR_TOKEN" ]; then
+  SONAR_TOKEN="$(cat "$TOKEN_FILE" 2>/dev/null)"
+fi
 
 # Read serverUrl for the active connection from state.json
 if [ -f "$STATE_FILE" ] && [ -n "$(which python3 2>/dev/null)" ]; then

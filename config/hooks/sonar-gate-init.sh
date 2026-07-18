@@ -48,6 +48,7 @@ fi
 
 # Server URL: state.json connections > macOS keychain (sonarqube-cli account) > default
 SONAR_URL="http://localhost:9000"
+_URL_FROM_STATE=0
 if [ -f "$STATE_FILE" ]; then
   _URL="$(python3 -c "
 import json, sys
@@ -61,10 +62,12 @@ try:
             sys.exit(0)
 except: pass
 " 2>/dev/null)"
-  [ -n "$_URL" ] && SONAR_URL="$_URL"
+  if [ -n "$_URL" ]; then SONAR_URL="$_URL"; _URL_FROM_STATE=1; fi
 fi
-# Fallback: read server URL from macOS keychain (account field = server hostname)
-if [ "$SONAR_URL" = "http://localhost:9000" ]; then
+# Fallback: read server URL from macOS keychain (account field = server hostname).
+# ONLY when state.json gave no explicit active-connection URL — otherwise an explicit
+# localhost connection (equal to the default literal) would be wrongly overridden here.
+if [ "$_URL_FROM_STATE" = "0" ]; then
   _KCH_ACCT="$(security find-generic-password -s "sonarqube-cli" -g 2>&1 | grep '"acct"' | sed 's/.*<blob>="\(.*\)"/\1/' || true)"
   if [ -n "$_KCH_ACCT" ]; then
     # account stores the bare hostname; assume https unless it looks like localhost
