@@ -106,8 +106,11 @@ List every DB schema change and its migration.
 
 ## Branch Points (pre-declared)
 
-- Step N: If [condition] → PAUSE (reason, wait for human)
-- Step M: If [condition] → auto-handle with [approach]
+Three states — decide / pause / block (see CLAUDE.md § Branch Points). Reversible forks are decided, not presented:
+
+- Step N: If [condition] → auto-handle with [approach] (reversible — record `AUTO-RESOLVED: <question> → <decision> — <why>`)
+- Step M: If [condition] → PAUSE with ONE specific question (irreversible/HIGH-tier or intent-shaped — wait for human)
+- Step P: If [condition] would cross a No-Go or `🔒 INVARIANT` → BLOCKED (never auto-resolve past a guardrail)
 
 ---
 

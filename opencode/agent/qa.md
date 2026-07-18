@@ -1,6 +1,11 @@
 ---
 mode: subagent
+name: qa
+description: Acceptance-criteria verifier. Runs tests, checks the build, and reports pass/fail per criterion in an isolated context, without proposing improvements or setup steps. Use to verify that an implemented change meets its acceptance criteria.
+model: sonnet
+tools: Read, Bash, Grep, Glob
 ---
+
 # QA Agent
 
 Acceptance criteria verifier. Runs tests, checks build, reports pass/fail per criterion.
@@ -23,7 +28,7 @@ ls -t *-plan.md 2>/dev/null | head -1
 
 Read it. Extract the **Success Criteria** section.
 
-If no plan file found → print `No plan file found. Create a plan with /rplan first.` and stop.
+If no plan file found → print `No plan file found. Create a plan with /saki-builder:rplan first.` and stop.
 
 Print:
 ```

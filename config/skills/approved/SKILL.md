@@ -232,4 +232,4 @@ Next actions:
 - **One compact line per step** — expand output only on failure or a notable event (RED-passes / stays-red / YAGNI cut / drift adjustment / commit); verbose ceremony per step dilutes signal and raises hallucination risk
 - If a step has no test specified and contains business logic → derive a test from the step's success criteria
 - If no active plan is found, ask: "Which plan should I implement?"
-- At branch points: state situation + options, choose safest default if no user response
+- At branch points: **earn the handoff** — decide implementation, escalate intent. Reversible → decide and record it (`AUTO-RESOLVED: <question> → <decision> — <why>`, annotated in the plan file so it survives the session); irreversible (migration, auth, delete, push) or intent-shaped → pause with ONE specific question and **wait**. Never an A/B/C menu; never auto-default a HIGH-tier action (Risk Tiers: HIGH is a human gate always).

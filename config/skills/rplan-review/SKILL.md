@@ -18,11 +18,16 @@ There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely
 
 **If the caller (e.g. `/saki-builder:build`) passed a specific plan-file path, use that exact file** — it pins the review to the intended slice, not whichever `*-plan.md` is newest (a multi-slice build keeps several plans in `tasks/`; mtime-based "newest-wins" selection would otherwise bind the review to the wrong slice's plan). Otherwise find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
 
+Also read the Phase 1 attempt counter — `<!-- rplan-review-phase1-attempts: K -->` anywhere in the plan
+file (absent → `K=0`). It bounds the Phase 1 self-route loop below and must be read here, before any
+routing decision, so the bound survives a compaction or a fresh invocation.
+
 Print:
 ```
 --- PLAN LOADED ---
 File: [filename]
 Initial blocking count: [N]
+Phase 1 attempts so far: [K]/3
 ```
 
 ---
@@ -54,8 +59,64 @@ A section is PRESENT only if it has real content — not headings, not "N/A", no
 ```
 PHASE 1 PASSED — proceeding to Phase 2
 ```
+**Then clear the attempt counter** — delete the `<!-- rplan-review-phase1-attempts: K -->` line from the
+plan file (or set it to `0`) — so a later re-review of this plan starts fresh. This is the ONLY place the
+counter is cleared; it must happen here, on the path that actually runs. A counter that only ever
+increments would make the next legitimate review start at a stale `K` and emit a false `BLOCKED`.
 
-**If ANY ❌:**
+**If ANY ❌ — route, don't terminate.** The gate is right; the *addressee* depends on who called you.
+A structural gap is `/saki-builder:rplan`'s to fix (never fix it here — see the Phase 1.5 rule below:
+rewriting in two places drifts). But "the plan author must rewrite" is a human-shaped instruction, and
+inside `/saki-builder:build` the plan author IS the agent — so hand back to `/saki-builder:rplan` and
+re-review rather than stopping the chain.
+
+**If a caller passed a plan-file path (Step 0) — self-route, bounded.**
+
+The counter is a **routing budget**: it is read, incremented, and checked ONLY here, on the path that
+actually routes. A human-invoked review never routes, so it never touches the counter. It must survive
+compaction and re-invocation, so it lives in the plan file, not in your head:
+
+```
+<!-- rplan-review-phase1-attempts: K -->
+```
+
+Step 0 already read it (absent → `K=0`). **Increment K and write it back to the plan file — before you
+route, not after.** Then check the bound:
+
+- **K ≥ 3 → do NOT route.** Stop instead, regardless of whether the gaps are the same ones. A rotating
+  gap set (fix A → B appears → fix B → C appears) is still a loop, and it is the exact case a "same
+  failure ~3 times" predicate never catches:
+  ```
+  BLOCKED: rplan-review — Phase 1 structural gaps survived 3 auto-route rounds without a Phase 1 pass: [cited gaps]
+  To grant a fresh routing budget: delete the `rplan-review-phase1-attempts` line from [plan file].
+  ```
+  Return control to the caller. Never loop silently past 3.
+
+- **K < 3 → route:**
+  ```
+  PHASE 1 FAILED — STRUCTURAL BLOCKERS FOUND (attempt [K]/3)
+
+  Missing/incomplete:
+    ❌ [section]: [specific gap]
+
+  Routing back to /saki-builder:rplan with the cited gaps → will re-review.
+  ```
+  Re-run `/saki-builder:rplan` on the same plan file, passing every cited gap, then re-run Phase 1.
+
+**The budget resets on a Phase 1 PASS, and only there** (above). A partial human fix that still fails
+Phase 1 does NOT restore it — this is deliberate: a hard budget that "made progress" cannot reset is the
+backstop against an unattended loop. If a human needs to grant a fresh budget on a previously-BLOCKED
+plan, they delete the `<!-- rplan-review-phase1-attempts: K -->` line. State that escape in the BLOCKED
+output so it is actionable, never a dead end.
+
+**Exception — the one gap that must NOT be self-routed.** If the gap is **intent-shaped** (not derivable
+from any file), pause instead: a missing/placeholder `Concrete Example Output` is the canonical case —
+`config/skills/rplan/SKILL.md:350` already blocks on it and must keep blocking. Never fabricate it, never
+route it back to `/saki-builder:rplan` expecting the agent to invent it. Ask the user for the example.
+
+**If NO caller passed a path (human-invoked review) — stop and report.** Do **not** touch the attempt
+counter here — no routing happens on this path, so it spends no budget. This report is always reachable,
+at any value of K:
 ```
 PHASE 1 FAILED — STRUCTURAL BLOCKERS FOUND
 

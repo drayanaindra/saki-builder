@@ -33,8 +33,27 @@ Readiness = the Blocking Evidence Set is EMPTY.
 A **blocking item** is a binary, cited predicate that must be resolved before the plan is presentable:
 an anchor reference that does not grep, a target with no creating step, an open MED/HIGH unknown, an
 uncovered failure path on a state-changing step, an unchecked completeness item on a state-changing step,
-or a missing Concrete Example. Everything else (cosmetic gaps on LOW steps, polish) is **Advisory** —
-visible, never gating. Momentum reads as the blocking-item count falling (5 → 2 → 0), not as a rising %.
+a missing Concrete Example, or **an uncited capability claim** (see below). Everything else (cosmetic gaps
+on LOW steps, polish) is **Advisory** — visible, never gating. Momentum reads as the blocking-item count
+falling (5 → 2 → 0), not as a rising %.
+
+**Probe before claiming absence.** "I don't have tool X" is a blocking item like any other and needs a
+citation — an unprobed capability claim is uncited, and therefore invalid. Run the ladder, cheapest first:
+
+| # | Probe | Command |
+| - | ----- | ------- |
+| 1 | Tool deferred, not absent — most `mcp__*` tools load on demand | `ToolSearch` |
+| 2 | CLI on PATH — the terminal covers most of what a missing MCP would | `command -v gh` |
+| 3 | Installable — a missing binary is a LOW-tier action, not a blocker | `brew install …` / `npx …` |
+| 4 | Env present — test presence, **never print the value** (Secrets rule) | `[ -n "$VAR" ] && echo set` |
+
+Only a probe-negative earns `BLOCKED:`, and it must name the probe that failed:
+
+```
+BLOCKED: N8N_API_KEY unset ([ -n "$N8N_API_KEY" ] → empty)
+```
+
+not "I don't have n8n access".
 
 | State                                            | Action                                                     |
 | ------------------------------------------------ | ---------------------------------------------------------- |
@@ -66,19 +85,45 @@ visible, never gating. Momentum reads as the blocking-item count falling (5 → 
 
 ### Branch Points
 
-When hitting unexpected state mid-execution:
+When hitting unexpected state mid-execution, **earn the handoff** — a handoff is legitimate only once the
+resolvable path is exhausted. **Decide implementation. Escalate intent.** Three states, not two — the old
+A/B/C menu existed because there was no state between "decide" and "quit":
+
+| State | When | Form |
+| ----- | ---- | ---- |
+| **Decide** | Reversible, implementation-shaped. The fork is derivable from code, criteria, or a stated lean. | Resolve, record, keep going |
+| **Pause** | Irreversible (HIGH tier) or intent-shaped. Not derivable from any file. | ONE specific question; resumes on answer |
+| **Block** | Only way forward crosses a guardrail (Non-Goal / `🔒 INVARIANT` / ABSOLUTE NO-GO). | `BLOCKED: <reason>` |
+
+**Decide** — resolve with the first rule that applies, then record it:
+
+1. Take the stated lean/default (plan, PRD, spec recommendation).
+2. Else serve the current acceptance criteria.
+3. Else YAGNI + reversibility — simplest, cheapest to undo. A wrong-but-reversible call costs a refactor,
+   not a baked-in architecture.
+
+```
+AUTO-RESOLVED: <question> → <decision> — <one-line why>
+```
+
+**Pause** — never an A/B/C menu. State the situation, ask the one question that unblocks, and stop:
 
 ```
 BRANCH POINT - Step [N] of [M]
 
 Situation: [what happened that wasn't in the plan]
-Options:
-  A. [safest option] (recommended)
-  B. [alternative]
-  C. Pause - you decide
-
-Default if no response: Option A
+Tried:     [what you attempted before asking — required; an unattempted blocker is not earned]
+Question:  [the ONE thing only a human can answer]
 ```
+
+A pause is not a give-up: no `BLOCKED:`, no abandonment — work resumes the moment the human answers.
+`/build` automates this via its `NEEDS_DECISION:` sentinel (see `/build` step 0a); an attended session
+just asks in chat.
+
+**Never probe around a refusal.** A denied permission, a missing credential, and interactive auth are
+genuine human handoffs — re-routing a denied tool call through Bash is circumvention, not resolution.
+
+Reference implementation: `/build` step 0b.
 
 ### Risk Tiers
 
@@ -128,7 +173,7 @@ START SESSION
 |   |-- Plan (Blocking Set, unknowns, branch points)
 |   |-- Annotate (human reviews, 1-6 cycles)
 |   |-- Execute (autonomous within hooks)
-|   |-- Branch point? ----- Pause, present options, wait
+|   |-- Branch point? ----- Decide (reversible) / Pause, ONE question (intent) / BLOCKED (guardrail)
 |   +-- Verify (tests, reviewer subagent, human review)
 |
 +-- End of session -------- /retro (Stop hook reminds you)

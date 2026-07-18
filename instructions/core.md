@@ -25,15 +25,25 @@ Required for non-trivial responses. Skip for trivial replies, acknowledgments, s
 
 Do NOT execute until: the **Blocking Evidence Set is empty** (every blocking item resolved, each with a citation), Unknowns ≤ 3, human approves. A blocking item is a binary, cited predicate — an unverified anchor, an open MED/HIGH unknown, an uncovered failure path on a state-changing step. There is no percentage to clear: the gate is "no blocking item stands," and momentum reads as the blocking-item count falling to 0.
 
+**A capability claim is a blocking item — probe before claiming absence** (`ToolSearch` → `command -v` → install → `[ -n "$VAR" ]`; test presence, never print the value). Cite the probe that failed, never "I don't have X". **Never probe around a refusal** — a denied permission, a missing credential, and interactive auth are genuine human handoffs, not obstacles to route around. Full ladder: `config/docs/execution-protocol-detail.md` § Readiness.
+
 ## Risk Tiers
 
 | LOW (auto)       | MED (plan gate)      | HIGH (human gate always)         |
 | ---------------- | -------------------- | -------------------------------- |
 | Read, lint, test | New file, API change | DB migration, auth, delete, push |
 
-## Branch Points
+## Branch Points (BLOCKING)
 
-On unexpected state mid-execution: state situation + options (A/B/C) + recommendation. Default to the safest option if no response.
+On unexpected state mid-execution, **earn the handoff** — a handoff is legitimate only once the resolvable path is exhausted. **Decide implementation. Escalate intent.**
+
+1. **Try before you ask.** Never raise a blocker you have not attempted. An attempt = read the code, take the stated lean, pick the reversible option.
+2. **Reversible → decide, don't ask.** First rule that applies: (a) take the stated lean/default; (b) serve the current acceptance criteria; (c) YAGNI + reversibility — simplest, cheapest to undo. A wrong-but-reversible call costs a refactor, not a baked-in architecture. **Record it where it survives the session** — annotate the plan/PRD entry in place, then emit `AUTO-RESOLVED: <question> → <decision> — <one-line why>`. A marker alone is not a record: a human cannot override what scrolled past.
+3. **Irreversible or intent-shaped → pause, don't block.** A HIGH-tier action (Risk Tiers: DB migration, auth, delete, push) or a "what should this do" question is not derivable from code. Ask ONE specific question — not an A/B/C menu. A pause resumes on answer; it is not a give-up.
+4. **Guardrails are never negotiable.** No fork may be resolved by crossing a Non-Goal, a `🔒 INVARIANT`, or an ABSOLUTE NO-GO. That — not the fork — is the genuine `BLOCKED:`.
+5. **Probe before claiming absence.** See Readiness Gate.
+
+Reference implementation: `/saki-builder:build` step 0b.
 
 ## Secrets (BLOCKING)
 
