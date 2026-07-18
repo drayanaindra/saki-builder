@@ -2,6 +2,39 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.20.0 — 2026-07-18
+
+- **"Earn the handoff" replaces the A/B/C option menu at every branch point.** When an agent hit an
+  unexpected state mid-workflow it used to present a human an option menu and stall — the option menu
+  existed because there was no state between "decide" and "quit". The Branch Points rule is now a
+  three-state model — **decide / pause / block** — ported from the proven `/saki-builder:build` step 0b:
+  reversible, implementation-shaped forks are decided and recorded (`AUTO-RESOLVED:`, annotated in the
+  plan so it survives the session); irreversible (Risk-Tiers HIGH: migration, auth, delete, push) or
+  intent-shaped forks pause with ONE specific question (resumes on answer, never a give-up); a fork whose
+  only resolution crosses a Non-Goal / `🔒 INVARIANT` / ABSOLUTE NO-GO is the genuine `BLOCKED:`. The
+  autonomy license ships with its limit in the same rule body, so it can't invert the "NEVER assume" core
+  rule. Applied across `config/CLAUDE.md`, `instructions/core.md`, `config/docs/execution-protocol-detail.md`,
+  the `/saki-builder:rplan` · `rplan-review` · `approved` skills, the plan template, and the
+  `product-engineer` agent (rule body kept byte-identical across copies).
+- **Probe before claiming a capability is absent.** A capability claim ("I don't have tool X") is now a
+  blocking item like any other and needs a citation: probe the ladder — deferred tool (`ToolSearch`) →
+  CLI on PATH (`command -v`) → installable (`brew`/`npx`) → env present (`[ -n "$VAR" ]`, tested for
+  presence, never printed) — and cite the probe that failed before emitting `BLOCKED:`. Never probe
+  around a refusal: a denied permission, a missing credential, and interactive auth are genuine human
+  handoffs, not obstacles to route around.
+- **`/saki-builder:rplan-review` Phase 1 self-routes instead of terminating**, bounded by a durable
+  routing budget. When a caller (e.g. `/saki-builder:build`) passes a plan path, a structural-gap failure
+  routes back to `/saki-builder:rplan` and re-reviews rather than dead-ending at a human ("REVIEW STOPPED"
+  is preserved only for human-invoked reviews). The 3-strike bound is a `<!-- rplan-review-phase1-attempts -->`
+  counter in the plan file (survives compaction/re-invocation), scoped to the routing path, cleared on a
+  Phase 1 pass, with a named manual escape — so it can't fabricate a false "survived 3 rounds" block on a
+  later legitimate review.
+- **`/saki-builder:reflect` enforces an auto-load budget with evict-to-make-room.** An admission filter
+  promotes only env/tool/skill facts, preferences/policies/decisions, or corrections to recurring failures
+  — rejecting generic best-practice the model already applies and duplicates of existing CLAUDE.md / core
+  rules. The always-on patterns files are held under a context ceiling (40k hard / 37k soft cap, measured
+  in Unicode), evicting the lowest-value entries to admit higher-value ones.
+
 ## 0.19.0 — 2026-07-16
 
 - **`/saki-builder:pickup`'s Phase-2b scope recut now actually auto-resolves** — previously the run
