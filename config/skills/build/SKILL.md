@@ -1,6 +1,6 @@
 ---
 name: build
-description: Autonomously execute a finished PRD end-to-end. Reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → (security audit on security-relevant slices) on each, looping until every slice is done with no outstanding issues. Always runs the e2e suite before declaring the goal complete. No confirmation prompts. Usage — /saki-builder:build <prd-file.md>.
+description: Autonomously execute a finished PRD (PRD-track) OR a single plan-track item (Improvement/Bug) end-to-end. PRD mode reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → (security audit on security-relevant slices) on each slice; PLAN mode runs the same chain ONCE over one plan-track item — the hands-off equivalent of running /rplan → /rplan-review → /approved → /qa → /reviewer → /wrap by hand. Always runs the e2e suite and converges to clean before declaring done. No confirmation prompts. Usage — /saki-builder:build <E<n>|F<n>|prd-file.md | I<n>|B<n>|plan-file.md>.
 ---
 
 # Autonomous PRD Executor
@@ -44,14 +44,14 @@ You are in TRUST MODE. This means:
 A skill cannot switch on Claude Code's built-in `/goal` engine (only the user can type
 `/goal`). So this skill enforces its **own** persistence — behave as if a goal were set:
 
-- **Completion signal.** You are done ONLY when every slice in the PRD is green
-  (`/saki-builder:qa` passes, `/saki-builder:reviewer` is clean, **and** any security audit a
-  security-relevant slice required is clean), the e2e suite passes, **and** FINAL GATE 2
-  (`/saki-builder:wrap --heal`) has converged the tree to a clean `main`. At that point,
-  and only then, print `PRD_BUILD_COMPLETE`. Never print it early.
-- **Do not hand control back** until you either print `PRD_BUILD_COMPLETE` or hit a real
-  hard stop (missing PRD, NO-GO, honestly-blocked slice). If a turn runs long, keep going —
-  start the next slice rather than stopping to ask "should I continue?"
+- **Completion signal.** You are done ONLY when every slice in the PRD is green — **or, in PLAN mode, the
+  single plan-track item is green** — (`/saki-builder:qa` passes, `/saki-builder:reviewer` is clean, **and**
+  any security audit a security-relevant slice/item required is clean), the e2e suite passes, **and** FINAL
+  GATE 2 (`/saki-builder:wrap --heal`) has converged the tree to a clean `main`. At that point, and only
+  then, print `PRD_BUILD_COMPLETE` (PRD mode) / `PLAN_BUILD_COMPLETE` (PLAN mode). Never print it early.
+- **Do not hand control back** until you either print the completion sentinel or hit a real
+  hard stop (missing PRD / unresolvable id, NO-GO, honestly-blocked slice/item). If a turn runs long, keep
+  going — start the next slice rather than stopping to ask "should I continue?"
 - **Progress scratchpad (human log).** Maintain `tasks/.build-<prd-slug>-progress.md` with the
   slice checklist (done / in-progress / remaining), updated after every slice. If context is
   cleared mid-build, re-read it on start and **skip already-green slices** to resume.
@@ -74,6 +74,10 @@ A skill cannot switch on Claude Code's built-in `/goal` engine (only the user ca
   audit clean-or-`n/a`). **Best-effort + safe:** a missing/partial manifest must degrade to a normal full
   run — never block on it. The studio trusts a step only when its artifact verifies (plan file
   exists / commit resolves), so an inaccurate manifest costs at worst a redo, never a skipped step.
+  **PLAN mode** reuses this exact shape with a `"mode":"plan"` discriminator, an `"item":"<id>"` field,
+  and a **single-element** `slices` array (`n:1`, `title` = the item/plan title) whose `steps` add
+  `rplan` (the plan-creation step, done when the plan file exists). The resume logic (GATE 2) is unchanged —
+  a 1-element array is just the degenerate case of the slice loop.
 - **Loop guard.** If the same slice fails the same way ~3 times, stop hammering it: write
   the reason to the scratchpad, output `BLOCKED: slice <N> — <reason>`, then move on to any
   independent remaining slices before reporting.
@@ -94,7 +98,11 @@ Plain `/saki-builder:build tasks/prd-<feature>.md` still runs and self-iterates 
 
 ## Input
 
-Usage: `/saki-builder:build <E<n>|F<n> | prd-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
+Usage: `/saki-builder:build <E<n>|F<n> | prd-file.md | I<n>|B<n> | plan-file.md>` (filler words are fine, e.g. `/saki-builder:build start build prd-wave-2.md`).
+
+`/saki-builder:build` runs in one of **two modes**, decided by the argument (see *Mode detection* below):
+**PRD mode** (Epic/Feature — a PRD with vertical slices, today's behavior) or **PLAN mode** (Improvement/Bug —
+a single plan-track item or plan file, new). Resolve the argument by its shape:
 
 **PRD-track item id (`E<n>` or `F<n>`) — the disciplined path:** if the argument is an item id, read
 `tasks/roadmap.md`, find `### <id>`, and resolve its `**Child PRD:**` link to `tasks/prd-<slug>.md`. If
@@ -110,9 +118,50 @@ Otherwise extract the PRD path from the arguments: take the token ending in `.md
 `prd-*`). Locate the file by checking, in order: `tasks/<name>`, `./<name>`, the path as
 given. The `/saki-builder:prd` skill saves to `tasks/prd-<feature>.md`, so `tasks/` is the common case.
 
+**Plan-track item id (`I<n>` or `B<n>`) — the PLAN-mode path:** if the argument is a plan-track id, read
+`tasks/roadmap.md`, find `### <id>`, and **confirm `**Track:** Plan`** (the roadmap Track field is the
+authority; an `E<n>`/`F<n>` id belongs to PRD mode above). Resolve its plan file, in order:
+(1) its `**Child plan:**` link (written by `/saki-builder:rplan` Step 0.6 when it's set — the clean primary);
+(2) fallback — grep `tasks/*-plan.md` headers for `**Item:** <id>` (the stamp `/saki-builder:rplan` always
+writes). If **neither** resolves (the item has no plan yet, `Child plan: —` and no stamped plan), do **NOT**
+stop — **PLAN mode runs `/saki-builder:rplan` itself** to create the plan (see The Single-Plan Loop, step
+P1). This differs from the PRD `no-PRD` stop on purpose: the roadmap **item** (created by `/saki-builder:add`)
+is the pre-existing scope unit here — the analogue of the PRD — and plan-track has no human lock gate, so a
+missing plan is something `/saki-builder:build` *creates*, exactly as PRD mode runs `/saki-builder:rplan`
+per-slice. Remember the `<id>` so Completion Output flips its roadmap status to `Shipped`.
+
+**Plan file path (`*-plan.md`) — the PLAN-mode path:** a plan file passed directly resolves to itself; skip
+`/saki-builder:rplan` (the plan already exists — resume from review/approved). If the plan header carries
+`**Item:** <id>`, remember it for the `Shipped` flip; if not, it's a standalone plan (no roadmap flip).
+
+### Mode detection
+
+Set an internal `MODE ∈ {PRD, PLAN}` from the argument, then follow the rest of this skill accordingly —
+**PRD mode is unchanged; PLAN mode diverges only at the points that say so.**
+
+| Argument | MODE | Authority |
+|----------|------|-----------|
+| `E<n>` / `F<n>` id | **PRD** | id prefix + roadmap `**Track:** PRD` |
+| `prd-*.md`, or a `.md` containing `## Vertical Slices` / `<!-- prd-locked` | **PRD** | file shape |
+| `I<n>` / `B<n>` id | **PLAN** | id prefix + roadmap `**Track:** Plan` (Track field wins if they ever disagree) |
+| `*-plan.md`, or a `.md` containing an `Evidence Ledger` / rplan Steps table | **PLAN** | file shape |
+| id not found on `tasks/roadmap.md` | — | **STOP**: `<id> not found on roadmap — /saki-builder:add it, or run /saki-builder:rplan on a plan file` |
+
+**PLAN mode changes exactly these things vs PRD mode, nothing else:** it **skips GATE 1.5** (PRD-lock — a
+plan-track item is never locked), runs **The Single-Plan Loop** instead of The Per-Slice Loop (one unit, no
+slice iteration, no open-question/fork gate, no step-3.5 proto-fidelity gate), and uses the **PLAN-mode
+Completion Output**. GATE 0 (branch safety), GATE 2 (resume), the FINAL GATE (e2e), and FINAL GATE 2
+(`/saki-builder:wrap --heal`) run **identically** in both modes.
+
 ---
 
-## GATE 1: Load the PRD (hard stop if missing)
+## GATE 1: Load the PRD / plan (hard stop if missing)
+
+> **PLAN mode:** skip the PRD-slice extraction below. Load the resolved plan file (if it exists) and
+> extract its **Success Criteria** (→ the `/saki-builder:qa` targets) and the files/screens it touches
+> (its Frontend checklist + any `tasks/<slug>-flow.md`). If the item has **no plan yet**, there is nothing
+> to load here — The Single-Plan Loop step P1 creates it via `/saki-builder:rplan`. Then go straight to
+> GATE 0 → GATE 2 → **The Single-Plan Loop** (GATE 1.5 does not apply). The rest of this gate is PRD mode.
 
 Read the PRD file. If it cannot be found or read, **STOP** and output:
 ```
@@ -159,6 +208,10 @@ normally (step 3.5 skips).
 ---
 
 ## GATE 1.5: Lock check — requirements must be frozen (hard stop if unlocked)
+
+> **PLAN mode: this gate does not apply — SKIP it** and log `LOCK: n/a (plan-track)`. Plan-track items are
+> never locked (there is no `/saki-builder:proto` freeze for Improvement/Bug — that's the whole reason
+> plan-track skips proto). Proceed to GATE 0 → GATE 2 → The Single-Plan Loop. The rest of this gate is PRD mode.
 
 `/saki-builder:build` runs only against a **Locked** PRD — the requirements are frozen before any slice
 reaches `/saki-builder:rplan`. Grep the PRD (loaded in Gate 1) for the lock marker:
@@ -441,6 +494,107 @@ to pass.
 
 ---
 
+## The Single-Plan Loop (PLAN mode)
+
+**Run this instead of The Per-Slice Loop when `MODE == PLAN`.** A plan-track item is **one unit of work**,
+not a slice list — so this is the per-slice chain run **once**, with the slice-specific gates removed. It
+invokes the **same** skills (`rplan` / `rplan-review` / `approved` / `qa` / `reviewer` / `security-review`) —
+it does not re-implement any of them (the "single source of truth for behavior" rule). What's dropped vs the
+Per-Slice Loop: **no** slice iteration, **no** open-question/fork gate (step 0/0a/0b — a plan has no *Rabbit
+Holes & Open Questions* section), and **no** step-3.5 proto-fidelity gate (plan-track has no
+`/saki-builder:proto` handoff). The ABSOLUTE NO-GOS and the loop guard (~3 same-failure strikes → `BLOCKED:`)
+still apply.
+
+### P0. Flip the item In-progress
+If launched by an `I<n>`/`B<n>` id (or a plan carrying `**Item:** <id>`) and the item is still `Planned`,
+flip it `Planned → In-progress` in `tasks/roadmap.md` (`**Status:**` + `**Updated:**` via `date +%F`) — the
+PLAN-mode analogue of what `/saki-builder:pickup` does on the PRD side. Build owns the terminal `Shipped`
+flip (P6 / Completion Output), never here.
+
+### P1. `/saki-builder:rplan` — plan the item (only if no plan yet)
+If GATE 1 resolved an existing plan file, **skip this step** (resume). Otherwise invoke the `rplan` skill
+(Skill tool, `skill: rplan`) seeded from the roadmap item — pass the `<id>` so rplan reads its **What** /
+**Repro / Context** and stamps `**Item:** <id>` in the plan header. **Tell rplan that `/saki-builder:build`
+owns the resume state** so it skips its own manual-chain state seed (rplan Step 7 already honors this for a
+build invocation). `/saki-builder:rplan` normally stops for a human; here — TRUST MODE — **auto-approve any
+plan whose Blocking Set is empty** and proceed. Record the plan path in the state manifest's `artifact` and
+**pass it explicitly to every step below.**
+
+### P1.5. UI-escalation decision (auto-picked)
+Read the plan's Frontend checklist + any `tasks/<slug>-flow.md` and classify the visual surface:
+- **Non-UI plan** (backend-only — the plan header says so, or no Frontend files touched) → skip all UI
+  handling; log `UI: none`. Go to P2.
+- **UI plan** → the design-system-reuse check (P5) is **always** on. **Additionally**, if the plan touches
+  **>1 user-facing screen OR introduces a new visible state** (a new route/page, or a Gherkin scenario for a
+  state the screen didn't render before), mark this run **`UI-ESCALATED`** — a screenshot glance of those
+  screen(s) runs after `/saki-builder:approved` (P3.5). Otherwise (single screen, no new state) the reuse
+  check alone suffices; log `UI: reuse-check only`.
+
+### P2. `/saki-builder:rplan-review` — only if needed
+Same triggers as PRD mode: run the `rplan-review` skill when the plan's Blocking Set is non-empty, **or** the
+item is HIGH risk (auth, DB migration, deletes, money, security boundary), **or** it spans >2 modules or has
+>3 acceptance criteria. Otherwise skip to P3. Pass this plan's path. Re-read the plan after.
+
+### P3. `/saki-builder:approved` — implement
+**First load the `clean-code` skill**, then invoke `approved` (pass this plan's path) to implement under XP
+discipline (TDD, commit-per-step, YAGNI). You are the approver — do not wait for the user.
+
+### P3.5. UI screenshot glance — only when `UI-ESCALATED`
+Skip unless P1.5 marked the run `UI-ESCALATED`. The screens are really implemented now, so capture them via
+`/saki-builder:qa`'s Playwright path: generate/run a Playwright script that navigates each touched screen and
+`page.screenshot()`s it (reuse qa's browser + `FRONTEND_ROOT` detection), writing the shots under
+`tasks/` (e.g. `tasks/build-<slug>-shots/`). These are a **visual glance surfaced in the Completion Output**
+so the look is eyeballed before it ships — they are not a gate and do not block. Log
+`UI-GLANCE: <k> screen(s) shot → tasks/build-<slug>-shots/`. (Why a post-`/saki-builder:approved` glance and
+not a pre-build `/saki-builder:proto`: `/saki-builder:proto` is PRD-bound — it hard-stops without a PRD and
+can't consume a plan — and a plan-track change reuses the *existing* design system, so the pre-build design
+gate proto provides is unnecessary here; the reuse check + this glance cover it.)
+
+### P4. `/saki-builder:qa` — test against the plan's criteria
+Invoke `qa` (pass this plan's path). It runs the plan's acceptance criteria as real tests; every criterion
+must pass. **Pass qa the directive that it is running under `/saki-builder:build`** so it does **not** flip
+the roadmap item to `Shipped` itself — build owns the terminal flip after reviewer + wrap converge (qa's
+close-out honors this). If any criterion fails → fix in place and re-run `qa`. Do not proceed while red.
+
+### P5. `/saki-builder:reviewer` — fresh-context review + design-system-reuse check
+**First confirm the item actually committed** — `git diff BASE..HEAD` must be non-empty (an empty committed
+diff means reviewer would review nothing — a false green; commit the work or fix why `/saki-builder:approved`
+didn't). Invoke the `reviewer` skill on the diff. Then, **for a UI plan, always run the design-system-reuse
+check** (this is the plan-track stand-in for PRD mode's step-3.5 proto-fidelity gate — same bar, minus the
+proto notes plan-track doesn't have):
+
+```bash
+# Detect the design system the same way /saki-builder:proto GATE 2 does:
+#   components.json + components/ui/*  (shadcn) | MUI/Chakra import root |
+#   config/docs/design-system-contract.md Part B
+# Then, for each UI file the plan touched:
+grep -nE "import .* from ['\"](@/components/ui|@mui|@chakra-ui|<design-system-root>)" <touched-file>
+# A touched component that renders UI but imports NO design-system primitive ⇒ it hand-rolled/re-invented
+# one ⇒ BLOCKING finding (same bar as a /saki-builder:reviewer correctness block).
+```
+
+If a touched UI component re-invented a primitive the design system already provides, that is **blocking** —
+fix in place (import/reuse the design-system component), then re-run P4 → P5. Legitimate exception: a genuinely
+new primitive the design system lacks (log it as a design-system gap, not a block). If reviewer reports other
+blocking issues (correctness, security, data-loss): fix, then re-run P4 → P5 until clean. Non-blocking nits:
+fix if cheap, else log.
+
+### P5.5. Security audit — security-relevant items only
+Identical to the Per-Slice Loop's step 5.5: run **only when** the item touches a security surface (auth /
+session, money, PII, a new public endpoint, file upload, crypto, raw SQL/shell, untrusted input); otherwise
+skip and log `SECURITY: n/a (no security surface)`. A security HIGH is blocking and auto-resolved via the
+same shallowest-skill routing (implementation → `/saki-builder:approved`; design → re-plan from P1;
+dependency-CVE → bump). Re-run the tail (P4 → P5 → this) until clean. Never fake-green a security hole.
+
+### P6. Done
+The item is "done" only when `/saki-builder:qa` is fully green **and** `/saki-builder:reviewer` is clean
+(including the reuse check) **and** — if security-relevant — the P5.5 audit is clean. Then continue to the
+FINAL GATE (e2e) and FINAL GATE 2 (`/saki-builder:wrap --heal`); the `Shipped` flip happens in Completion
+Output, bound to `PLAN_BUILD_COMPLETE`. If the item cannot be made green after repeated honest attempts,
+output `BLOCKED: <id> — <reason>` and stop — never fake completion.
+
+---
+
 ## FINAL GATE: End-to-end verification (always)
 
 Before declaring the goal complete, **run the full e2e suite** — the goal is not done until
@@ -460,6 +614,9 @@ If **no e2e suite exists**, do NOT silently pass:
   the item to `Shipped` on an unwaived multi-slice PRD with no e2e.
 - **Single-slice PRD:** report `⚠ NO E2E SUITE FOUND — slice-level /saki-builder:qa passed, but no
   end-to-end coverage exists.` and proceed (one slice's `/saki-builder:qa` is sufficient coverage).
+- **PLAN mode (single plan-track item):** same as a single-slice PRD — report `⚠ NO E2E SUITE FOUND — plan
+  /saki-builder:qa passed, but no end-to-end coverage exists.` and proceed (the item's `/saki-builder:qa` is
+  sufficient coverage). If an e2e suite **does** exist, run it as above.
 
 ---
 
@@ -478,7 +635,7 @@ This is the converge step; after it the run leaves nothing outstanding.
 
 Two outcomes:
 - **Clean** → the DoD gate passed (possibly after heals) and the tree converged to `main`. Proceed to
-  Completion Output and print `PRD_BUILD_COMPLETE`.
+  Completion Output and print `PRD_BUILD_COMPLETE` (PRD mode) / `PLAN_BUILD_COMPLETE` (PLAN mode).
 - **`BLOCKED: DoD/<gate>`** → a gate survived wrap's 3-strike honesty backstop (or a real secret was
   found). Do **NOT** print `PRD_BUILD_COMPLETE` and do **NOT** converge. Surface it as a build blocker
   (same honesty bar as a blocked slice): report the gate, the offending files, and the exact fix. A
@@ -534,6 +691,38 @@ Next actions:
 > [anything logged as a non-blocking nit]
 ```
 
+### PLAN mode Completion Output
+
+In PLAN mode the completion sentinel is **`PLAN_BUILD_COMPLETE`** (distinct from `PRD_BUILD_COMPLETE` so
+automation can tell the two apart), written only once FINAL GATE 2 returned **Clean** — `/saki-builder:qa`
+green, `/saki-builder:reviewer` clean (incl. the reuse check), any security audit clean-or-`n/a`,
+e2e green-or-waived, and the DoD gate passed. In the **same step** you print it, **flip the item to
+`Shipped`** in `tasks/roadmap.md` (`**Status:** Shipped`, `**Updated:**` today) — **never on a `BLOCKED:`
+path, never before it.** Identify the item by: the remembered `<id>` from the Input step; else, for a
+plan-file launch, the plan header's `**Item:** <id>`. If neither exists (a standalone plan with no item),
+skip the flip silently. **No phase-chain parent close applies** to plan-track. Then output:
+
+```
+--- /saki-builder:build COMPLETE (PLAN mode) ---
+Item: <I<n>|B<n> | standalone>
+Plan: <plan-file>
+Branch: feature/<name>
+QA: pass · Reviewer: clean (reuse-check: <k verified | n/a>) · Security: clean | n/a
+UI: <none | reuse-check only | escalated → tasks/build-<slug>-shots/ (k screens)>
+E2E: <pass | no suite found>
+Converge: DoD gate PASSED (heals: <n|none>) — feature/<name> pushed, on clean main
+PLAN_BUILD_COMPLETE
+
+Auto-resolved decisions (review & override if any are wrong):
+  <id> — <question> → <decision>  (<one-line why>)
+  …  (omit this block if nothing needed auto-resolving)
+
+Next actions:
+> Open a PR from the pushed origin/feature/<name> (tree is already on clean main)
+> [eyeball tasks/build-<slug>-shots/ if UI was escalated]
+> [anything logged as a non-blocking nit]
+```
+
 ---
 
 ## Rules
@@ -544,6 +733,11 @@ Next actions:
   not a prompt — resolve it by running `/saki-builder:proto` first, never by asking the user mid-build.
 - **PRD is the source of truth.** Scope = its slices; success = its acceptance criteria;
   boundaries = its non-goals. Never re-elicit scope from the user.
+- **PLAN mode: the plan/item is the source of truth, and it's one unit.** Scope = the roadmap item's
+  What/Repro + the plan's steps; success = the plan's acceptance criteria. No lock gate (GATE 1.5 skipped),
+  no slice iteration, no proto-fidelity gate — run **The Single-Plan Loop** once. The only hard stops are:
+  an id not on the roadmap, an ABSOLUTE NO-GO, or a plan that genuinely cannot be made green. A missing plan
+  is **not** a stop — PLAN mode runs `/saki-builder:rplan` to create it.
 - **One slice at a time, in order.** Forward dependencies only — finish N before N+1.
 - **Single source of truth for behavior.** Invoke `rplan` / `rplan-review` / `approved` /
   `qa` / `reviewer` / `security-review`; do not re-implement their logic here.

@@ -654,5 +654,11 @@ selected in Step 0). Absent file or error → skip silently; it never changes th
   `**Updated:**` today via `date +%F`). This closes the Plan-track lifecycle (Planned → In-progress →
   Shipped), mirroring what `/saki-builder:build` does for PRD-track. Only for an `I<n>`/`B<n>` id, only on
   all-pass — never for an `E<n>`/`F<n>` slice plan (those ship via `/saki-builder:build`), never on a FAIL.
+  **Exception — running under `/saki-builder:build` (PLAN mode): do NOT flip here.** When the invocation
+  signals it is driven by `/saki-builder:build` (the qa step of The Single-Plan Loop passes this directive),
+  `/saki-builder:build` owns the **terminal** `Shipped` flip — it fires only after `/saki-builder:reviewer`,
+  the security audit, and `/saki-builder:wrap --heal` all converge, not at qa-pass. Flipping here would mark
+  the item `Shipped` while reviewer/security may still surface blockers. So under build: skip the flip; the
+  manual chain (qa invoked directly) keeps flipping as above, since no build owns it there.
 - **Never hardcode project paths.** All paths derived from `$(pwd)`, `FRONTEND_ROOT`, `PROJECT_ROOT`.
 - **MCP Playwright tools are only for `/saki-builder:qa` and explicit debug sessions.** Do not invoke `mcp__playwright__*` tools during regular coding work. This keeps the "on-demand" contract even though the MCP server is always loaded at session start.

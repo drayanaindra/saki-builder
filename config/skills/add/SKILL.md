@@ -20,8 +20,8 @@ Like the roadmap it writes to, `/saki-builder:add` only **records + points**. It
 |------|----|------|-----------|-------------------|
 | **Epic** | `E<n>` | large outcome, multiple journeys/surfaces, would span >~7 slices / multiple PRDs | **PRD** | `/saki-builder:pickup E<n>` → prd → proto → build |
 | **Feature** | `F<n>` | one new user-facing capability / journey, ≤ a few slices | **PRD** | `/saki-builder:pickup F<n>` → prd → proto → build |
-| **Improvement** | `I<n>` | enhancement to existing behavior — single surface, no new journey | **Plan** | `/saki-builder:rplan` → approved → qa |
-| **Bug** | `B<n>` | defect / regression in existing behavior | **Plan** | `/saki-builder:rplan` (or fix directly if trivial) → qa |
+| **Improvement** | `I<n>` | enhancement to existing behavior — single surface, no new journey | **Plan** | `/saki-builder:rplan` → approved → qa (or `/saki-builder:build I<n>` to run it all autonomously) |
+| **Bug** | `B<n>` | defect / regression in existing behavior | **Plan** | `/saki-builder:rplan` (or fix directly if trivial) → qa (or `/saki-builder:build B<n>` autonomously) |
 
 **The routing rule** (why a Track): *a new user journey / UI that must be designed and approved ⇒
 **PRD**-track — proto is its lock gate. A change or fix to existing behavior ⇒ **Plan**-track — skip the
@@ -153,7 +153,7 @@ Next: <route>
 ```
 
 - **PRD-track** → `Next: /saki-builder:pickup <id>   — writes the PRD and reviews it to green (then /saki-builder:proto)`
-- **Plan-track** → `Next: /saki-builder:rplan   — plan this directly (no PRD/proto). Trivial one-liner? Just fix it.`
+- **Plan-track** → `Next: /saki-builder:rplan   — plan this directly (no PRD/proto), or /saki-builder:build <id> to run the whole chain (rplan → … → wrap) autonomously. Trivial one-liner? Just fix it.`
 
 ---
 

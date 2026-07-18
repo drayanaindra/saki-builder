@@ -71,6 +71,10 @@ If the invocation names a roadmap item id (`I<n>` or `B<n>`), or the prompt clea
    reflects that work started.
 4. **Stamp the plan** with `**Item:** <id>` in its header (Step 7) so `/saki-builder:qa` can close the loop
    back to the roadmap (flip the item to `Shipped`) when every criterion passes.
+5. **Record `**Child plan:** <plan-file>`** under the `### <id>` block in `tasks/roadmap.md` (mirror what
+   `/saki-builder:pickup` does with `**Child PRD:**` for PRD-track), once the plan file path is known
+   (Step 7). This gives `/saki-builder:build` PLAN mode a clean primary item→plan link; the `**Item:** <id>`
+   stamp from (4) stays the fallback if `Child plan` is `—`.
 
 If no id is given (a raw standalone task), skip this and plan the prompt directly — unchanged behavior.
 
