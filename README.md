@@ -121,12 +121,12 @@ immediately makes new patterns available to Claude Code.
 | Command         | What it does                                                                                                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/roadmap`      | View (or `init`) the product roadmap — `tasks/roadmap.md`, the single team-shareable portfolio of work items (epics · features · improvements · bugs) + status. The disciplined entry point: every piece of work traces to an item here. |
-| `/add`          | **The universal intake.** Categorizes an incoming item into **Epic · Feature · Improvement · Bug** (auto-proposed, or forced with `--epic`/`--feature`/`--improvement`/`--bug`), stamps a **Type + Track** flag, assigns a per-type id (`E`/`F`/`I`/`B<n>`), records it on the roadmap, and **routes** it. Routing rule: a new user journey/UI ⇒ **PRD-track** (→ `/pickup`); a change/fix to existing behavior ⇒ **Plan-track** (→ `/rplan`, skipping PRD + proto). Records + points only. `--list` shows the portfolio. Replaces the old `/epic`. |
+| `/add`          | **The universal intake.** Categorizes an incoming item into **Epic · Feature · Improvement · Bug** (auto-proposed, or forced with `--epic`/`--feature`/`--improvement`/`--bug`), stamps a **Type + Track** flag, assigns a per-type id (`E`/`F`/`I`/`B<n>`), records it on the roadmap, and **routes** it. Routing rule: a new user journey/UI ⇒ **PRD-track** (→ `/pickup`); a change/fix to existing behavior ⇒ **Plan-track** (→ `/rplan` step-by-step, or `/build I<n>`/`B<n>` for the whole chain autonomously — skipping PRD + proto either way). Records + points only. `--list` shows the portfolio. Replaces the old `/epic`. |
 | `/pickup`       | **Start a PRD-track item.** `/pickup E<n>` (or `F<n>`) reads the item, seeds `/prd`, and loops `/prd` ↔ `/prd-review` to green (`SHIP · READY`), then stops — ready for `/proto`. Flips the item `In-progress`; escapes to `Blocked` if the review can't reach a shippable PRD. PRD-track only — an `I<n>`/`B<n>` id is redirected to `/rplan`. |
 | `/prd`          | Generate a Product Requirements Document (Job Story, outcomes, vertical slices, acceptance criteria, business rules & invariants, non-goals) from a feature intent. Gates on substance — premise, quality score, evidence grounding. Saved to `tasks/prd-<feature>.md`. Usually invoked by `/pickup`, not directly. |
 | `/prd-review`   | Adversarial, fresh-context PRD review: a deterministic structural scan, then a parallel judge panel (product, metrics, slicing, evidence) that cites every finding. Run after `/prd`, before `/build`. |
 | `/proto`        | Render a faithful, **throwaway** UI preview of the PRD's user-facing slices using the project's real design-system components + tokens, screenshotting every state via Playwright — so you see the end-user surface **before** `/build` writes code. Sits between `/prd` and `/build`. |
-| `/build`        | **Autonomously execute a finished PRD.** `/build <prd-file.md>` reads the PRD's vertical slices and runs `/rplan` → (`/rplan-review` if needed) → `/approved` → `/qa` → `/reviewer` on each, looping until every slice is green and reviewed. Hard-stops on an unresolved `before slice N` open question; enforces the PRD's `🔒 INVARIANT`s in `/qa` + `/reviewer`. Always runs the e2e suite before declaring done. No confirmation prompts. |
+| `/build`        | **Autonomously execute a finished PRD _or_ a plan-track item.** Two modes, picked from the argument. **PRD mode** — `/build E<n>` / `F<n>` / `<prd-file.md>` reads the PRD's vertical slices and runs `/rplan` → (`/rplan-review` if needed) → `/approved` → `/qa` → `/reviewer` on each, looping until every slice is green and reviewed; hard-stops on an unresolved `before slice N` open question; enforces the PRD's `🔒 INVARIANT`s. **PLAN mode** — `/build I<n>` / `B<n>` / `<plan-file>` runs that same chain **once** over one Improvement/Bug (no PRD-lock, no slices, no proto; UI handled inline). Both always run the e2e suite and converge to clean (`/wrap --heal`) before declaring done. No confirmation prompts. |
 | `/rplan`        | Create structured execution plan. Confidence must reach >=96% with all 4 gates passing before presenting.                                                                                                       |
 | `/rplan-review` | 4-phase review: (1) structural completeness scan, (1.5) acceptance criteria hardening, (2) parallel domain expert agents, (3) synthesis + confidence scoring, (4) per-step readiness check.                     |
 | `/approved`     | Approve the active plan and switch model to Sonnet for implementation.                                                                                                                                          |
@@ -151,6 +151,10 @@ immediately makes new patterns available to Claude Code.
 /reflect        -> promote patterns (weekly)
 /sync           -> push patterns to remote
 ```
+
+> The `/rplan → /rplan-review → /approved → /qa → /reviewer → /wrap` middle of this chain is exactly what
+> `/build I<n>`/`B<n>` runs autonomously for a roadmap-anchored Improvement/Bug — reach for `/build <id>`
+> when you want to walk away, and the step-by-step commands when you want a gate at each boundary.
 
 ### Roadmap-anchored stepwise flow — `/add` routes to one of two tracks
 
@@ -177,7 +181,7 @@ existing behavior skips the PRD + proto and goes straight to planning:
 /build E<n>          -> autonomously execute every slice (see below)                          [Shipped]
 ```
 
-**Plan-track** (Improvement / Bug) — no PRD, no proto; `/add` composes the intent and points at `/rplan`:
+**Plan-track** (Improvement / Bug) — no PRD, no proto; `/add` composes the intent and points at `/rplan` (step-by-step) or `/build <id>` (autonomous):
 
 ```
 /add "<intent>"      -> categorize -> Improvement/Bug (Track: Plan), assign I<n>/B<n>        [Planned]
@@ -200,9 +204,9 @@ The single human gate is at proto: **running `/proto E<n>` is the approval**.
 > **`/epic` is removed** (clean rename → `/add`); **`/pipeline` is retired** in favour of this stepwise
 > flow. Recover the old autonomous pipeline via `git show <old-sha>:config/skills/pipeline/SKILL.md`.
 
-### Autonomous slice execution (`/build`)
+### Autonomous execution (`/build`) — PRD slices or a single plan-track item
 
-`/build E<n>` / `/build F<n>` (or `/build prd-<feature>.md`) hands the whole PRD to an autonomous loop — walk away:
+**PRD mode** — `/build E<n>` / `/build F<n>` (or `/build prd-<feature>.md`) hands the whole PRD to an autonomous loop — walk away:
 
 ```
 /build E3
