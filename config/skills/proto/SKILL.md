@@ -113,6 +113,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 2 | 2.4 | `reuse-map.md` exists | non-empty **AND derived from the real app** — a map reconstructed from the harness is NOT DONE (Step 5's correctness gate + point 7 re-check) |
 | 3 | 2.6 | `design-system-updates.md` exists AND every component file it names exists | `tsc --noEmit` over those files passes (the Step 2.6 gate) |
 | 4 | 5 | the `proto-preview/*` harness route exists | 5d provenance + typecheck pass; the 5c middleware bypass is still present (re-add if missing) |
+| 4.5 | 5.5 | `devserver.json` exists and is schema-valid | pid alive **AND** its cwd is the project root (`lsof -a -p <pid> -d cwd`) **AND** `lsof -nP -i :<port> -sTCP:LISTEN` shows `127.0.0.1` (query by port, `-n` for numeric — see 5.5d/5.5f); if dead, foreign, or non-loopback ⇒ **NOT DONE — re-enter Step 5.5** (5.5a reuse-or-reboot), never 6a directly |
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
 | 6 | 6b | `preview.html` **and** `preview-bundle.html` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis) — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
 | 7 | 8 | `proto-<slug>-notes.md` exists | non-empty |
@@ -795,9 +796,9 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   (The Reuse Map is guaranteed present + non-empty here by the **Step 5 Grounding gate**, so this provenance
   grep can never pass *vacuously* on an absent/empty map — the hole that once shipped reinvented components.
   This bullet checks the render's *content*; the gate guarantees the *contract* exists.)
-- **Serve & verify:** if a dev server is already running on the project's working dir (`lsof -i
-  :PORT` shows it, cwd matches), reuse it — hot-reload picks up the new route; no boot needed.
-  Otherwise start it. Then smoke-test the route with `curl` (expect HTTP 200, no `Failed to compile`).
+- **Serve & verify:** getting a server up is **Step 5.5** (self-run) — it reuses a running one, else boots
+  it, triages a failed boot, and records `devserver.json`. Do not restate that logic here. Once 5.5 reports
+  READY, smoke-test the route with `curl` (expect HTTP 200, no `Failed to compile`).
   **Treat `curl` as a smoke test only, NOT the render gate:** curl sees the *SSR HTML*, so a CLIENT-side
   throw (a missing provider/import that crashes on hydration) still returns 200 with the SSR banner while
   the browser shows the error boundary — a green curl on a broken page. The **authoritative** render check
@@ -841,6 +842,191 @@ then shows no live Preview for that run (the screenshot gallery still stands as 
 
 ---
 
+## Step 5.5 — Bring the app up (self-run)
+
+The capture (6a) renders a **served** route. If nothing is serving, every frame fails the render gate and
+the Coverage Gate hard-stops the run — so "the project isn't running" must be something proto **fixes**,
+not something it dies on. This step owns the whole server lifecycle: reuse an existing one, else boot it,
+triage a failed boot, and tear down only what proto itself started.
+
+### 5.5a. Reuse first — never kill what you didn't start
+
+```bash
+lsof -i :"$PORT" -sTCP:LISTEN            # -> pid
+lsof -a -p "$PID" -d cwd                 # -> cwd; must equal the project root
+```
+cwd match **and** `curl` 200 ⇒ **reuse it**, record `owner: human`. A human's server is never killed at
+teardown (5.5f) — hot-reload picks up the new preview route, so no boot is needed. This is the single home
+of the reuse-detection rule; 5d points here rather than restating it.
+
+Otherwise `owner: proto` and continue to 5.5b.
+
+### 5.5b. Derive the boot command
+
+From the Gate-2 framework + `package.json` scripts (`dev` → `start` → `serve`), with the package manager
+read from the lockfile. npm needs `-- ` before flags (`npm run dev -- --host …`); pnpm/yarn forward
+directly — the same composition rule 5e states. Bind **`127.0.0.1`** on a free port; add `--strictPort`
+for Vite.
+
+Reuse Step 7a's free-port **scan algorithm**, *not* its literal `8999–9100` range — that range is for the
+static gallery server. A dev server scans upward from its framework default (3000 / 5173 / …).
+
+### 5.5c. Boot in its OWN process group, logged, recorded
+
+**Spawn mechanism (BLOCKING — 5.5f's teardown depends on it).** Spawn into a **new process group** and
+derive `pgid` from the new leader. Use **Node's `detached`** — it is portable, and proto already depends on
+Node for the 6a capture:
+
+```js
+// __PROTO__ throwaway — boot the dev server in its OWN process group.
+import { spawn } from 'node:child_process'; import { openSync } from 'node:fs'
+import { execSync } from 'node:child_process'
+const out = openSync(`tasks/proto-${SLUG}/devserver.log`, 'a')
+const child = spawn(CMD, ARGS, { detached: true, stdio: ['ignore', out, out] })
+child.unref()
+const pgid = execSync(`ps -o pgid= -p ${child.pid}`).toString().trim()   // the NEW group
+```
+
+> **Do NOT use `setsid`** — it is util-linux and **absent on macOS** (`command -v setsid` fails on stock
+> Darwin), so the boot would die with "command not found" and burn all 3 strikes on a platform problem
+> rather than a project one. Node's `detached: true` is the portable equivalent. A plain `cmd &` from a
+> non-interactive shell is also wrong: it does **not** create a new group, it inherits the launching
+> shell's — Step 7a's idiom (`( … & )`) is exactly that shape, so copying it verbatim would record *this
+> session's own* pgid and 5.5f's group-kill would take down the working shell.
+
+Write `tasks/proto-<slug>/devserver.json` — every field has a named consumer:
+
+```json
+{ "url": "http://127.0.0.1:5241", "port": 5241, "pid": 48213, "pgid": 48213,
+  "owner": "proto", "cmd": "npm run dev -- --host 127.0.0.1 --port 5241 --strictPort",
+  "log": "tasks/proto-<slug>/devserver.log" }
+```
+`url`→6a · `pid`+`pgid`→5.5f teardown · `owner`→kill rights · `cmd`→identity re-verify + the HARD STOP
+re-run line + retry re-derivation · `log`→triage and the stop message.
+
+**Artifact safety (BLOCKING):**
+- **Never overwrite an existing `.env`.** Placeholder seeding (5.5e) writes a *new* file only
+  (`.env.proto.local`, or the framework's local-override name), created only if absent.
+- **Ignore the artifacts via `.git/info/exclude`, NOT the tracked `.gitignore`.** proto runs against
+  arbitrary repos; `.git/info/exclude` is local-only and never committed, so ignoring `devserver.json` /
+  `devserver.log` / the placeholder env file cannot clobber the user's tracked `.gitignore` or be swept
+  into a later `git add -A` in their project. Append-only, dedupe-checked.
+- **Scrub `KEY=VALUE`-shaped lines** from any log excerpt printed to console/chat or read back into
+  context — dev servers dump resolved config at boot, and a boot that failed for a *non-env* reason may
+  still have loaded a real `.env`.
+- `devserver.log` is left on disk for inspection (local-only) and removed with the run directory at
+  `/saki-builder:build` teardown.
+
+### 5.5d. Wait for ready, then verify the bind
+
+Poll `curl` until HTTP 200 or a **90s** timeout (cold Turbopack/Vite builds are slow). Then **verify the
+bind is loopback** — query by **port**, with `-n` for numeric output:
+
+```bash
+lsof -nP -i :"$PORT" -sTCP:LISTEN        # must show 127.0.0.1 — never * or 0.0.0.0
+```
+
+> Two traps this avoids, both verified on macOS: (1) **`-n` is required** — without it `lsof` resolves the
+> address and prints `localhost:PORT`, so a grep for the literal `127.0.0.1` finds nothing and the gate
+> false-negatives on every run. (2) **Query by port, not `-p $PID`** — the recorded pid is often the
+> `npm`/`pnpm` wrapper, and the listening socket belongs to an unrecorded grandchild, so `-p $PID` returns
+> empty and the gate can never pass for npm-run projects.
+
+A `--host` flag is a *request*, not a guarantee: a custom `node server.js` with a hardcoded
+`app.listen(port)` ignores it and binds every interface. Since 5c leaves the preview route
+**auth-bypassed**, a non-loopback bind would expose an unauthenticated route to the network — which
+matters most in the headless/VPS contexts this skill already targets. Treat it as a boot failure (triage;
+HARD STOP if the framework offers no host override). **Never proceed to 6a on an unverified bind.**
+
+### 5.5e. Triage ladder
+
+Ordered; each rung detects, fixes, and re-boots once. **Every retry re-derives the full command from
+5.5b** — never a partial patch of the prior attempt's string, so the `127.0.0.1` bind can't be silently
+dropped. **Each re-boot rewrites `devserver.json` in place**, so the record always reflects the last
+attempt.
+
+| Signal in the log | Fix | Strike? |
+|---|---|---|
+| `Cannot find module` / no `node_modules` | install in **frozen mode** — `npm ci` · `pnpm install --frozen-lockfile` · `yarn install --frozen-lockfile` — bounded by a **300s** timeout | yes |
+| `Invalid environment variables` / missing env | seed **non-resolvable placeholders** into a new local-override file (never the real `.env`) | yes |
+| `EADDRINUSE` / port busy | next free port from 5.5b's scan | yes |
+| type/compile error in `proto-preview/*` | **exits the ladder immediately** — a harness bug, not a boot bug; return to 5d's typecheck | **no** |
+
+Frozen mode is what makes install-script execution trustworthy: a bare `npm install` may resolve *new*
+transitive versions when `package.json` and the lockfile disagree, running postinstall scripts nobody vetted.
+
+**Placeholder definition (BLOCKING).** A placeholder must be syntactically valid but point at a
+**non-resolvable** target — never copied verbatim from `.env.example`, whose values commonly *do* resolve
+locally (`postgresql://postgres:postgres@localhost:5432/app_dev`). A resolvable value silently connects the
+preview to a real local datastore — exactly what the "never hit live auth / mock the data layer" rule
+forbids. Use a reserved or non-routable host (`.invalid` TLD, `10.255.255.1`) for any key naming a host or URL.
+
+**Genuine handoffs stop on rung one, no strikes burned:** a real secret the app needs to boot, or an
+interactive auth prompt. These are human handoffs, never routed around.
+
+**3-strike guard** ⇒ stop with situation + the exact re-run command + where it resumes:
+
+```
+5.5 HARD STOP — CANNOT BOOT after 3 attempts.
+  Last error: <one-line summary from the log>
+  Re-run manually: <the derived cmd>
+  Full log: tasks/proto-<slug>/devserver.log (last 20 lines above)
+  → Fix the error above, then re-run /saki-builder:proto <prd> — it resumes at Step 5.5.
+```
+
+### 5.5f. Teardown by ownership — at Step 8, and on every abnormal exit
+
+**Timing.** Teardown fires at **Step 8**, *after* Step 7.5 has had its chance to re-verify and re-capture
+— **not** after 6a. Step 7.5 re-curls the route for the `__PROTO__` sentinel and re-screenshots affected
+frames whenever Step 7b's tweak invitation is taken; killing the server at 6a breaks that mainstream path.
+
+**Kill safety (BLOCKING — both guards required before any signal):**
+
+```bash
+# 1. Identity — is this still OUR server? Same cwd check 5.5a uses for reuse.
+[ "$(lsof -a -p "$PID" -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)" = "$PROJECT_ROOT" ] \
+  || { echo "skip: pid $PID is no longer this project's server"; exit 0; }
+# 2. Self-kill guard — never signal our own group.
+[ "$PGID" != "$(ps -o pgid= -p $$ | tr -d ' ')" ] || { echo "skip: own process group"; exit 0; }
+kill -- -"$PGID"
+```
+1. **Identity** — a recycled PID may now be an unrelated process. Verify by **cwd**, not by matching the
+   recorded `cmd` against `ps -o command=`: npm rewrites its own process title on exec (the `--`
+   separator is stripped, so `npm run dev -- --host …` renders as `npm run dev --host …`), which makes a
+   literal `cmd` substring match fail for **every npm project** — the server would then never be killed
+   and every run would leak an auth-bypassed listener. cwd is stable across that rewrite.
+2. **Self-kill guard** — never signal a group that is our own. Identity alone is not sufficient before a
+   group-wide kill; this is what makes 5.5c's `detached` spawn enforceable at the call site.
+
+Kill the **process group**, not a bare `kill <pid>`: the recorded pid is often the `npm`/`pnpm` wrapper,
+and killing it alone orphans the real vite/next child — the same class as 7a's gotcha #1.
+
+**Abnormal exits.** Teardown is a run-wide trap/finally over **every** exit path after 5.5c succeeds — the
+Coverage Gate HARD STOP, the capture's non-zero exit, the ≤3-pass convergence bound, and a human abort.
+Otherwise an auth-bypassed listener survives the run. Belt-and-braces: a **fresh** (non-resume) run that
+finds a **stale** `owner: proto` record reaps that pid before booting — **using both guards above**, never
+a bare kill.
+
+`owner: human` → never killed; log that it was left running.
+
+**Scope note.** This is *proto's own* Step 8, and it tears down the dev-server **process** only. It does
+**not** touch the `proto-preview` route or the 5c middleware bypass — those persist for
+`/saki-builder:build` to promote and delete. (`/saki-builder:build` has a same-numbered Step 8 that owns
+*route* teardown; the two are different objects and must not be collapsed.)
+
+**Studio note.** Step 7a skips serving when `$SAKI_OUT` is set because *its* server would have to outlive
+the turn to be useful (a human clicks the URL later) — and under Studio's headless spawn it would die with
+the turn, while Studio serves the gallery itself anyway. Step 5.5's server has the opposite requirement:
+it only needs to live until Step 7.5 resolves **within the run**, so it backgrounds in **both** terminal
+and Studio contexts. Do not "consistency-fix" this into a `$SAKI_OUT`
+skip; that breaks capture under Studio.
+
+**Convergence-loop churn.** Each pass of the ≤3-pass convergence loop re-enters render → capture, so the
+server may be booted and torn down up to 3 extra times. Self-healing (5.5a is idempotent) — noted so the
+repetition isn't read as a bug.
+
+---
+
 ## Step 6 — Screenshot + interactive Figma-flow gallery via headless Playwright
 
 ### 6a. Capture — screenshots + hotspots in one headless pass
@@ -871,16 +1057,31 @@ validation-error / server-error), at **two viewports** — desktop (1280) and mo
 
 **One script does both** — screenshots every frame AND measures each journey hotspot (6a-bis) in the same
 headless pass, emitting `hotspots.json` for 6b. Write it to `tasks/proto-<prd-slug>/proto-capture.mjs` and
-run from the repo root (`PROTO_URL=http://localhost:<port>/proto-preview node tasks/proto-<slug>/proto-capture.mjs`):
+run from the repo root — the URL comes from **Step 5.5's `devserver.json`**, never a guessed port
+(`node tasks/proto-<slug>/proto-capture.mjs`; `PROTO_URL` still overrides for manual debugging):
 
 ```js
 // __PROTO__ throwaway — headless capture: screenshots + journey hotspots in one pass. Deleted at /saki-builder:build teardown.
 import { chromium } from 'playwright'          // npm i -D playwright && npx playwright install chromium
-import { writeFileSync, mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'; import { fileURLToPath } from 'node:url'
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'; import { fileURLToPath } from 'node:url'
 
 const OUT = dirname(fileURLToPath(import.meta.url))           // = tasks/proto-<slug>/
-const BASE = process.env.PROTO_URL || 'http://localhost:5173/proto-preview'   // the served route (5d)
+// The served route comes from Step 5.5's record — a native read, no `jq` dependency.
+// NEVER default to a guessed port: a wrong URL yields a gallery of failed frames, and
+// `localhost` resolves to IPv6 ::1 first on macOS while the server binds IPv4 (7a gotcha #3).
+function baseUrl () {
+  if (process.env.PROTO_URL) return process.env.PROTO_URL     // manual-debug override
+  const rec = join(OUT, 'devserver.json')
+  if (!existsSync(rec)) throw new Error(`devserver.json missing in ${OUT} — Step 5.5 did not run (or its record was cleaned). Re-run /saki-builder:proto; it resumes at Step 5.5.`)
+  let parsed                                                  // a half-written record is EXPECTED (see Step 0.5)
+  try { parsed = JSON.parse(readFileSync(rec, 'utf8')) }
+  catch { throw new Error(`devserver.json is not valid JSON — a partial write. Re-enter Step 5.5.`) }
+  const { url } = parsed
+  if (!url) throw new Error(`devserver.json has no "url" — the record is stale/partial. Re-enter Step 5.5.`)
+  return `${url}/proto-preview`
+}
+const BASE = baseUrl()
 const VIEWPORTS = { desktop: [1280, 832], mobile: [390, 844] }
 
 // One entry per SCREEN in journey order. `states` maps state→a suffix on BASE (a ?state= value or path).
@@ -1397,6 +1598,14 @@ real routes, then deletes the `proto-preview/*` namespace and reverts the bypass
 runs they live in the working tree (uncommitted is fine). The `preview.json` manifest (5e), if you
 wrote one, is ignored by the current Studio and is removed with the namespace at teardown.
 
+**Dev-server teardown (Step 5.5f) fires here** — after Step 7.5 has had its chance to re-verify and
+re-capture. Kill only what proto started: `owner: proto` in `tasks/proto-<slug>/devserver.json` ⇒ verify
+identity + the self-kill guard, then `kill -- -<pgid>`; `owner: human` ⇒ leave it running and say so. The
+run's server artifacts — `devserver.json` and `devserver.log` — are local-only (ignored via
+`.git/info/exclude`, never the tracked `.gitignore`) and are removed with the run directory at
+`/saki-builder:build` teardown. This tears down the **process** only: the `proto-preview` route and the 5c
+bypass persist exactly as described above.
+
 ---
 
 ## Coverage Gate (BLOCKING — every manifested screen is captured, no negotiation)
@@ -1455,6 +1664,10 @@ re-run the Coverage Gate. Do NOT emit the Completion Output while any two page f
 ```
 (If two screens are legitimately near-identical, they are the same screen — merge them in the manifest;
 the gate is right to flag it.)
+
+**Both recoveries need a live server.** If Step 8's teardown (5.5f) already ran, re-enter **5.5a** first —
+reuse-or-reboot — before re-rendering or re-running the 6a capture. Re-capturing against a torn-down server
+just reproduces the failure.
 
 **Screens are all-or-fail; only states are individual.** A genuinely-unreachable *state* (loading/error)
 on a *present* screen may still be noted-and-omitted per Step 3. A missing *screen* is never acceptable —
@@ -1585,7 +1798,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 | Swallowing the `__PROTO__` sentinel (`waitForSelector(...).catch(()=>{})`) then screenshotting anyway | HARD-gate it (6a): the sentinel must be in the LIVE DOM; a missing sentinel / a `pageerror` / an error boundary FAILS the frame (skip it) and the capture exits non-zero — a crashed render is never captured |
 | Coverage Gate passing on N present-but-byte-identical frames (an error page captured for every screen) | Assert DISTINCTNESS + no error boundary (Coverage Gate): `DISTINCT < manifest` ⇒ HARD STOP. Presence ≠ correctness |
 | Trusting a `curl` 200 of SSR HTML as the render check | `curl` is a smoke test only — a CLIENT-side throw passes it while the browser shows the error boundary; the live-DOM sentinel gate (6a) is authoritative, and typecheck/lint the harness (5d) before capture |
-| Declaring done without verifying the server serves | `lsof`/curl the route before screenshotting |
+| Declaring done without verifying the server serves — or **aborting the run because the app wasn't running** | **Step 5.5 (self-run)** brings it up: reuse an existing server, else boot it, triage a failed boot (deps · env · port · harness), verify the bind is loopback, then `lsof`/curl the route before screenshotting. A down project is something proto fixes, never a reason the run dies |
 | Rendering the slice in a void / bare canvas instead of the real page | Full-shell composition (5b#1) — import the real layout/shell and render the slice inside it |
 | Re-approximating an already-implemented navbar/sidebar/feature component into a "design-wise correct" but *different* look (self-initiating a fresh design of the screen) | Reuse-first grounding — inventory the existing implementation (Step 2.4 Reuse Map), import & compose the real components verbatim, and prove it with the 5d provenance check. The preview must look like the *existing app*, not a redesign of it |
 | Sending an already-implemented component to the 2.5 gap analysis as "new" | Check the Reuse Map first — EXISTING rows are imported, only genuinely-absent surfaces get a 2.5 spec |
