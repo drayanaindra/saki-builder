@@ -2,6 +2,45 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.22.0 — 2026-07-20
+
+- **`/saki-builder:proto` now runs the project itself instead of dying when no dev server is up.** Its
+  entire previous treatment of a stopped project was the phrase *"Otherwise start it"* — no command
+  derivation, port choice, readiness wait, failure triage, pid record, or teardown. Since the capture
+  hard-gates every frame on a live-DOM `__PROTO__` sentinel, nothing serving meant every frame failed and
+  the Coverage Gate hard-stopped, with no recovery branch anywhere in the skill. New **Step 5.5 (Bring the
+  app up)** owns the whole server lifecycle: **reuse-first** (a server you started is detected by cwd, marked
+  `owner: human`, and **never killed**), boot-command derivation from the framework + lockfile, a **detached
+  spawn into its own process group**, a readiness wait, and a **loopback-bind verification** — the preview
+  route runs with auth bypassed, so a `0.0.0.0` bind would expose an unauthenticated route. A four-rung
+  **triage ladder** handles the common boot failures (missing `node_modules` → frozen install · missing env →
+  non-resolvable placeholders, never a real `.env` · busy port · harness compile error), with a 3-strike
+  guard and an actionable stop message. Teardown runs at Step 8 — after Step 7.5 has had its chance to
+  re-verify — guarded by a cwd identity check and a self-kill guard, killing the **process group** so the
+  real server isn't orphaned behind its `npm` wrapper.
+- **`/saki-builder:proto` stopped stating its rules three times.** The skill carried its gates in the Steps,
+  again in an 18-bullet Rules section, and again in a 57-row anti-pattern table — 69 of those 75 items were
+  pure restatement, so every gate change had to be made in three places or drift. It already had: one Step
+  wrote a bare `javascript_tool` while the table two sections below warned against exactly that. The Steps
+  are now the single normative home, with **18 one-line Invariants** each naming its owning Step, and the
+  incident rationale moved to `config/docs/proto-incidents.md`, loaded on demand. The six items that were
+  *not* duplicates were relocated into their Steps first, verified before any deletion.
+- **`index.md` — the artifact `/proto` shows you for approval — finally has a producer spec.** It had 15
+  references across the skill and no template, because it is *accumulated*, not written once. It now has a
+  fixed shape (header · Journey overview · **§Fidelity reductions** · Decision log), every "note it in
+  `index.md`" site appends to that one section, and the resume ledger verifies the section exists — a
+  resumed run must say reductions are unrecoverable rather than silently write an empty list.
+- **Shareable headers + a tidier run directory.** `index.md`, `screen-manifest.md` and `reuse-map.md` each
+  carry `Owner · Status · Updated · PRD @ <sha>`, and the `/build` handoff notes moved from
+  `tasks/proto-<slug>-notes.md` into `tasks/proto-<slug>/notes.md` (settling a `<prd-slug>`/`<slug>` naming
+  drift), with all five `/saki-builder:build` consumers updated in lockstep.
+- **The two largest code blocks left the spec.** The headless capture script and the gallery markup now live
+  in `config/docs/templates/`, each behind a transcribe contract (read → fill `SCREENS` from this run's real
+  journey → write → run) rather than a bare description. `proto/SKILL.md` went **1917 → 1710 lines (−11%)**
+  without weakening a gate.
+- **Fixed:** the SonarQube pre-merge gate reconnects to the local server (`sonar-gate.sh`,
+  `sonar-gate-init.sh`).
+
 ## 0.21.0 — 2026-07-18
 
 - **`/saki-builder:build` gains a PLAN mode — plan-track items (Improvement `I<n>` / Bug `B<n>`) now run
