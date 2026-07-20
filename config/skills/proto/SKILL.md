@@ -34,7 +34,7 @@ it removes the *look* risk, not the *behavior* work.
 - **Coverage is gated, not promised** — GATE 1 writes a **Screen Manifest** of every screen the finished
   PRD produces; the **Coverage Gate** (before Completion) HARD-STOPS unless every manifested screen has a
   captured frame at both viewports. All screens, no curation — a skipped screen fails the run, not a
-  footnote in `index.md`.
+  footnote in **§Fidelity reductions** of `index.md`.
 
 ---
 
@@ -116,7 +116,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 4.5 | 5.5 | `devserver.json` exists and is schema-valid | pid alive **AND** its cwd is the project root (`lsof -a -p <pid> -d cwd`) **AND** `lsof -nP -i :<port> -sTCP:LISTEN` shows `127.0.0.1` (query by port, `-n` for numeric — see 5.5d/5.5f); if dead, foreign, or non-loopback ⇒ **NOT DONE — re-enter Step 5.5** (5.5a reuse-or-reboot), never 6a directly |
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
 | 6 | 6b | `preview.html` **and** `preview-bundle.html` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis) — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
-| 7 | 8 | `proto-<slug>-notes.md` exists | non-empty |
+| 7 | 8 | `proto-<slug>/notes.md` exists | non-empty |
 | 8 | 8.5 | the PRD carries `<!-- prd-locked: … -->` | marker present |
 
 4. **In-context-only phases never block resume.** The gap analysis (2.5), state map (Step 3), and mock-data
@@ -164,6 +164,10 @@ Do NOT invent a PRD. From it, extract:
   → a validation/error state to show).
 - **§11 Non-Goals** — never render beyond them.
 
+**Never re-elicit scope.** Scope comes from the PRD — its journey, its §9/§10 states, its §11 boundaries.
+Do not go back to the user to re-ask what is already written; a gap in the PRD routes through the
+Convergence loop, not through a question.
+
 **Assemble the complete journey, not just the slices.** From the slices + §9 + the Gherkin, lay out the
 full end-to-end path the user walks: the **entry point** (landing/login), every user-facing step in
 sequence, the **connective screens** that join them (auth, first-run empty, intermediate confirmations),
@@ -203,7 +207,17 @@ EVERY screen the finished PRD produces — the entry point, every §8 user-visib
 *outcome* screen, every connective glue screen, every shell nav/affordance destination (Gate 2's walk),
 and the terminal success — as a numbered list to `tasks/proto-<prd-slug>/screen-manifest.md`, each row
 tagged `[slice §8.N]` / `[glue]` / `[shell-affordance]` / `[outcome]`. This list is the **canonical screen
-count** for the whole run: the Coverage Gate (before Completion) hard-checks that every row has a captured
+count** for the whole run. Lead the file with the shareable header (below) so it is legible to a teammate
+who wasn't in the run:
+
+### screen-manifest.md
+
+```markdown
+# Screen Manifest — <prd-slug>
+**Owner:** <@name | unassigned> · **Status:** Frozen | PARTIAL (--slice=N) · **Updated:** <YYYY-MM-DD>
+**PRD @** <path>@<git sha>
+```
+The Coverage Gate (before Completion) hard-checks that every row has a captured
 frame. It is "what the flow looks like when the PRD is complete" written down once, so completeness is
 *verifiable*, not asserted. Derive it mechanically from the PRD — do NOT pause to let scope be negotiated
 down; the manifest is the floor, not a proposal. A no-arg run manifests the ENTIRE journey; only an
@@ -363,7 +377,16 @@ card / table / list-row / form / detail view that ships in the real app today. I
 3. **Read what you find** — open each candidate to confirm it renders the surface this screen needs
    (don't match on filename alone).
 
-Write a **Reuse Map** to `tasks/proto-<prd-slug>/reuse-map.md`, one row per screen:
+Write a **Reuse Map** to `tasks/proto-<prd-slug>/reuse-map.md`, led by the shareable header, one row per screen:
+
+### reuse-map.md
+
+```markdown
+# Reuse Map — <prd-slug>
+**Owner:** <@name | unassigned> · **Status:** Derived from the real app · **Updated:** <YYYY-MM-DD>
+**PRD @** <path>@<git sha>
+```
+
 
 ```
 Reuse Map — <prd-slug>
@@ -407,6 +430,9 @@ NAME DRIFT — new screen "<name>": spec/roadmap name "<spec>" ≠ the brand the
 ("<real>", <path>). Rendered with the implemented brand "<real>"; logged for Step-7 confirmation.
 (Intentional rebrand? → Convergence loop via /saki-builder:prd, not a proto edit.)
 ```
+The drift this exists to catch, concretely: a spec titled **"Builder Workflow Studio"** rendered onto a screen
+whose implemented shell says **"Saki Studio"**.
+
 This is **redundant for reused screens**: an EXISTING row is imported verbatim (Step 5), so the real brand
 comes along automatically — the check earns its keep only where there is no component to import.
 
@@ -496,6 +522,11 @@ For every ⚠️ and ❌, produce a **component spec** that thinks like a UI/UX 
    - Tailwind CSS v3 → `theme.extend.colors.status.review` in `tailwind.config.*`
    - CSS custom properties → `--color-status-review: ...` in `:root` in globals
    Prefer extending existing token scales. If a token already exists, cite it — do NOT duplicate.
+   **Match the project's format exactly — the two ways this goes wrong:** writing `var(--token-name)` in
+   component files for an **MUI** project (MUI tokens live in `theme.ts` — consume via `tokens.status.*` /
+   `theme.palette.*`, never CSS vars the project never defined), and adding **CSS custom properties to a TS
+   tokens object** (`theme.ts`). They are mirror images of the same mistake: using another stack's token
+   syntax.
 5. **States** — hover, focus, disabled, loading, error, selected — only what the component actually needs
 6. **Accessibility** — ARIA role, keyboard behavior, contrast check (4.5:1 minimum)
 7. **Consistency check** — name 2–3 closest existing components; note deviations and why
@@ -704,7 +735,7 @@ throws on first render (works on a toy app, fails on a real one). Before mountin
 
 If the provider chain is **env-dependent and not cheaply mockable** (e.g. auth requires live keys at
 module load) so the real shell can't mount, do NOT fight it — fall back to the bare harness (5b#2),
-and note the lost chrome in `index.md`.
+and note the lost chrome in **§Fidelity reductions** of `index.md`.
 
 ### 5b. Harness choice (in priority order — by page-composition fidelity)
 
@@ -733,7 +764,7 @@ the real page will look** — the more it composes the real app shell, the more 
    shell pulls **env-locked** providers (e.g. auth requires live keys at module load) that can't be
    cheaply mocked, render just the slice's component subtree in a minimal page supplying only the 5a
    mock providers, bypassing the real root layout. This is the old default; it **loses the global
-   chrome**, so **note the fidelity reduction in `index.md`** ("rendered without the app shell").
+   chrome**, so **append the fidelity reduction to §Fidelity reductions in `index.md`** ("rendered without the app shell").
    **Storybook** (`.stories.tsx`, the `component` skill's convention) is an equivalent isolation
    option here.
 
@@ -1046,13 +1077,14 @@ is the **local-only fallback**, used only when Playwright can't be made availabl
   or drop the `.ttf` in + `fc-cache -f`); (2) **emoji** in the UI (e.g. the 💬 badge) need
   `fonts-noto-color-emoji` or they render as tofu. (Containers: bake all of this into the Dockerfile, not the
   run step.)
-- **Neither works:** fall back to the MCP and **note in `index.md`** that capture was local-only
+- **Neither works:** fall back to the MCP and **append to §Fidelity reductions in `index.md`** that capture was local-only
   (not VPS-reproducible) — never silently skip.
 
 **Order the screens by the user journey** (from the `*-flow.md` Gherkin happy path; else infer from §9) —
 this order drives the gallery (6b). For **each screen capture the page frame first** (the Figma overview
 shot of the whole composed page in the real shell, 5b#1), then the other **states** (loading / empty /
-validation-error / server-error), at **two viewports** — desktop (1280) and mobile (390). Save
+validation-error / server-error), at **BOTH viewports** — desktop (1280) and mobile (390); `design.md` is
+mobile-first, so a desktop-only capture hides the layout the design actually optimizes for. Save
 `tasks/proto-<prd-slug>/<slice-n>-<state>-<viewport>.png` (use `<state>=page` for the happy frame).
 
 **One script does both** — screenshots every frame AND measures each journey hotspot (6a-bis) in the same
@@ -1143,9 +1175,38 @@ authoritative render check (not the 5d curl, which only sees SSR HTML and misses
 it prints `CAPTURE FAILED`, STOP and do not proceed to the gallery: the named frames hit a provider (5a) or
 auth (5c) failure — fix and re-run. (This is the exact "error page captured N× as identical frames"
 false-green the gate exists to prevent.) For a failed non-page **state** shot (loading/error) you may note
-it in `index.md`; a failed **page** (whole-screen) frame is a **Coverage-Gate failure** — fix it and
-re-capture, never note-and-skip a screen. Then write `index.md` leading with the journey-ordered page
-frames + the fidelity contract.
+it in **§Fidelity reductions** of `index.md`; a failed **page** (whole-screen) frame is a **Coverage-Gate failure** — fix it and
+re-capture, never note-and-skip a screen. Then write `index.md` per the producer spec below.
+
+### index.md (the human review surface)
+
+This is the one artifact a human actually reads at Step 7b, and the record the run leaves behind. It is
+**accumulated, not written once** — eight sites across this skill say "note it in `index.md`", and every one
+appends to **§Fidelity reductions** below. Write it with exactly these sections:
+
+```markdown
+# Preview — <prd-slug>
+**Owner:** <@name | unassigned> · **Status:** Awaiting review | Approved · **Updated:** <YYYY-MM-DD>
+**PRD @** <path>@<git sha>          ← version pin: which PRD revision this gallery reflects
+
+## Journey overview
+<the journey-ordered page frames, desktop + mobile, in the order the user walks them>
+
+## Fidelity reductions
+<one line per reduction — an EMPTY list is a valid, meaningful result. Never omit the section.>
+- App shell: not composed (env-locked auth provider) — bare harness used [5b#2]
+- Capture:   MCP local-only, not VPS-reproducible [6a]
+- State:     `slice3/loading` frame failed, noted not captured [6a]
+- Hotspot:   `slice2 → slice3` anchor not measurable [6a-bis]
+- Figma:     skipped — seat is read-only [6c]
+
+## Decision log
+<link `prd-adjustments.md` (Convergence-loop changes) + any 🔶 design decision and its rationale>
+```
+
+**§Fidelity reductions is the honesty contract.** Anything the run could not do faithfully lands there as
+one line with its owning step in brackets — never dropped silently, never buried in prose. A *screen* that
+failed to capture is NOT a fidelity reduction; that is a Coverage-Gate HARD STOP.
 
 **Mobile-fidelity check (BLOCKING — the mobile frame must be a real mobile layout, not a squished desktop).**
 Proto renders the project's REAL components, so a non-responsive component yields a genuinely broken mobile
@@ -1202,104 +1263,19 @@ Self-contained: inline `<style>` + inline `<script>`, **no external/CDN deps**. 
 `SCREENS` array in journey order; each screen lists its state→viewport PNGs and its hotspot. Fill the
 `SCREENS` array from 6a (PNG names) + 6a-bis (hotspot rects); the template logic does not change.
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Proto — <prd-slug></title>
-<style>
-  :root{--bg:#1e1e1e;--panel:#2c2c2c;--line:#3d3d3d;--text:#e6e6e6;--muted:#9b9b9b;--accent:#0d99ff}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-  header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:10}
-  .spacer{flex:1}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-  .seg button{background:transparent;color:var(--muted);border:0;padding:5px 11px;font:inherit;cursor:pointer}
-  .seg button.on{background:var(--accent);color:#fff}
-  .dl{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;text-decoration:none;border-radius:7px;padding:6px 12px;font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap}
-  .dl:hover{filter:brightness(1.08)}
-  .hint{color:var(--muted);font-size:11px}.hint kbd{background:#000;border:1px solid var(--line);border-radius:4px;padding:0 5px}
-  .fidelity{margin:0;padding:8px 16px;background:#2a2410;border-bottom:1px solid #4a3d12;color:#e8c97a;font-size:12px}
-  .wrap{display:flex;min-height:calc(100vh - 92px)}
-  nav{width:210px;border-right:1px solid var(--line);padding:12px;flex-shrink:0}
-  nav .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:6px 4px}
-  nav a{display:flex;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;color:var(--text);text-decoration:none;cursor:pointer;font-size:12px}
-  nav a:hover{background:#333}nav a.on{background:#0d99ff22;color:#cde8ff}
-  nav a .n{width:18px;height:18px;border-radius:50%;background:#3d3d3d;display:grid;place-items:center;font-size:11px;flex-shrink:0}
-  nav a.on .n{background:var(--accent);color:#fff}
-  main{flex:1;display:flex;flex-direction:column;align-items:center;padding:24px;overflow:auto}
-  .caption{color:var(--muted);margin-bottom:12px;text-align:center}.caption b{color:var(--text)}
-  .states{display:flex;gap:6px;margin-bottom:14px}
-  .states button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 10px;font:inherit;cursor:pointer}
-  .states button.on{border-color:var(--accent);color:#cde8ff}
-  .stage{position:relative;display:inline-block;box-shadow:0 12px 40px rgba(0,0,0,.55);border-radius:10px;overflow:hidden;background:#0d1117}
-  .stage img{display:block;width:auto;max-width:min(1180px,90vw);height:auto}.stage.mobile img{max-width:min(360px,90vw)}
-  .hot{position:absolute;border-radius:6px;cursor:pointer}
-  .hot::after{content:attr(data-label);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;font-size:11px;font-weight:600;color:#fff;background:var(--accent);padding:3px 8px;border-radius:5px;opacity:0;transition:opacity .12s;pointer-events:none}
-  .hot:hover,.hot.flash{box-shadow:0 0 0 2px var(--accent),0 0 0 6px #0d99ff44;background:#0d99ff22}
-  .hot:hover::after,.hot.flash::after{opacity:1}
-  .navrow{display:flex;gap:10px;align-items:center;margin-top:16px}
-  .navrow button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:7px 14px;cursor:pointer;font:inherit}
-  .dots{display:flex;gap:6px}.dot{width:8px;height:8px;border-radius:50%;background:#555;cursor:pointer}.dot.on{background:var(--accent)}
-  .grid{display:none;flex-wrap:wrap;gap:30px;padding:28px;justify-content:center}
-  body.overview .grid{display:flex}body.overview .wrap{display:none}
-  .card .ttl{font-size:12px;color:var(--muted);margin-bottom:8px}.card .ttl b{color:var(--text)}
-  .card img{display:block;max-width:420px;border-radius:8px;box-shadow:0 8px 26px rgba(0,0,0,.5);border:1px solid var(--line);cursor:pointer}
-  body.overview.mobile .card img{max-width:200px}.arrow{align-self:center;color:var(--accent);font-size:26px}
-</style></head>
-<body class="flow desktop">
-<header>
-  <b>Proto · <prd-slug></b>
-  <span class="hint">click <span style="color:var(--accent)">blue</span> hotspots · <kbd>H</kbd> flash</span>
-  <span class="spacer"></span>
-  <div class="seg" id="mode"><button data-mode="flow" class="on">Flow</button><button data-mode="overview">Overview</button></div>
-  <div class="seg" id="vp"><button data-vp="desktop" class="on">Desktop</button><button data-vp="mobile">Mobile</button></div>
-  <a class="dl" id="dl" href="preview-bundle.html" download title="Download the single-file shareable copy — screenshots inlined, no folder needed">⬇ Shareable file</a>
-</header>
-<p class="fidelity">⚡ Faithful on layout · real components · design tokens · the real app shell. Mock data; click-through is a Figma-style flow between captured frames — live behavior is <code>/saki-builder:build</code>'s job.</p>
-<div class="wrap">
-  <nav><div class="lbl">User journey</div><div id="rail"></div></nav>
-  <main>
-    <div class="caption" id="cap"></div>
-    <div class="states" id="states"></div>
-    <div class="stage" id="stage"><img id="frame" alt=""></div>
-    <div class="navrow"><button id="prev">‹ Prev</button><div class="dots" id="dots"></div><button id="next">Next ›</button></div>
-  </main>
-</div>
-<div class="grid" id="grid"></div>
-<script>
-// One entry per SCREEN in journey order. states.page is mandatory; add empty/loading/error as captured.
-// hot (from 6a-bis): the affordance that advances to screen index `to`. Last screen: {to:0,label:'↺ Restart'} or omit.
-const SCREENS = [
-  { title:'<screen 1 title>', cap:'<one-line caption>',
-    states:{ page:{desktop:'slice1-page-desktop.png',mobile:'slice1-page-mobile.png'} },
-    hot:{ to:1, label:'<affordance>', desktop:{x:0,y:0,w:0,h:0}, mobile:{x:0,y:0,w:0,h:0} } },
-  // …one object per screen in journey order…
-];
-const $=s=>document.querySelector(s),stage=$('#stage'),frame=$('#frame'),cap=$('#cap'),
-  rail=$('#rail'),dots=$('#dots'),statesBar=$('#states'),grid=$('#grid');
-let cur=0,st='page',vp='desktop';
-function render(){
-  const s=SCREENS[cur];if(!s.states[st])st='page';
-  frame.src=s.states[st][vp];frame.alt=s.title;stage.className='stage'+(vp==='mobile'?' mobile':'');
-  cap.innerHTML='<b>'+(cur+1)+'. '+s.title+'</b>'+(s.cap?'<br>'+s.cap:'');
-  statesBar.innerHTML='';Object.keys(s.states).forEach(k=>{const b=document.createElement('button');b.textContent=k;b.className=k===st?'on':'';b.onclick=()=>{st=k;render()};statesBar.appendChild(b)});
-  stage.querySelectorAll('.hot').forEach(h=>h.remove());
-  const c=s.hot&&s.hot[vp];if(c&&st==='page'){const a=document.createElement('a');a.className='hot';a.dataset.label=s.hot.label;a.style.cssText='left:'+c.x+'%;top:'+c.y+'%;width:'+c.w+'%;height:'+c.h+'%';a.onclick=()=>setScreen(s.hot.to);stage.appendChild(a)}
-  rail.innerHTML='';dots.innerHTML='';SCREENS.forEach((g,i)=>{const a=document.createElement('a');a.className=i===cur?'on':'';a.innerHTML='<span class="n">'+(i+1)+'</span>'+g.title;a.onclick=()=>setScreen(i);rail.appendChild(a);const d=document.createElement('span');d.className='dot'+(i===cur?' on':'');d.onclick=()=>setScreen(i);dots.appendChild(d)});
-}
-function setScreen(i){cur=(i+SCREENS.length)%SCREENS.length;st='page';render()}
-function renderGrid(){grid.innerHTML='';SCREENS.forEach((s,i)=>{const c=document.createElement('div');c.className='card';c.innerHTML='<div class="ttl"><b>'+(i+1)+'. '+s.title+'</b></div><img src="'+s.states.page[vp]+'">';c.querySelector('img').onclick=()=>{document.body.classList.remove('overview');$('#mode [data-mode=flow]').click();setScreen(i)};grid.appendChild(c);if(i<SCREENS.length-1){const ar=document.createElement('div');ar.className='arrow';ar.textContent='→';grid.appendChild(ar)}})}
-$('#mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));document.body.classList.toggle('overview',b.dataset.mode==='overview');if(b.dataset.mode==='overview')renderGrid()};
-$('#vp').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#vp button').forEach(x=>x.classList.toggle('on',x===b));vp=b.dataset.vp;document.body.classList.toggle('mobile',vp==='mobile');render();renderGrid()};
-$('#prev').onclick=()=>setScreen(cur-1);$('#next').onclick=()=>setScreen(cur+1);
-addEventListener('keydown',e=>{if(e.key.toLowerCase()==='h')stage.querySelectorAll('.hot').forEach(h=>{h.classList.add('flash');setTimeout(()=>h.classList.remove('flash'),900)});if(e.key==='ArrowRight')setScreen(cur+1);if(e.key==='ArrowLeft')setScreen(cur-1)});
-render();
-</script>
-</body>
-</html>
-```
+**Template:** `${CLAUDE_PLUGIN_ROOT}/config/docs/templates/proto-gallery-template.html` — the full gallery markup lives there,
+not inline, so this skill doesn't carry ~100 lines of HTML into every run.
+
+**Transcribe contract (not a description — do these four things):**
+1. **Read** `${CLAUDE_PLUGIN_ROOT}/config/docs/templates/proto-gallery-template.html`.
+2. **Fill in** its `SCREENS` array from 6a (PNG filenames per state × viewport) + 6a-bis (hotspot rects,
+   as percentages). The array is the only part you change; the surrounding logic does not change.
+3. **Write** the completed result to `tasks/proto-<slug>/preview.html`.
+4. Keep `img src` **relative** (sibling PNG filenames) — never absolute, never `localhost:PORT`, never
+   base64 (base64 belongs only in the 6b-bis shareable bundle).
+
+Never reinvent this markup from memory: the state/viewport toggles and the hotspot overlay geometry are
+load-bearing, and a hand-rolled gallery silently loses the click-through Flow that makes it Figma-like.
 
 Use **relative** `<img src>` (the bare PNG filename) so the Studio resolves each as a sibling —
 `resolveProtoAsset` serves `tasks/proto-<slug>/<file>.png`. No base64, no absolute/`localhost:PORT` paths.
@@ -1320,7 +1296,7 @@ grep -c 'page:'  tasks/proto-<slug>/preview.html   # >= screen count (every scre
 ```
 Open it (`file://`) and confirm: **Flow** advances on hotspot click, **Overview** shows the journey with
 arrows, the **viewport** toggle swaps frames, **state** toggles flip per-screen states. If a frame or
-hotspot is missing, note it in `index.md` — never drop silently.
+hotspot is missing, append it to **§Fidelity reductions** in `index.md` — never drop silently.
 
 **Note:** the gallery is interactive as a **Figma-style frame-to-frame flow** (click-through between
 captured frames + state/viewport toggles). It does NOT run live behavior (validation, API calls, real
@@ -1405,7 +1381,7 @@ usage-based paid) — that's another reason it stays optional, never a hard depe
 
 **Also respect the resolved design-engine mode (Step 0).** If the mode is **`figma-read`** (a View/Dev
 seat that can read but not write), the write-to-canvas tools will fail — **skip the export with a noted
-reduction in `index.md`** ("Figma export skipped — seat is read-only; use an editor/dev seat to export")
+reduction to §Fidelity reductions in `index.md`** ("Figma export skipped — seat is read-only; use an editor/dev seat to export")
 rather than attempting a call that errors. **`figma-write`** proceeds with the export below. A plain
 `native` / `--figma-only` run doesn't resolve a seat capability (Step 0 only calls `whoami` for the figma
 engine), so it keeps 6c's original try-when-connected behavior — if a read-only seat blocks the write, the
@@ -1437,7 +1413,9 @@ which tier you got):
    **per screen in journey order** (Step 6a) — full-page happy frame first, then the other states. Each
    capture: call the tool with the `fileKey` (no `captureId`) → it returns a `captureId`; ensure
    `capture.js` (`https://mcp.figma.com/mcp/html-to-design/capture.js`) is loaded on the page — inject it
-   via the browser MCP `javascript_tool`, or temporarily add the `<script src=…capture.js>` tag (throwaway,
+   via the browser MCP tool **`mcp__claude-in-chrome__javascript_tool`** (use that exact, fully-qualified
+   name — it does not belong to Playwright, and the unprefixed short form does not resolve), or temporarily
+   add the `<script src=…capture.js>` tag (throwaway,
    remove at teardown); open the route with the `#figmacapture=<captureId>&figmaendpoint=…&figmadelay=1000`
    hash; then poll `generate_figma_design` with the `captureId` every ~5s until `completed`. One
    `captureId` per page.
@@ -1459,7 +1437,7 @@ fall back to Tier B. (For EXTERNAL, non-localhost URLs, `capture.js` must be inj
 
 **Verify + record.** Confirm `create_new_file` returned a file URL. If `generate_figma_design` /
 `upload_assets` errors, retry once, then fall through (Tier A → Tier B → static-only) and note the
-reduction in `index.md` rather than dropping silently. Record the Figma file URL and which tier you
+reduction to **§Fidelity reductions** in `index.md` rather than dropping silently. Record the Figma file URL and which tier you
 produced; surface both in the Completion Output.
 
 ---
@@ -1580,7 +1558,7 @@ MUST use these real components — do NOT re-invent them."
 
 ## Step 8 — Handoff to `/saki-builder:build`
 
-Write `tasks/proto-<prd-slug>-notes.md` capturing, per screen: the **real components chosen**,
+Write `tasks/proto-<slug>/notes.md` capturing, per screen: the **real components chosen**,
 the **token references** used, and the **states** confirmed. Purpose: `/saki-builder:build` **promotes** these
 presentational components (mock data → real data + state + tests + backend wiring) instead of
 re-picking from scratch.
@@ -1737,7 +1715,7 @@ Coverage Gate: PASSED — N/N manifested screens captured at both viewports   (o
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
 HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
 Shareable bundle: tasks/proto-<slug>/preview-bundle.html  (single self-contained file — every screenshot inlined; send as one attachment, no folder needed)
-Handoff notes: tasks/proto-<slug>-notes.md
+Handoff notes: tasks/proto-<slug>/notes.md
 Local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — Cmd/Ctrl-click to open · stop: pkill -f "http.server <port>")
 Studio Preview: opens the static gallery (tasks/proto-<slug>/preview.html) via the Preview ↗ button
 Figma export: <Figma file URL — Tier A editable layers | Tier B screenshot board | skipped (no Figma MCP)>
@@ -1759,154 +1737,30 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 
 ---
 
-## Anti-patterns (reject on sight) — the honesty rails
+## Invariants
 
-| Anti-pattern | Fix |
-|--------------|-----|
-| Skipping Step 2.5 when Gate 2 is "Found" | Gap analysis runs regardless — slices may need components not yet in the library |
-| Listing MUI/Chakra/Mantine primitives (Button, Paper, etc.) individually as ✅ | For npm-library projects, all library primitives are ✅ by default — list only the custom business component layer |
-| Cross-referencing `src/proto/**` or `proto-preview/**` when checking if a component exists | Those are throwaway harness files — a component found there is NOT in the design system; exclude them from the scan |
-| Pausing at Step 2.5 for confirmation when user hasn't requested a stop | Auto-proceed after presenting specs — Step 7b (post-render) is the review point; pause only if user explicitly asks |
-| Naming new tokens or components outside existing conventions | Follow existing naming patterns exactly (same key names, same scale prefixes, same casing) |
-| Adding speculative tokens "we might need later" | Only add tokens explicitly required by the approved spec |
-| Creating a wrapper file for a ⚠️ purely stylistic MUI/Chakra variant | Theme overrides (`components.MuiX.variants`) are the correct path — new files only for multi-primitive composites |
-| Writing `var(--token-name)` in component files for an MUI project | MUI tokens live in `theme.ts` — consume via `tokens.status.*` or `theme.palette.*`, not CSS vars the project never defined |
-| Adding CSS custom properties to a TS tokens object (`theme.ts`) | Match the project's token format exactly (see Step 2.5 token format detection) |
-| Letting `/saki-builder:build` re-invent components instead of using the Step 2.6 additions | Design system update runs in Step 2.6 (before render), finalized in 7.5; handoff notes must name the real component files |
-| Rendering an *approximation* of a NEW component and codifying it only after approval | Codify confirmed ⚠️/❌ in **Step 2.6 BEFORE render** — proto composes the real component and Step 7 approves the real thing (the old approximate-first order let a human approve a stand-in that /saki-builder:build then rebuilt differently) |
-| Force-fitting a journey the existing design can't host, OR auto-deciding a big redesign *without* weighing options / recording the rationale | 🔶 rules (2.5) — SMALL absorbs as ⚠️/❌; BIG design-only **auto-resolves with senior-designer rigor** (2–3 options weighed · faithfulness + cost-ladder + a11y + responsive · decision recorded in design-system-updates.md · reviewed at Step 7b); only a **scope** change routes back to /saki-builder:prd. Auto-resolve ≠ unexamined — a reasoned, recorded decision, never a silent snap redesign |
-| Designing the delta from the component grep without ever looking at the existing page | Capture the current-state screenshot of any modified page first (2.4) — designers look before they design |
-| Jumping to a new component when a variant would do (or a redesign when a component would do) | Climb the cost ladder to the lowest rung that works — reuse < scale < add < propose (2.5) |
-| Inventing components when no design system exists | Gate 2 STOP — offer scaffold / mock / skip |
-| Lorem-perfect data hiding overflow & density | Long strings + many rows + an empty case |
-| Wiring real backend / data fetching / state logic | Mock only — that work is `/saki-builder:build` |
-| Preview routes that can ship to prod | `proto-preview` namespace + banner + cleanup contract |
-| Folder named `_proto`/`__proto` in Next App Router → 404 | Routable name (`proto-preview`); `_`-prefix = private/non-routed |
-| Preview route 307-redirects to `/login` | Default-deny middleware — add the scoped Step 5c bypass |
-| Claiming 1:1 after a Partial detection | Flag exactly which half is approximate |
-| Curating to the "important" states/slices instead of the whole journey | E2E by default (GATE 1 + Step 3) — every reachable state, every user-visible step, entry→success; `--slice` or omitting a state must be explicit + justified, never the default. Still never invent a state genuinely impossible for the screen. |
-| Rendering before writing the Screen Manifest | GATE 1 — enumerate every screen (slices + glue + backend outcomes + shell affordances + success) into `screen-manifest.md` first; it is the canonical count the Coverage Gate checks. No manifest = no rendering. |
-| Mechanically listing only the explicit §8 slices, so implied screens (error/branch/role/entry/exit/transition) never make the manifest — a thin manifest passes the Coverage Gate while the gallery is missing a screen | Interrogate the PRD with **critical thinking + curiosity** before freezing the manifest (GATE 1): every criterion/rule/branch/role/affordance/transition → "what screen does this imply?" — add the ones the PRD covers, loop the ones it doesn't. The gate can't catch a screen you never listed |
-| Pausing mid-run to ask the human about a COVERAGE gap (uncovered affordance / a journey step with no §8 home / a scope 🔶) | Convergence loop — a human can't judge scope in the abstract; delegate the fix to `/saki-builder:prd`/`/saki-builder:prd-review`, re-derive, and loop (≤3 passes) until coverage closes. Human gate is the finished VISUAL at Step 7, informed by `prd-adjustments.md` |
-| Proto hand-editing the PRD's scope itself inside the loop | Proto never owns scope (Step 8.5) — it *invokes* `/saki-builder:prd`/`/saki-builder:prd-review`, which makes + owns the change; proto only re-derives and re-renders |
-| Looping forever when PRD and journey keep disagreeing | Bound at ≤3 passes — non-convergence is a genuine product question, not a coverage mechanic; THEN surface it (situation · options · recommendation), the "recut > fix-then-fix" signal |
-| Emitting the Completion Output while a manifested screen has no captured frame | Coverage Gate is BLOCKING — every row in `screen-manifest.md` needs a page frame at BOTH viewports; a missing screen is a HARD STOP, not a note in `index.md`. |
-| Note-and-skipping a whole screen because a shot failed | Only a missing non-page *state* may be noted; a missing *screen* (page frame) fails the Coverage Gate — fix and re-capture (6a / Coverage Gate). |
-| Bare preview route that throws on a missing provider | Step 5a — detect + wrap in mock providers, or use Storybook |
-| Booting real auth/DB to render a preview | Mock the session/locale/data-layer; never hit live auth |
-| Screenshotting a compile-error / error page | Fix the provider (5a) first; never capture an error as the "preview" |
-| Swallowing the `__PROTO__` sentinel (`waitForSelector(...).catch(()=>{})`) then screenshotting anyway | HARD-gate it (6a): the sentinel must be in the LIVE DOM; a missing sentinel / a `pageerror` / an error boundary FAILS the frame (skip it) and the capture exits non-zero — a crashed render is never captured |
-| Coverage Gate passing on N present-but-byte-identical frames (an error page captured for every screen) | Assert DISTINCTNESS + no error boundary (Coverage Gate): `DISTINCT < manifest` ⇒ HARD STOP. Presence ≠ correctness |
-| Trusting a `curl` 200 of SSR HTML as the render check | `curl` is a smoke test only — a CLIENT-side throw passes it while the browser shows the error boundary; the live-DOM sentinel gate (6a) is authoritative, and typecheck/lint the harness (5d) before capture |
-| Declaring done without verifying the server serves — or **aborting the run because the app wasn't running** | **Step 5.5 (self-run)** brings it up: reuse an existing server, else boot it, triage a failed boot (deps · env · port · harness), verify the bind is loopback, then `lsof`/curl the route before screenshotting. A down project is something proto fixes, never a reason the run dies |
-| Rendering the slice in a void / bare canvas instead of the real page | Full-shell composition (5b#1) — import the real layout/shell and render the slice inside it |
-| Re-approximating an already-implemented navbar/sidebar/feature component into a "design-wise correct" but *different* look (self-initiating a fresh design of the screen) | Reuse-first grounding — inventory the existing implementation (Step 2.4 Reuse Map), import & compose the real components verbatim, and prove it with the 5d provenance check. The preview must look like the *existing app*, not a redesign of it |
-| Sending an already-implemented component to the 2.5 gap analysis as "new" | Check the Reuse Map first — EXISTING rows are imported, only genuinely-absent surfaces get a 2.5 spec |
-| Rendering / capturing when `reuse-map.md` or `screen-manifest.md` was never written (5d provenance then passes *vacuously* — no rows to check) | **Grounding gate (top of Step 5)** HARD-STOPS before any render until both artifacts exist and are non-empty; the Reuse Map is the contract 5d checks against, so no map = no render |
-| Reuse-map **reconstructed from the existing harness** on resume (launders prior errors forward), a `NEW` row for a component that already exists, or a "stand-in"/"NOTE" for an EXISTING component | Step 2.4 proves `NEW` by an empty grep of the real app; the Step 5 gate's **correctness** check HARD-STOPS a misclassified/stubbed map; Step 0.5 re-derives grounding from the real app, **never** the harness (a missing map + present harness = UNTRUSTED harness) |
-| Typing the PRD/roadmap product name onto a net-new screen when the implemented UI renders a different brand | **Name-drift check (Step 2.4)** — for a new screen, resolve the brand from the real shell and FLAG a mismatch for reconciliation; never auto-type the spec title (the "Builder Workflow Studio" vs implemented "Saki Studio" drift) |
-| State-matrix-only gallery with no journey flow | Build the Figma-flow gallery (6b): a click-through Flow + a journey-ordered Overview; per-screen states are a toggle, never a bare matrix |
-| Plain static PNG list (no hotspots / no flow) when the journey is known | Wire 6a-bis hotspots so clicking the real control advances screen→screen — that is the Figma-prototype feel |
-| `<iframe srcdoc>` DOM gallery (renders unstyled in Studio — no dev server persists) | Embed the 6a PNG screenshots via relative `<img src>` (6b) — already-rendered, needs no server |
-| Absolute / `localhost:PORT` / base64 `img src` in **`preview.html`** | `preview.html` uses relative PNG filenames only — `resolveProtoAsset` serves them as siblings (6b). base64 belongs ONLY in the additive shareable `preview-bundle.html` (6b-bis), never in the Studio-served gallery |
-| Sharing `preview.html` on its own (broken images — needs its sibling PNGs) | Send `preview-bundle.html` (6b-bis) — one self-contained file with every screenshot inlined; `preview.html` is for Studio/`file://` next to its folder |
-| Capturing the page frame at one viewport only | Shoot both desktop (1280) and mobile (390) — design.md is mobile-first |
-| Calling "Playwright's javascript_tool" | The tool is `mcp__claude-in-chrome__javascript_tool` — use the exact MCP tool name |
-| Deleting the `proto-preview` route at the end of the proto run | It PERSISTS — `/saki-builder:build` owns teardown (Step 8). It's the capture harness + promotion source, not a deletable scratch file |
-| Restarting from zero when an interrupted run left a partial `tasks/proto-<slug>/` gallery | Step 0.5 resume detection — walk the checkpoint ledger, re-verify each artifact's gate, and resume at the next incomplete phase; `--restart` is the only way to force a clean run |
-| Advertising the `preview.json` manifest as a live Studio preview | The current Studio ignores it and opens the static `preview.html`; the manifest is optional/legacy (5e) |
-| Preferring a bare / Storybook harness when the real shell can mount | Prefer full-shell composition (5b#1) for page fidelity; the bare harness is the fallback only |
-| Making Figma export a hard dependency / telling the user to install Figma unprompted | Step 6c is optional — skip silently when the Figma MCP isn't connected; the static gallery is the deliverable |
-| Assuming Tier A can't capture localhost because the server is remote | Capture is **client-side** (`capture.js` in a browser) — localhost works; Tier A's real need is a browser session + `capture.js`, not server→localhost reachability (6c) |
-| Wiring the old third-party plugin-bridge (`cursor-talk-to-figma`) to write to Figma | The first-party server writes to canvas now — use `generate_figma_design` / `create_new_file` / `upload_assets` (6c) |
-| Treating the Figma file as the canonical deliverable or as `/saki-builder:build`'s source | Static gallery + handoff notes stay canonical; Figma export is an extra review surface, `/saki-builder:build` doesn't read it |
+The Steps above are the single normative home for every gate — each invariant below is a one-line
+reject-on-sight cue naming the Step that owns it. Rationale and the observed failure behind each gate live
+in `${CLAUDE_PLUGIN_ROOT}/config/docs/proto-incidents.md` (read on demand, not loaded every run).
 
-## Rules
-
-- **Preview, not build.** No backend, no real data, no state logic, no tests, no prod routes.
-- **PRD is source of truth.** Scope = its full user journey (every user-visible step + the connective
-  entry/success screens that join them); states = its §9/§10 + the Gherkin; boundaries = its §11 non-goals.
-  Never re-elicit scope.
-- **End-to-end by default.** Always render the complete journey — every user-visible step (incl.
-  backend-slice outcome screens), the connective entry/success screens between them, and every reachable
-  state per screen. A no-arg run covers the whole PRD; `--slice=N` and omitting a state are explicit,
-  justified narrowings, never the implicit default.
-- **Coverage is gated, not asserted — and presence is not correctness.** GATE 1 writes a Screen Manifest of
-  every screen the finished PRD produces; the **Coverage Gate** (before Completion) hard-stops unless every
-  manifested screen has a captured frame at both viewports **AND the page frames are DISTINCT** (byte-identical
-  frames = a non-varying/crashed render, e.g. an error page captured for every screen). The capture itself
-  (6a) hard-fails on a missing `__PROTO__` sentinel in the live DOM / a `pageerror` / an error boundary, so a
-  crashed render is never screenshotted. Every screen, no curation, no negotiation — a missing OR duplicated
-  screen fails the run. Screens are all-or-fail; only individual states may be reasoned about (Step 3).
-- **Enumerate with critical thinking + curiosity — the Coverage Gate can't catch a screen never listed.** The
-  gate verifies captured == *manifested*; it is blind to an omission in the manifest itself. So GATE 1
-  interrogates the PRD like a skeptical designer — every criterion / rule / branch / error path / role / entry /
-  exit / affordance / transition → *"what screen does this imply that I haven't listed?"* — before freezing the
-  manifest. Screens the PRD covers get added; screens it doesn't trigger the Convergence loop. A mechanical
-  pass sets the floor; curiosity raises it to the real ceiling (this is where missing screens come from).
-- **Real components or stop.** Gate 2 is blocking — a faithful preview without a real design system
-  is a contradiction; say so rather than fabricate.
-- **Reuse the real implementation, don't redesign it.** Existing implemented shell + feature components
-  are inventoried (Step 2.4 Reuse Map) and **imported verbatim** — proto composes the actual app, so the
-  preview looks like the *existing app*, never a "design-wise correct but different" fresh design of it.
-  Only genuinely-absent surfaces are specced (2.5), and the 5d **provenance check** proves every
-  EXISTING/shell row was actually imported before any frame is captured.
-- **Grounding is mechanically gated for existence AND correctness, not just prose.** The Reuse Map (Step 2.4)
-  + Screen Manifest (GATE 1) are a hard precondition to rendering: the **Grounding gate at the top of Step 5**
-  HARD-STOPS a run whose `reuse-map.md`/`screen-manifest.md` is missing/empty **OR whose map is wrong** (a
-  `NEW` row for a component that already exists, or a "stand-in" for an EXISTING one). A `NEW` row is a claim
-  of absence and must be proven by an empty grep of the real app (Step 2.4); on resume, grounding is
-  re-derived from the real app and **never** reconstructed from the stale harness (Step 0.5). Prose-BLOCKING
-  alone proved insufficient — one run skipped Step 2.4 and shipped reinvented components; a resumed run then
-  rebuilt a present-but-*wrong* map from the harness and re-shipped them. The gate closes both holes.
-- **Design system first, always.** Gap analysis (Step 2.5) runs every time. Missing components get a spec,
-  user confirmation, and are codified into the real design system in **Step 2.6 — before the proto is even
-  rendered**, so the preview shows real components, never approximations (finalized after visual approval in
-  7.5); never during `/saki-builder:build`. Be consistent: new components follow existing naming, token scales, and
-  prop conventions exactly.
-- **Climb the cost ladder, add the minimum (the designer's discipline).** Reuse an existing component (✅) <
-  scale one (⚠️ variant) < add a new one (❌) < propose a design change (🔶). Look at the existing page first
-  (2.4), pick the LOWEST rung that works, and add only what the screen forces — judging the needed
-  interaction, not just the pixels. **Add first, then design with it:** confirmed additions are built for
-  real in Step 2.6 *before* rendering. A 🔶 that is *big* but **design-only** (shell/nav, a page's layout
-  paradigm, a net-new pattern, or a >1-screen ripple, within scope) is **auto-decided with senior-designer
-  rigor** — 2–3 options weighed on faithfulness · cost ladder · interaction · a11y · responsive, the decision
-  recorded and reviewed at Step 7b — never force-fit and never a silent snap redesign. A 🔶 that alters
-  **scope** (new features/screens) goes through the **Convergence loop** — proto invokes `/saki-builder:prd`
-  to reconcile it, then re-renders; it never invents scope and never pauses mid-run (the human judges it as a
-  rendered visual at Step 7).
-- **Converge, don't pause — the human gate is the VISUAL.** A human can't judge scope in the abstract, so proto
-  never stops mid-run to ask about a **coverage gap** (an uncovered shell affordance, a journey step with no §8
-  home, a scope 🔶, a screen the Coverage Gate can't source). It **delegates the fix to
-  `/saki-builder:prd`/`/saki-builder:prd-review`, re-derives from GATE 1, and loops (≤3 passes)** until every
-  surface is covered — then presents the finished journey at Step 7 with a `prd-adjustments.md` changelog as the
-  single, informed gate. Non-convergence in 3 passes is a real product question → surface it then, not before.
-  (Design-only 🔶s don't loop — proto resolves those itself.)
-- **Throwaway but shell-faithful.** The preview **composes the real app shell** (5b#1) for page
-  fidelity, yet lands only under the `proto-preview` namespace (or Storybook, the fallback), marked
-  disposable, with a cleanup contract handed to `/saki-builder:build`.
-- **Figma-flow gallery.** `preview.html` is a click-through prototype: a **Flow** (hotspots advance
-  screen→screen) + a journey-ordered **Overview**, with per-screen state + viewport toggles — never a
-  bare state matrix (6b).
-- **Shareable single-file bundle (6b-bis).** Alongside `preview.html` (relative-src — needs its sibling
-  PNGs; what Studio serves), always emit `preview-bundle.html`: the same gallery with every screenshot
-  inlined as base64, so it's ONE self-contained file to share (email/Slack/drive), openable with no folder
-  and no server. Additive — `preview.html` stays canonical for Studio and `/saki-builder:build`; base64
-  belongs only in the bundle, which is regenerated by `proto-bundle.mjs` after any 7.5 re-capture.
-- **Honest fidelity, every run.** Always show what the preview is faithful on vs approximate on.
-- **Figma export is additive & honest (6c).** Only when the Figma MCP is connected; prefer Tier A
-  editable layers, fall back to Tier B screenshots when no browser/capture path is available, and always state
-  which tier you produced. Never a hard dependency; never the canonical deliverable for `/saki-builder:build`.
-- **Resumable — a hard stop resumes, never restarts.** Proto writes durable checkpoints to
-  `tasks/proto-<slug>/` and the project tree; an interrupted run detects them (Step 0.5), re-verifies each
-  phase's gate, and resumes at the next incomplete phase — never redoing the codified components, the harness,
-  or the headless capture. Approval is proven only by the Step 8.5 lock marker, so an unlocked run resumes at
-  Step 7 (re-present), never auto-locks. `--restart` forces a clean run.
-- **Proto is the lock gate (Step 8.5).** On approval (Step 7) — or, for a no-UI PRD, on the human's freeze
-  confirmation — `/saki-builder:proto` writes `Status: Locked` + `<!-- prd-locked: … -->` into the PRD: the explicit
-  freeze `/saki-builder:build` enforces before `/saki-builder:rplan`. It is the **single lock writer** for every PRD.
-  It stamps only the freeze marker + the §15 UI reference — never scope, criteria, or rules (that stays
-  `/saki-builder:prd`). Never lock a `PARTIAL` (`--slice`) run.
+- **Preview, not build** — no backend, real data, state logic, tests, or prod routes (Intro · Step 5).
+- **PRD is the source of truth; never re-elicit scope** — journey from §8, states from §9/§10, boundaries from §11 (GATE 1).
+- **Never curate the journey** — every user-visible step and every reachable state, entry→success; `--slice` is explicit, never the default (GATE 1 · Step 3).
+- **Never freeze a manifest you derived mechanically** — interrogate the PRD for implied screens first; the Coverage Gate is blind to a screen you never listed (GATE 1).
+- **Never fabricate a design system** — no components + tokens ⇒ STOP and offer scaffold/mock/skip (GATE 2).
+- **Never redesign what is already implemented** — inventory it, import it verbatim, prove it with the provenance grep (Step 2.4 · Step 5d).
+- **Never render without grounding** — missing or wrong `reuse-map.md`/`screen-manifest.md` ⇒ HARD STOP; on resume re-derive from the real app, never from the harness (Step 5 gate · Step 0.5 pt 7).
+- **Never send an implemented component to gap analysis as NEW** — a `NEW` row is a claim of absence, proven by an empty grep (Step 2.4 Guard).
+- **Climb the cost ladder, then codify before rendering** — reuse ✅ < scale ⚠️ < add ❌ < propose 🔶, adding only what the screen forces; a confirmed addition is built for real *before* the render, never approximated (Step 2.5 · Step 2.6).
+- **Never pause mid-run on a coverage gap** — delegate to `/saki-builder:prd`, re-derive, loop **≤3 passes**; the human gate is the finished VISUAL at Step 7 (Convergence loop · Step 7b).
+- **Never boot real auth or a DB to render a preview** — mock session/locale/data-layer (Step 5a).
+- **Never let a preview route reach production** — `proto-preview` namespace + `__PROTO__` banner + the cleanup contract (Step 5d · Step 8).
+- **Never abort because the app isn't running** — Step 5.5 reuses or boots it, triages the failure, and verifies the bind is loopback (Step 5.5).
+- **Never trust a `curl` 200 as the render check** — it sees SSR HTML; the authoritative gate is the `__PROTO__` sentinel in the **LIVE DOM**, plus no `pageerror`/error boundary (Step 5d · Step 6a).
+- **Never screenshot a crashed render, and never ship duplicate frames** — a missing sentinel fails the frame; **byte-identical** page frames fail the Coverage Gate. Presence is not correctness (Step 6a · Coverage Gate).
+- **Never capture one viewport** — **BOTH** desktop (1280) and mobile (390); `design.md` is mobile-first (Step 6a).
+- **Figma export is additive and honest** — only when the MCP is connected, always state the tier, never the canonical deliverable (Step 6c).
+- **Proto is the single lock writer** — it stamps the freeze marker + §15 UI reference only, never scope; never locks a `--slice` PARTIAL run (Step 8.5).
 
 ## Script
 

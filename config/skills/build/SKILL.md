@@ -204,7 +204,7 @@ begin.
 
 ### Reuse the `/saki-builder:proto` preview when one exists (verified at step 3.5)
 
-If `tasks/proto-<prd-slug>-notes.md` exists (the user ran `/saki-builder:proto` first), read it. It records the
+If `tasks/proto-<slug>/notes.md` exists (the user ran `/saki-builder:proto` first), read it. It records the
 **real design-system components + token references** chosen per screen, already validated visually.
 When implementing a user-facing slice, **promote** those presentational components (mock data →
 real data + state + tests + backend wiring) — the look is already approved. **This is not discretionary
@@ -391,7 +391,7 @@ here — invoke both without waiting for the user. (Re-load `clean-code` every s
 context even if a context clear happened between slices.)
 
 ### 3.5. Proto-fidelity gate — promote the real components, don't re-invent (user-facing slice + proto handoff only)
-**Gate this step:** run it **only when** `tasks/proto-<prd-slug>-notes.md` exists AND this slice ships a
+**Gate this step:** run it **only when** `tasks/proto-<slug>/notes.md` exists AND this slice ships a
 user-facing surface. Otherwise **skip**, log `PROTO-FIDELITY: slice N — skipped (no proto notes | backend slice)`,
 and go to step 4.
 
@@ -414,7 +414,7 @@ to step 4 while a promoted component was re-invented. This is blocking-but-**rec
 never an abort of the whole build.
 
 **Legitimate deviation (not a block):** proto's approved look was intentionally changed this slice — e.g. the
-step-5.5 security reshape, which already re-proto's and updates `tasks/proto-<slug>-notes.md`, so the grep
+step-5.5 security reshape, which already re-proto's and updates `tasks/proto-<slug>/notes.md`, so the grep
 matches the current components. The notes are the source of truth; a deviation that did NOT update the notes
 is drift → reconcile (re-proto the screen, or import the named component). Log one line:
 `PROTO-FIDELITY: slice N — <K promoted components verified | re-invented X → fixed>`.
@@ -471,7 +471,7 @@ only for `[human]`-tagged forks). Classify each blocking finding by depth and ro
    **If the fix reshapes the UI** (changes a screen, field, or flow the user sees — e.g. drops a
    leaking field, inserts a step-up-auth / confirm screen), the approved proto for that screen is now
    stale: re-render it autonomously with `/saki-builder:proto --slice=N`, update
-   `tasks/proto-<slug>-notes.md`, and annotate the changed requirement in the PRD in place
+   `tasks/proto-<slug>/notes.md`, and annotate the changed requirement in the PRD in place
    (`✅ RESOLVED (auto, security) — <what changed> — <why>`). Do NOT pause for human UI sign-off
    (TRUST MODE) and do NOT unlock the PRD — it stays Locked; you're amending one screen under the same
    auto-decision rule as step 0b. Record it in the Completion Output's auto-resolved block for
@@ -766,7 +766,7 @@ Next actions:
   `qa` / `reviewer` / `security-review`; do not re-implement their logic here.
 - **Never fake green.** Don't weaken or delete tests to pass `/saki-builder:qa` or e2e. A blocked slice
   is reported honestly.
-- **Promote, don't re-invent.** When a `/saki-builder:proto` handoff exists (`tasks/proto-<slug>-notes.md`),
+- **Promote, don't re-invent.** When a `/saki-builder:proto` handoff exists (`tasks/proto-<slug>/notes.md`),
   the shipped user-facing slice MUST import proto's named components — step 3.5 (Proto-fidelity gate)
   verifies it (the **inverse of proto's 5d** provenance check). Re-inventing a promoted component is a
   blocking finding, not a silent choice.
