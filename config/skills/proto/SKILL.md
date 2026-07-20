@@ -115,7 +115,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 4 | 5 | the `proto-preview/*` harness route exists | 5d provenance + typecheck pass; the 5c middleware bypass is still present (re-add if missing) |
 | 4.5 | 5.5 | `devserver.json` exists and is schema-valid | pid alive **AND** its cwd is the project root (`lsof -a -p <pid> -d cwd`) **AND** `lsof -nP -i :<port> -sTCP:LISTEN` shows `127.0.0.1` (query by port, `-n` for numeric — see 5.5d/5.5f); if dead, foreign, or non-loopback ⇒ **NOT DONE — re-enter Step 5.5** (5.5a reuse-or-reboot), never 6a directly |
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
-| 6 | 6b | `preview.html` **and** `preview-bundle.html` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis) — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
+| 6 | 6b | `preview.html`, `preview-bundle.html` **and** `index.md` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis); **`index.md` carries its `## Fidelity reductions` section** (an empty list is valid — a MISSING section means the producer spec never ran, so this checkpoint is NOT DONE). **On resume, do NOT write an empty list to satisfy this:** the section is *accumulated* across 5b/5c/6a/6c, which are in-context judgments with no other durable artifact, so a fresh context cannot reconstruct what an earlier run noted. Write `- (earlier reductions not recoverable — run resumed at 6b)` instead, so a silently-empty list can never read as "nothing was reduced" — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
 | 7 | 8 | `proto-<slug>/notes.md` exists | non-empty |
 | 8 | 8.5 | the PRD carries `<!-- prd-locked: … -->` | marker present |
 
@@ -1092,81 +1092,21 @@ headless pass, emitting `hotspots.json` for 6b. Write it to `tasks/proto-<prd-sl
 run from the repo root — the URL comes from **Step 5.5's `devserver.json`**, never a guessed port
 (`node tasks/proto-<slug>/proto-capture.mjs`; `PROTO_URL` still overrides for manual debugging):
 
-```js
-// __PROTO__ throwaway — headless capture: screenshots + journey hotspots in one pass. Deleted at /saki-builder:build teardown.
-import { chromium } from 'playwright'          // npm i -D playwright && npx playwright install chromium
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'; import { fileURLToPath } from 'node:url'
+**Template:** `${CLAUDE_PLUGIN_ROOT}/config/docs/templates/proto-capture-template.mjs`.
 
-const OUT = dirname(fileURLToPath(import.meta.url))           // = tasks/proto-<slug>/
-// The served route comes from Step 5.5's record — a native read, no `jq` dependency.
-// NEVER default to a guessed port: a wrong URL yields a gallery of failed frames, and
-// `localhost` resolves to IPv6 ::1 first on macOS while the server binds IPv4 (7a gotcha #3).
-function baseUrl () {
-  if (process.env.PROTO_URL) return process.env.PROTO_URL     // manual-debug override
-  const rec = join(OUT, 'devserver.json')
-  if (!existsSync(rec)) throw new Error(`devserver.json missing in ${OUT} — Step 5.5 did not run (or its record was cleaned). Re-run /saki-builder:proto; it resumes at Step 5.5.`)
-  let parsed                                                  // a half-written record is EXPECTED (see Step 0.5)
-  try { parsed = JSON.parse(readFileSync(rec, 'utf8')) }
-  catch { throw new Error(`devserver.json is not valid JSON — a partial write. Re-enter Step 5.5.`) }
-  const { url } = parsed
-  if (!url) throw new Error(`devserver.json has no "url" — the record is stale/partial. Re-enter Step 5.5.`)
-  return `${url}/proto-preview`
-}
-const BASE = baseUrl()
-const VIEWPORTS = { desktop: [1280, 832], mobile: [390, 844] }
+**Transcribe contract (four steps, not a description):**
+1. **Read** the template.
+2. **Fill in** its `SCREENS` array from THIS run's journey — one entry per screen in `screen-manifest.md`
+   order, each screen's `states` mapping state→`?state=` suffix, and its 6a-bis `anchor`. The placeholder
+   entries (`slug:'slice1'`, `sel:'[data-testid="primary-cta"]'`) are examples — shipping them unedited
+   captures a route that does not exist.
+3. **Write** the completed result to `tasks/proto-<slug>/proto-capture.mjs`.
+4. **Run** `node tasks/proto-<slug>/proto-capture.mjs` from the repo root. `BASE` comes from Step 5.5's
+   `devserver.json`; `PROTO_URL` still overrides for manual debugging.
 
-// One entry per SCREEN in journey order. `states` maps state→a suffix on BASE (a ?state= value or path).
-// `anchor` (6a-bis) = the control that advances to the next screen: CSS `sel`, or {role,name}. Omit on last.
-const SCREENS = [
-  { slug:'slice1', states:{ page:'?state=happy', empty:'?state=empty', error:'?state=error' },
-    anchor:{ to:1, label:'<affordance>', sel:'[data-testid="primary-cta"]' } },
-  // …one per screen in journey order. Last screen: anchor:{ to:0, label:'↺ Restart', sel:'…' } or no anchor
-]
-const pct = (b,W,H) => b && { x:+(b.x/W*100).toFixed(2), y:+(b.y/H*100).toFixed(2), w:+(b.width/W*100).toFixed(2), h:+(b.height/H*100).toFixed(2) }
-
-mkdirSync(OUT, { recursive:true })
-const browser = await chromium.launch()
-const hotspots = {}                                          // slug -> { to, label, desktop:{}, mobile:{} }
-const FAILED = []                                            // frames that crashed/blanked — must NOT be screenshotted
-for (const [vp,[W,H]] of Object.entries(VIEWPORTS)) {
-  const ctx = await browser.newContext({ viewport:{width:W,height:H}, deviceScaleFactor:2 })
-  const page = await ctx.newPage()
-  let pageErr = null
-  page.on('pageerror', e => { pageErr = e.message })         // a CLIENT-side throw during render (missing import/provider)
-  for (const s of SCREENS) {
-    for (const [state, suffix] of Object.entries(s.states)) {
-      pageErr = null
-      await page.goto(BASE + suffix, { waitUntil:'networkidle' })
-      // HARD render gate — NEVER screenshot a crashed/blank render (the "error page captured N×" false-green).
-      // The sentinel must be in the LIVE DOM (not just SSR HTML — a client throw slips past a curl of the SSR).
-      const rendered = await page.waitForSelector('text=__PROTO__', { timeout:8000 }).then(()=>true).catch(()=>false)
-      const boundary = await page.locator("text=/couldn['’]t load|Application error|__next_error__|Unhandled Runtime Error/i").count()
-      if (!rendered || pageErr || boundary) {                // fail the frame, do NOT capture it
-        FAILED.push(`${s.slug}-${state}-${vp}: ${pageErr || (boundary ? 'error boundary rendered' : 'no __PROTO__ sentinel in DOM')}`)
-        continue                                             // fix 5a (providers) / 5c (auth), then re-run
-      }
-      await page.waitForTimeout(400)
-      await page.screenshot({ path:`${OUT}/${s.slug}-${state}-${vp}.png` })
-    }
-    if (s.anchor && (s.anchor.sel || s.anchor.name)) {        // measure hotspot on the page state
-      await page.goto(BASE + s.states.page, { waitUntil:'networkidle' }); await page.waitForTimeout(300)
-      const loc = s.anchor.sel ? page.locator(s.anchor.sel).first()
-                               : page.getByRole(s.anchor.role||'button', { name:new RegExp(s.anchor.name) }).first()
-      const box = await loc.boundingBox().catch(()=>null)
-      hotspots[s.slug] = Object.assign(hotspots[s.slug]||{ to:s.anchor.to, label:s.anchor.label }, { [vp]: pct(box,W,H) })
-    }
-  }
-  await ctx.close()
-}
-await browser.close()
-writeFileSync(`${OUT}/hotspots.json`, JSON.stringify(hotspots, null, 2))
-if (FAILED.length) {                                          // ANY crashed frame ⇒ capture FAILED; never proceed to the gallery
-  console.error('CAPTURE FAILED — these frames did not render (fix providers 5a / auth 5c, never ship an error frame):\n' + FAILED.join('\n'))
-  process.exit(1)                                            // non-zero exit halts the run BEFORE the Coverage Gate / gallery
-}
-console.log('captured screenshots + hotspots.json')
-```
+Never reinvent this script from memory — the `__PROTO__` live-DOM sentinel gate, the `pageerror` hook and
+the error-boundary check are the three things that stop a crashed render from being screenshotted, and a
+hand-rolled capture silently drops them.
 
 **The capture script HARD-FAILS (non-zero exit + `CAPTURE FAILED`) on any frame that crashed, rendered the
 error boundary, or lacked the `__PROTO__` sentinel in the LIVE DOM — a crashed render is NEVER
