@@ -236,6 +236,7 @@ Classify every row's Method as exactly one of:
 - `external` — read outside our code (payment dashboard, survey, third-party analytics). Method reads
   `external: <source>`. No emit — but say where the number comes from so it isn't mistaken for `query`.
 
+
 Counter-metric must name the specific failure mode it guards (e.g. "guards 5.1: faster onboarding
 gamed by skipping verification → locked-out users"); in the §5 table its `JTBD` cell reads
 `guards 5.x` (the metric(s) it protects), not a `Jn`.
