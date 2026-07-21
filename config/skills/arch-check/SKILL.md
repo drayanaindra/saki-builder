@@ -51,6 +51,35 @@ bash ${CLAUDE_PLUGIN_ROOT}/config/skills/arch-check/detect.sh [repo-root]
 It prints a `Detected layout:` line, one `MODULE <name> service_loc=… sibling_imports=… stage3_fired=…`
 line per module (Stage 2 layouts), and an `APP …` line with the Stage 1→2 metrics (flat layouts).
 
+## Step 2.5 — Graphify Enrichment (if graph exists — additive)
+
+Read the knowledge graph report before and after running `detect.sh`. This step never blocks —
+if the graph is absent, proceed to Step 3.
+
+```bash
+cat graphify-out/GRAPH_REPORT.md 2>/dev/null || echo "No graph — run /saki-builder:graphify . to build one."
+```
+
+Then query for module-specific structural data:
+```bash
+graphify query "which modules are most interconnected?"
+graphify path "ModuleA" "ModuleB"   # for any two modules where coupling is suspected
+graphify explain "HighBetweennessNode"   # for any god node in the report
+```
+
+**How to use the graph output in the arch-check report:**
+
+- **God node inside a `stage3_fired=yes` module** → **HARD UPGRADE signal** — it's structurally
+  load-bearing AND already oversized. Add to the FIRED section: "Graph: god node `X`
+  (betweenness=Y) lives in this module — high-centrality + size trigger = upgrade urgency elevated."
+- **God node in a Stage 2 module (no fired trigger)** → CANDIDATE: "This module owns graph hub
+  `X` (betweenness=Y) — coupling risk if the module grows further."
+- **Two detect.sh modules in the same community cluster** → hidden coupling CANDIDATE: "Modules
+  A and B cluster together in the graph — consider whether they should be one module or need an
+  explicit boundary."
+- **Surprising connections** → surface as CANDIDATE triggers: cross-module edges the static import
+  heuristic can miss, each with its plain-English _why_ from the report.
+
 ## Step 3 — Classify each trigger: FIRED vs CANDIDATE
 
 Split every trigger into two honest buckets — **never present a judgment trigger as if it were measured**:

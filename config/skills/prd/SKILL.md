@@ -162,6 +162,30 @@ inform: acceptance criteria tone, which error states to cover, what non-goals to
 
 ### Tier 1 — Local grounding (always run)
 
+**Graph-first reading (additive — run BEFORE any Grep/Glob/file read):**
+
+```bash
+cat graphify-out/GRAPH_REPORT.md 2>/dev/null || true
+```
+
+If the report exists, read it fully before opening any file. Use it to:
+- **§16 Technical Contract REUSE rows** — god nodes the feature touches are load-bearing anchors;
+  mark them `REUSE (path:line)` from the start, not discovered at rplan time.
+- **Single architecture decision row** — if the feature's scope crosses >1 community cluster, it
+  spans module boundaries; that is the architecture decision to name in §16.
+- **Scope honesty** — if a god node (`betweenness > 0.05`) sits in the blast radius, flag it as
+  `assumed` with a centrality-risk note. Touching a god node is never a simple change.
+- **Surprising connections** — any listed edge connecting the feature area to another module is a
+  hidden dependency; surface as `assumed` unless code confirms it.
+
+Then query for the feature's specific scope:
+```bash
+graphify query "<feature name and what it does>"
+graphify path "ProposedModule" "ExistingModule"   # confirm coupling the PRD assumes
+```
+
+If absent: skip. ≥20 files → note once: *"Consider `/saki-builder:graphify .` for richer §16."*
+
 Grep/read the codebase to verify every technical claim before writing anything:
 - Code confirms it → tag `observed`, note `path:line` internally
 - Code contradicts it → fix the claim

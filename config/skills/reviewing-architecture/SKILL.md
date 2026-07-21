@@ -16,7 +16,27 @@ Act as an Engineering Manager to lock in the execution plan. Review architecture
 
 ## Execution Steps
 
-1. **Gather Context:** Use `glob` and `read` to find and review the feature's `pitch.md`, `strategy-review.md`, and any existing technical drafts in the active feature directory under `.saki/.output/features/`.
+1. **Gather Context:** Read the knowledge graph report first (if present), then read feature files.
+
+   ```bash
+   cat graphify-out/GRAPH_REPORT.md 2>/dev/null || true
+   ```
+
+   Use the report before opening any file:
+   - **God nodes** — if the feature touches a god node, flag it in the architecture review as a
+     high-risk coupling point. A god node change ripples further than the plan states.
+   - **Communities** — validate the feature's module boundary. If the feature spans >1 community,
+     the data model or API boundary may need an explicit anti-corruption layer.
+   - **Surprising connections** — any listed edge connecting the feature area to an unexpected
+     module is a hidden dependency to surface in the architecture review.
+
+   Then for targeted questions:
+   ```bash
+   graphify query "<feature area>"
+   graphify path "FeatureModule" "SharedModule"
+   ```
+
+   Then use `glob` and `read` to find and review the feature's `pitch.md`, `strategy-review.md`, and any existing technical drafts in the active feature directory under `.saki/.output/features/`.
 2. **Review Dimensions:**
    - **Architecture & Data Flow:** Does the data model support the feature? Are DB queries optimized? 
    - **Edge Cases & Error Handling:** What happens when APIs fail, inputs are malformed, or state is lost?

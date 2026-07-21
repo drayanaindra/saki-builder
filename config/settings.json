@@ -48,7 +48,7 @@
       "NotebookEdit"
     ]
   },
-  "model": "opus",
+  "model": "claude-sonnet-4-6",
   "hooks": {
     "Notification": [
       {
@@ -183,5 +183,6 @@
   },
   "effortLevel": "xhigh",
   "skipWorkflowUsageWarning": true,
-  "theme": "dark"
+  "theme": "dark",
+  "agentPushNotifEnabled": true
 }

@@ -207,6 +207,29 @@ Unverifiable claims (facts asserted but not checkable from the document):
 6. Metrics that are **not instrumentable** with what exists or is in scope — including an **`event`-class Method with no named event** (`event: emit <name> when <trigger>` missing): it declares a metric nothing will record.
 7. §5 outcomes with **no linking acceptance criterion** anywhere in the slices — and, for an **`event`-class** outcome, a linking criterion that only restates the outcome instead of **asserting the event fires** (the criterion must verify emission, e.g. "event `<name>` fires when `<trigger>`").
 
+**Graph-first context for Judge 3 (coordinator reads before dispatching, additive):**
+
+```bash
+cat graphify-out/GRAPH_REPORT.md 2>/dev/null || true
+```
+
+Read the full report before constructing Judge 3's prompt. Thread the graph summary as **Graph
+Context** in Judge 3's input. Judge 3 uses it to:
+- **Cross-boundary slice coupling** — if a slice's stated scope touches nodes in >1 community,
+  prescribe an `Assumes:` line or a dedicated slice for the cross-boundary work.
+- **Omitted god-node REUSE rows** — a slice depending on a god node (`betweenness > 0.05`) that
+  §16 omits is a blocking §16 gap; prescribe adding `REUSE (path:line)`.
+- **"Simple change" claims** — a change touching a god node is never simple; use the report's
+  betweenness score as evidence for the finding.
+
+Then query for slice-specific coupling:
+```bash
+graphify query "<slice description>"                   # what does this slice actually touch?
+graphify path "SliceModule" "UnexpectedDependency"     # confirm hidden coupling
+```
+
+If absent: Judge 3 runs without graph context (unchanged behavior).
+
 **Judge 3 — Slicing & Implementation-Reality (the lead lens).** Find, in priority order:
 1. **Missing failure/edge criteria — the post-manual-test bug source.** For each state-changing or `🔒` slice, name the failure paths the happy-path ACs leave untested and **prescribe the criterion that would catch each** (Given/When/Then + signal, tagged `[auto]`/`[manual]`). Draw from this canonical, **non-exhaustive** menu, applying an item *only where the slice's stated behavior implies that path* — prescribing a path the slice can't reach (e.g. `network-fail` for a slice that makes no network call) violates the grounding rule:
    over-limit · empty/zero · concurrent/double-submit · unauthorized/wrong-tenant · network-fail/timeout · partial-failure/rollback · idempotency-on-retry · pagination/large-N · error-state UI.

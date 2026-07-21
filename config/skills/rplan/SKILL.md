@@ -115,6 +115,35 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
   - What DB state changes
 - Document findings in `tasks/[task]-context.md` (`mkdir -p tasks` first — alongside the plan under `tasks/`)
 
+**Graph-first reading (additive — run BEFORE any Grep/Glob/file read):**
+
+```bash
+cat graphify-out/GRAPH_REPORT.md 2>/dev/null || true
+```
+
+If the report exists, read it fully before opening any file. It gives you:
+- **God nodes** — load-bearing hub concepts. A task touching a god node has a wider blast radius
+  than it looks; name it in the context doc.
+- **Communities** — bounded context clusters. Group your file reads by community — files in the
+  same community are tightly coupled.
+- **Surprising connections** — hidden cross-file edges with a plain-English _why_. These are the
+  couplings that grep alone misses.
+
+Then run targeted queries for this task's scope:
+```bash
+graphify query "<what does the feature area do?>"      # BFS — broad blast radius
+graphify query "<trace the specific call path>" --dfs  # DFS — exact dependency chain
+graphify path "ModuleA" "ModuleB"                      # confirm/refute alleged coupling
+```
+
+Feed the output into the context doc as a **Graphify Findings** section (god nodes touched,
+communities crossed, surprising connections relevant to the task).
+
+If `graphify-out/GRAPH_REPORT.md` is absent:
+- ≥20 files to read → offer once: "No graph yet — run `/saki-builder:graphify .` for 71×
+  cheaper research? (skipping proceeds with file reads)"
+- <20 files → skip silently.
+
 **Spike Protocol (XP):** If during research you encounter an unknown that cannot be resolved by reading code (e.g., third-party API behavior, performance characteristics, library compatibility), run a timeboxed spike:
 1. Spawn a subagent with a 15-minute timebox question. For genuinely **external** unknowns (third-party API/library behavior, current pricing/limits, ecosystem facts), the spike may use `WebSearch` / `/deep-research` / a connected MCP server — not only code reading.
 2. Spike output must include: question answered, approach tried, key findings, recommendation, remaining unknowns

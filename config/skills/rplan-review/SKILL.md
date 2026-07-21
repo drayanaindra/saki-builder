@@ -389,6 +389,30 @@ Merge all expert findings:
 
 1. **Discard uncited findings.** A blocker or warning that doesn't quote a step # / section is dropped — state how many were discarded. (Experts pad to look thorough; an uncited finding is unverifiable by definition.)
 2. **Verify every BLOCKER against the actual code/plan line before it enters the ledger.** Subagents misread patterns and flag correct APIs as bugs (CLAUDE.md core rule #4). Read the cited `path:line` yourself; a blocker that doesn't survive verification is downgraded or dropped, with a one-line note. **Best-effort when the repo isn't on disk:** if the plan's checkout isn't available, mark such blockers `PLAUSIBLE (unverified — repo absent)` rather than confirming or dropping them.
+
+   **Graph-first structural verification (additive — augments file-read verification):**
+
+   ```bash
+   cat graphify-out/GRAPH_REPORT.md 2>/dev/null || true
+   ```
+
+   Read the report first. Then for each architecture blocker, run a targeted query:
+   ```bash
+   graphify path "ServiceA" "ServiceB"     # confirm/refute alleged direct coupling
+   graphify explain "CitedNode"            # confirm god-node status and edge types
+   graphify query "<blocker claim>"        # broad traversal if path is insufficient
+   ```
+
+   Use the output to:
+   - **Confirm** — graph shows an edge or short path → cite: `graph confirms <A>→<B>
+     (relation: calls, provenance: EXTRACTED, confidence: 0.91)`.
+   - **Downgrade** — `graphify path` finds no path → subagent likely misread; downgrade to
+     Warning with `graph: no path between <A> and <B>`.
+   - **Elevate** — a "low-risk" component is in god nodes (`betweenness > 0.05`) → upgrade; cite
+     betweenness score as evidence that the change ripples further than the plan assumes.
+   - **Trust EXTRACTED edges; flag INFERRED as "graph-inferred, not confirmed in code".**
+
+   If absent: read cited `path:line` directly as before.
 3. **Deduplicate** — same issue flagged by multiple experts counts once
 4. **Classify** — Blocker (must fix before /saki-builder:approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
 5. **Extend the Evidence Ledger — add verified blockers to the Blocking table.**

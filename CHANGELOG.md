@@ -2,6 +2,46 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.23.1 — 2026-07-21
+
+- **Graphify: correct integration pattern across all skills** — all graphify blocks rewritten to
+  use the official pattern from graphify.net docs: `cat GRAPH_REPORT.md` first (71.5× cheaper
+  than raw files), then `graphify query/path/explain` CLI for targeted traversal. Removed
+  incorrect Python API calls (`graph.json` parsing via subprocess) from all 5 skills — these
+  reinvented what the CLI already does.
+- **`graphify claude install`** added to `/saki-builder:graphify` Step 1.5 — wires the `CLAUDE.md`
+  directive and `PreToolUse` hook (fires before every Glob/Grep; message: "Read GRAPH_REPORT.md
+  first"). Now runs automatically after every graph build.
+- **`config/docs/graphify-usage.md`** — new canonical reference doc with full CLI command table,
+  graph schema, edge provenance rules, and per-question usage guide. All skills reference it.
+- **`/saki-builder:reviewing-architecture`** — added graph-first reading step (god nodes, community
+  boundary validation, surprising connections) before feature file reads.
+- **Coverage**: graph-first pattern now in all 6 code-reading skills: `prd`, `prd-review`, `rplan`,
+  `rplan-review`, `arch-check`, `reviewing-architecture`.
+
+## 0.23.0 — 2026-07-21
+
+- **Graphify integration** — `/saki-builder:graphify` (new skill) wraps the Graphify-Labs knowledge graph
+  library with auto-install (uv/pip), saki-builder workflow context, and three modes: standalone build,
+  research query (called by `/rplan`), and architecture enrichment (called by `/arch-check`).
+- **`/rplan` research phase** now queries an existing `graphify-out/graph.json` automatically when one
+  exists — surfaces blast radius, highest-betweenness god node, and community boundary crossings as a
+  **Graphify Findings** section in the context doc. Offers (once, non-blocking) to build the graph for
+  repos with ≥20 files that have no graph yet.
+- **`/arch-check` Step 2.5** — new graphify enrichment block that, when a graph is present, extracts god
+  nodes (top betweenness centrality), community clusters (bounded context candidates), and surprising
+  connections from `GRAPH_REPORT.md`. God nodes in `stage3_fired=yes` modules become HARD UPGRADE signals;
+  god nodes in Stage 2 modules surface as coupling-risk CANDIDATES.
+- **`/prd` Tier 1** — graphify pre-fetch before codebase reads: god nodes pre-populate §16 REUSE rows;
+  cross-community traversal identifies the single architecture decision; god-node touches flagged early
+  as centrality risk rather than discovered at rplan time.
+- **`/prd-review` before Judge 3** — coordinator fetches community clusters and god nodes before
+  dispatching the lead judge; threads graph context into Judge 3's prompt so cross-boundary slice
+  coupling and omitted §16 god-node REUSE rows are citable findings, not inferences.
+- **`/rplan-review` Phase 3 step 2** — graphify structurally confirms or refutes architecture blockers:
+  confirms coupling when graph shows an edge (cite betweenness), downgrades when no path exists,
+  elevates warnings when a "low-risk" component is a top-6 god node.
+
 ## 0.22.0 — 2026-07-20
 
 - **`/saki-builder:proto` now runs the project itself instead of dying when no dev server is up.** Its
