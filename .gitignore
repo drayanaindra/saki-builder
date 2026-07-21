@@ -16,6 +16,10 @@ Thumbs.db
 settings.local.json
 *.bak
 
+# Antigravity CLI — machine-local symlink dirs (created by setup-antigravity.sh)
+.agent/
+.agents/
+
 # Claude Code ephemeral data (stays local per machine)
 projects/
 .harness/
