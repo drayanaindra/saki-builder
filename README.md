@@ -10,7 +10,7 @@ plus safety hooks and a learning memory that improves over time.
 Paste these two lines inside Claude Code (no repo clone needed):
 
 ```
-/plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
+/plugin marketplace add https://github.com/drayanaindra/saki-builder.git
 /plugin install saki-builder@saketek
 ```
 

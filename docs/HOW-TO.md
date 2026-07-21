@@ -1,72 +1,90 @@
-# saki-builder — how to use it (teammate guide)
+# saki-builder — teammate guide
 
-saki-builder is a Claude Code **plugin**: a shared, vetted toolkit of planning/build/review skills,
-domain agents, safety hooks, an always-on execution protocol, and a split learning loop. It's
-**personal-scale** — everyone gets the same tools and works solo with them. Team coordination
-(tracking, ownership, intake) is out of scope here.
+saki-builder adds a structured **plan → build → review** workflow to Claude Code, plus safety hooks
+and a shared learning memory. Everyone installs the same plugin and works solo with it.
 
-## Install (no clone)
+---
 
-```
-> /plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
-> /plugin install saki-builder@saketek
-```
+## Install
 
-Start a new session so the commands load. That's it — no repo clone, no `install.sh`, no symlinks.
-
-**Update** any time (pull-based — a new version doesn't reach you until you pull it):
+Paste these two lines inside Claude Code:
 
 ```
-> /saki-builder:update            # reports where you stand + the exact commands
-> /plugin marketplace update saketek && /plugin update saki-builder@saketek
+/plugin marketplace add https://github.com/drayanaindra/saki-builder.git
+/plugin install saki-builder@saketek
 ```
 
-A SessionStart hook also nudges you when you're behind (fail-open; never blocks).
+Start a new session. Every command is now available as `/saki-builder:<name>`.
 
-## What you get
-
-- **Every command is namespaced** `/saki-builder:<name>` — e.g. `/saki-builder:rplan`,
-  `/saki-builder:build`, `/saki-builder:prd`, `/saki-builder:qa`, `/saki-builder:reviewer`,
-  `/saki-builder:wrap`. Run `/help` to see them all.
-- **Always-on rules** — a SessionStart hook injects the execution protocol (plan-first, confidence
-  gate ≥90%, risk tiers, response header, next-actions). No CLAUDE.md editing needed. Disable with
-  `SAKI_CORE_DISABLE=1`.
-- **Safety hooks** (auto-registered): destructive-command guard, staged-file formatter, autonomous-run
-  completion gates, a repo-context injector.
-
-## The flow
-
-`prd → prd-review → proto → rplan → rplan-review → approved → qa → reviewer → wrap`, or let
-`/saki-builder:build` / `/saki-builder:pipeline` drive it end-to-end. Each command right-sizes itself.
-
-## Settings you must merge yourself
-
-A plugin can't ship permissions/model/env. Copy what you want from
-`templates/settings.recommended.json` into your own `~/.claude/settings.json` (do **not** copy its
-`hooks` — the plugin registers those).
-
-## The learning loop (split)
-
-- **Personal overlay** `~/.claude/memory/patterns-personal.md` — yours, private, injected every
-  session, never pushed. `/saki-builder:reflect` writes here by default.
-- **Team baseline** `memory/patterns*.md` — the shared, curated layer. Changes land only via **MR**
-  (`/saki-builder:sync` opens a branch + MR). See `config/docs/learning-loop.md`.
-
-## Opt-in personal hooks
-
-RTK, SonarQube, and the macOS notifier are shipped but **not** auto-registered (they need tooling not
-everyone has). Opt in via your own settings — see `config/docs/hooks-personal.md`.
-
-## Owner / maintainer (developing saki-builder itself)
-
-Work from a checkout and install it as a **local-path marketplace** so edits flow on reload:
+**Stay up to date:**
 
 ```
-> /plugin marketplace add /path/to/saki-builder        # the repo dir
-> /plugin install saki-builder@saketek
+/plugin marketplace update saketek && /plugin update saki-builder@saketek
 ```
 
-Before pushing: `npm test` (the validator) must pass — the pre-push hook enforces it
-(`git config core.hooksPath .githooks` to enable). Bump `.claude-plugin/plugin.json` + `CHANGELOG.md`
-together (the validator checks version sync). The legacy `install.sh` symlink flow still works but is
-deprecated in favor of the plugin.
+> A session-start nudge tells you when you're behind — you'll never miss an update.
+
+---
+
+## Your first session
+
+```
+/saki-builder:rplan     ← describe what you want to build; it writes a plan
+/saki-builder:approved  ← approve the plan, Claude implements
+/saki-builder:qa        ← runs your acceptance criteria as actual tests
+/saki-builder:wrap      ← commits, pushes, cleans up
+```
+
+For a new feature, add these before `rplan`:
+
+```
+/saki-builder:prd       ← write product requirements first
+/saki-builder:proto     ← see a UI preview before any code is written
+```
+
+Run `/help` to see the full command list.
+
+---
+
+## What's always on
+
+Once installed, these work in every session automatically — no CLAUDE.md edits needed:
+
+- **Execution protocol** — plan-first, confidence gate, risk tiers, response header, next-actions
+- **Destructive command guard** — blocks `rm -rf`, `DROP TABLE`, `git push --force` before they run
+- **Repo context injector** — emits branch/plan state at session start so Claude always knows where you are
+
+Disable the protocol with `SAKI_CORE_DISABLE=1` if needed.
+
+---
+
+## Settings (one-time)
+
+The plugin can't write your personal settings. Copy what you want from
+`templates/settings.recommended.json` into your `~/.claude/settings.json`.
+
+RTK, SonarQube, and the macOS notifier are opt-in — see `config/docs/hooks-personal.md`.
+
+---
+
+## Learning memory
+
+After a session, `/saki-builder:reflect` promotes useful patterns to your memory file.
+`/saki-builder:sync` pushes them to the repo so they're available on other machines.
+
+- **Your private patterns** live in `~/.claude/memory/patterns-personal.md` — never shared.
+- **Shared baseline** lives in `memory/patterns*.md` — changes go through a branch + MR.
+
+---
+
+## Developing saki-builder itself
+
+Work from a local checkout, installed as a local-path marketplace so edits load on session restart:
+
+```
+/plugin marketplace add /path/to/saki-builder
+/plugin install saki-builder@saketek
+```
+
+Before pushing: `npm test` must pass (the pre-push hook enforces it).
+Bump `.claude-plugin/plugin.json` and `CHANGELOG.md` together — the validator checks they're in sync.
