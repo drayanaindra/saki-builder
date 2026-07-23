@@ -138,18 +138,36 @@ the PRD — so the shape phase adds **no** new gate.
 In scratch (not the file), verify:
 
 1. **The one thing that, if false, makes this not worth building** — tag it
-   `assumed | observed | validated`. If `assumed`, name the cheapest validation.
+   `assumed | observed | validated`.
 2. **Three concrete reasons this fails** — rebut or concede each.
 3. **Verdict** — proceed / recut / stop.
 
-If two failure reasons stand unrebutted, STOP. Tell the human in plain English:
-*"Before we write a spec, we need to answer [X] first. I'd recommend a quick discovery spike."*
+**If (1) is `assumed` AND two failure reasons stand unrebutted — auto-spike before stopping.** Do not
+go straight to the human with a suggestion; run the spike yourself, reusing `/saki-builder:rplan`'s
+Spike Protocol (same contract, applied to the one load-bearing assumption instead of a code unknown):
+
+1. Spawn a subagent, 15-minute timebox, question = the load-bearing assumption. Route by the unknown's
+   kind: **external** (market demand, competitor behavior, pricing, willingness-to-pay) → `WebSearch` /
+   `/deep-research`; **internal** (existing usage pattern, current behavior) → grep / `graphify query` /
+   the `{{input.evidence}}` file if one was given.
+2. Required output: question, approach tried, finding, recommendation, source (`path:line`, URL, or query).
+3. **Spike grounds it** → retag `observed`/`validated`, cite the source in §2, and continue — do NOT stop.
+4. **Spike can't ground it** (no reachable data, or it's a judgment call no search resolves) → keep
+   `assumed`, but record what was tried. A spike that ran and came back inconclusive is what
+   `/saki-builder:prd-review` counts as a **named spike**; an `assumed` tag with no attempt does not count.
+
+Only if the spike itself cannot even be attempted (no viable route to check it at all) skip straight to:
+STOP, tell the human in plain English: *"Before we write a spec, we need to answer [X] first — I tried a
+discovery spike ([approach]) and it didn't resolve. Cheapest next step: [a founder call / a paid data
+source / a small pilot / asking N real users]."*
 
 **Carry it to the file (not just scratch).** The load-bearing assumption from (1) MUST appear in the
 saved **§2** as a stated + tagged line (Step 7): `**Load-bearing assumption:** <X> — \`assumed|observed|validated\``.
+**If a spike ran, add the line directly beneath it:**
+`**Spike:** <question> → <finding, or "inconclusive — <why>"> (source: <cite, or "none found">)`.
 This holds in BOTH cases — a bet (`assumed`, also carried in the DISCOVERY-RISK banner) and a grounded
-PRD (`observed`/`validated` with its citation). It is what `/saki-builder:prd-review` Phase-1 item 1
-reads; leaving it scratch-only breaks that consumer.
+PRD (`observed`/`validated` with its citation). It is what `/saki-builder:prd-review` Phase-1 items 1
+and 3 (evidence floor) read; leaving it scratch-only breaks both consumers.
 
 ---
 
@@ -173,8 +191,9 @@ If the report exists, read it fully before opening any file. Use it to:
   mark them `REUSE (path:line)` from the start, not discovered at rplan time.
 - **Single architecture decision row** — if the feature's scope crosses >1 community cluster, it
   spans module boundaries; that is the architecture decision to name in §16.
-- **Scope honesty** — if a god node (`betweenness > 0.05`) sits in the blast radius, flag it as
-  `assumed` with a centrality-risk note. Touching a god node is never a simple change.
+- **Scope honesty** — if a god node (top of the report's God Nodes list — highest edge count,
+  `Degree:` in `graphify explain`) sits in the blast radius, flag it as `assumed` with a
+  centrality-risk note. Touching a god node is never a simple change.
 - **Surprising connections** — any listed edge connecting the feature area to another module is a
   hidden dependency; surface as `assumed` unless code confirms it.
 
@@ -376,7 +395,7 @@ not in this table stays Advisory and never gates.
 | Slice count exceeds the appetite band (small ≤2 / medium ≤4 / large ≤7) | −5 |
 | Decision Log (§7) absent — no alternatives recorded for the chosen shape | −3 |
 | Demand evidence provided (`{{input.evidence}}`) but not reflected in §2 | −3 |
-| Evidence 100% `assumed` with no named validation spike | −10 |
+| Evidence 100% `assumed` with no named validation spike (no §2 `**Spike:**` line from Step 0b's auto-spike) | −10 |
 | `observed`/`validated` claim with no cited source | −5 each |
 | Tier-1 local grounding skipped | −5 |
 | §5 outcome with target but no basis tag | −3 each |
@@ -429,7 +448,7 @@ so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can pars
 **Owner:** [@name | unassigned] · **Status:** Draft · **Updated:** [YYYY-MM-DD] · **Appetite:** [small — hours | medium — a few days | large — ~a week+] · **Item:** [E<n> | F<n> | —]
 
 ## 1. TL;DR
-## 2. Problem & Evidence   (ends with **Load-bearing assumption:** <X> — `assumed|observed|validated` — the premise from Step 0b, in the file, not just scratch)
+## 2. Problem & Evidence   (ends with **Load-bearing assumption:** <X> — `assumed|observed|validated`, plus a **Spike:** line beneath it if Step 0b ran one — the premise from Step 0b, in the file, not just scratch)
 ## 3. Primary Job to be Done   (label this job `J1` — Klement form)
 ## 4. Related Jobs             (label `J2`, `J3`, … in order — referenced by slices/outcomes as `Jn`)
 ## 5. Desired Outcomes / Success Metrics   (cols: # | Outcome | Target | Basis | Method | JTBD)
@@ -552,7 +571,11 @@ a bet without seeing it's a bet:**
 ```markdown
 ## ⚠ Worth checking first
 This rests on one unproven assumption: [X, in plain English].
-Cheapest way to check before we build: [Y — a quick spike, a look at real usage, asking N users].
+[If Step 0b's auto-spike ran and came back inconclusive: "I tried checking this — [one line: what the
+spike attempted] — and it didn't resolve. Cheapest next step: [a founder call / a paid data source / a
+small pilot / asking N real users]."
+If the spike never ran (stopped before reaching it): "Cheapest way to check before we build: [Y — a
+quick spike, a look at real usage, asking N users]."]
 ```
 
 Then ask: *"Does this match what you had in mind — or should we adjust before building?"*
@@ -591,6 +614,7 @@ Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s j
 | "When we stop" referencing a metric the human can't observe | Use user-observable behavior |
 | Hollow output (vague criteria, empty screens) | Quality gate still enforces substance — hollow output fails it |
 | Skipping Step 0b because the feature sounds obvious | Obvious features fail the premise check most often |
+| Recommending a spike to the human instead of running one | Step 0b's auto-spike is mandatory once the assumption is `assumed` and two reasons stand unrebutted — spawn the subagent yourself; only escalate to the human if the spike itself can't be attempted |
 | Skipping Step 0.5 — formalizing the first idea without shaping | Run the shape pass; the PRD formalizes a *chosen* shape, not a guess |
 | Inflating appetite to fit the slices | Appetite is fixed; cut scope or split the PRD — never stretch the budget |
 | A "decision" with no alternatives recorded | Not a decision — log the chosen shape + a why-not for each option (§7) |

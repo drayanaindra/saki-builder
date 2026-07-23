@@ -64,16 +64,16 @@ Then query for module-specific structural data:
 ```bash
 graphify query "which modules are most interconnected?"
 graphify path "ModuleA" "ModuleB"   # for any two modules where coupling is suspected
-graphify explain "HighBetweennessNode"   # for any god node in the report
+graphify explain "GodNodeName"           # for any god node in the report — prints its Degree
 ```
 
 **How to use the graph output in the arch-check report:**
 
 - **God node inside a `stage3_fired=yes` module** → **HARD UPGRADE signal** — it's structurally
   load-bearing AND already oversized. Add to the FIRED section: "Graph: god node `X`
-  (betweenness=Y) lives in this module — high-centrality + size trigger = upgrade urgency elevated."
+  (Degree: Y edges) lives in this module — high-connectivity + size trigger = upgrade urgency elevated."
 - **God node in a Stage 2 module (no fired trigger)** → CANDIDATE: "This module owns graph hub
-  `X` (betweenness=Y) — coupling risk if the module grows further."
+  `X` (Degree: Y edges) — coupling risk if the module grows further."
 - **Two detect.sh modules in the same community cluster** → hidden coupling CANDIDATE: "Modules
   A and B cluster together in the graph — consider whether they should be one module or need an
   explicit boundary."

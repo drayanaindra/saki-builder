@@ -166,15 +166,12 @@ graphify query "<task scope in one sentence>"
 
 ### Called by `/arch-check` (Step 2.5)
 ```bash
-# Reads god nodes + community clusters from graph.json
-$(cat graphify-out/.graphify_python) -c "
-import json
-from pathlib import Path
-g = json.loads(Path('graphify-out/graph.json').read_text())
-nodes = sorted(g['nodes'], key=lambda n: n.get('betweenness', 0), reverse=True)
-for n in nodes[:8]:
-    print(f\"{n['id']:60s}  betweenness={n.get('betweenness',0):.4f}\")
-"
+# God nodes + community clusters — read from the report, or query the CLI directly.
+# Never parse graph.json by hand: the real schema (networkx node-link export) stores edges
+# under `links[]` not `edges[]`, and nodes carry no `betweenness` field — "god node" ranking
+# is by edge count (Degree), exactly what GRAPH_REPORT.md's God Nodes section already lists.
+cat graphify-out/GRAPH_REPORT.md 2>/dev/null | sed -n '/## God Nodes/,/^## /p'
+graphify explain "GodNodeName"   # prints Degree + full connection list for one node
 ```
 
 Both skills are **additive only** — they skip silently if `graphify-out/graph.json` is absent.
@@ -184,7 +181,8 @@ The user builds the graph once with `/saki-builder:graphify .` and all skills pi
 
 ## Honesty Rules
 
-- Never invent a node, edge, or betweenness score.
+- Never invent a node, edge, or edge-count/Degree figure — god-node ranking is by edge count
+  (`Degree` in `graphify explain` output), not a centrality score; the graph has no `betweenness` field.
 - If the CLI errors, show the raw error — do not fabricate a graph.
 - Token cost from semantic extraction appears in `GRAPH_REPORT.md`; surface it when non-zero.
 - A `GRAPH HEALTH WARNING` from the CLI must be shown to the user, not suppressed.

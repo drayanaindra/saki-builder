@@ -120,7 +120,7 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 |---|----------------------|------------------|-------|
 | 1 | **§2 states the load-bearing assumption + tag** — an explicit `**Load-bearing assumption:** <X> — assumed/observed/validated` line in §2 (the premise from `/saki-builder:prd` Step 0b, in the file). A bet also carries it in the DISCOVERY-RISK banner; a grounded PRD still states it in §2 | | |
 | 2 | TL;DR ≤3 sentences; problem names a **measurable harm** | | |
-| 3 | Evidence table — each claim tagged; floor met (≥1 `validated` OR a named spike) | | |
+| 3 | Evidence table — each claim tagged; floor met (≥1 `validated` OR a named spike — the §2 `**Spike:**` line `/saki-builder:prd` Step 0b writes when the load-bearing assumption is `assumed`; a bare `assumed` tag with no `**Spike:**` line does not count) | | |
 | 4 | Primary JTBD in **Klement** form (`When… I want… so I can…`), exactly one | | |
 | 5 | §5 outcomes — each primary/secondary has target + **basis tag** (`baseline`/`benchmark`/`aspirational`) + measurement + a **JTBD link** (a `Jn` in §3/§4); the **counter-metric** row instead names the metric(s) it guards (`guards 5.x`, not a `Jn`) | | |
 | 5b | §5 Method is classified `query`/`event`/`external`, and every **`event`-class** row names its event (`event: emit <name> when <trigger>`) — an event-class Method with no named event is undefined instrumentation work | | |
@@ -201,7 +201,7 @@ Unverifiable claims (facts asserted but not checkable from the document):
 **Judge 2 — Evidence, Metrics & Grounding (the honesty lens).** Find:
 1. Walk EVERY factual claim in §2 and §5: is it **self-supporting from the document, or reliant on outside truth?** List every outside-truth claim under "Unverifiable claims" — do NOT judge whether it's true, only whether the PRD can stand on it without grounding.
 2. Any `observed`/`validated` tag with **no cited source** (fabricated evidence).
-3. Is the **evidence floor** met (≥1 `validated` or a named spike), or is the table effectively all-`assumed` behind a `validated` label? Does the PRD honestly carry a `DISCOVERY-RISK` banner where its evidence is thin, or overclaim confidence?
+3. Is the **evidence floor** met (≥1 `validated` or a named spike — the §2 `**Spike:**` line, present even when its finding is "inconclusive"), or is the table effectively all-`assumed` behind a `validated` label — including an `assumed` row with no `**Spike:**` line at all (the auto-spike never ran)? Does the PRD honestly carry a `DISCOVERY-RISK` banner where its evidence is thin, or overclaim confidence?
 4. Targets with **fabricated precision** — a number with no `baseline`/`benchmark`/`aspirational` basis (an `aspirational`-tagged target is honest, not fabricated — do not flag it), including a **circular `baseline N→M`** whose starting number N cites no source (it restates the target instead of grounding it).
 5. A **Goodhart counter-metric** — one that doesn't name the specific metric + failure mode it guards.
 6. Metrics that are **not instrumentable** with what exists or is in scope — including an **`event`-class Method with no named event** (`event: emit <name> when <trigger>` missing): it declares a metric nothing will record.
@@ -217,10 +217,11 @@ Read the full report before constructing Judge 3's prompt. Thread the graph summ
 Context** in Judge 3's input. Judge 3 uses it to:
 - **Cross-boundary slice coupling** — if a slice's stated scope touches nodes in >1 community,
   prescribe an `Assumes:` line or a dedicated slice for the cross-boundary work.
-- **Omitted god-node REUSE rows** — a slice depending on a god node (`betweenness > 0.05`) that
-  §16 omits is a blocking §16 gap; prescribe adding `REUSE (path:line)`.
-- **"Simple change" claims** — a change touching a god node is never simple; use the report's
-  betweenness score as evidence for the finding.
+- **Omitted god-node REUSE rows** — a slice depending on a god node (top of the report's God Nodes
+  list — highest edge count) that §16 omits is a blocking §16 gap; prescribe adding
+  `REUSE (path:line)`.
+- **"Simple change" claims** — a change touching a god node is never simple; cite the node's edge
+  count (`graphify explain` → `Degree: N`) as evidence for the finding.
 
 Then query for slice-specific coupling:
 ```bash
@@ -370,7 +371,7 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
 
    | Signal | Condition |
    |--------|-----------|
-   | `DISCOVERY-FIRST` | premise laundered, OR evidence floor failed, OR the load-bearing assumption is unvalidated with no spike (Readiness #4 unmet) |
+   | `DISCOVERY-FIRST` | premise laundered, OR evidence floor failed, OR the load-bearing assumption is unvalidated with no §2 `**Spike:**` line recorded (Readiness #4 unmet) |
    | `REVISE` | any BLOCK or HIGH stands, **OR any state-changing/`🔒` slice is missing a prescribed failure criterion or has hidden work not yet stated as an `Assumes:` line / dedicated slice, OR §16 fails the contract check (missing on a backend feature · an uncited/untraceable row · §16↔slice incoherence · a row overstepped into full design), OR Readiness is NOT READY on a fixable blocker** — regardless of that finding's severity |
    | `SHIP` | no BLOCK/HIGH; **every state-changing/`🔒` slice's failure surface is covered**; only MED/LOW polish remains |
 

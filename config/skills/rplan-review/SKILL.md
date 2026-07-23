@@ -405,11 +405,18 @@ Merge all expert findings:
 
    Use the output to:
    - **Confirm** — graph shows an edge or short path → cite: `graph confirms <A>→<B>
-     (relation: calls, provenance: EXTRACTED, confidence: 0.91)`.
-   - **Downgrade** — `graphify path` finds no path → subagent likely misread; downgrade to
-     Warning with `graph: no path between <A> and <B>`.
-   - **Elevate** — a "low-risk" component is in god nodes (`betweenness > 0.05`) → upgrade; cite
-     betweenness score as evidence that the change ripples further than the plan assumes.
+     (relation: calls, confidence: EXTRACTED, confidence_score: 0.91)`.
+   - **Downgrade** — `graphify path` finds no path → downgrade to Warning with
+     `graph: no path between <A> and <B>` — **UNLESS `A` and `B` sit on opposite sides of a
+     language/process/network boundary** (e.g. a TS frontend/server node and a Go backend
+     handler, two services talking over HTTP/queue/IPC). Extraction is AST-based and only sees
+     same-language, in-repo references — it cannot see a network call, so "no path" there means
+     "not visible to the graph," not "not coupled." When `A`/`B` are cross-boundary, do NOT
+     downgrade on graph silence alone — fall back to reading the actual call site (the HTTP
+     client call, the route registration) before deciding.
+   - **Elevate** — a "low-risk" component is a god node (top of the report's God Nodes list —
+     highest edge count) → upgrade; cite its edge count (`graphify explain` → `Degree: N`) as
+     evidence that the change ripples further than the plan assumes.
    - **Trust EXTRACTED edges; flag INFERRED as "graph-inferred, not confirmed in code".**
 
    If absent: read cited `path:line` directly as before.

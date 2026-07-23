@@ -89,21 +89,37 @@ The PreToolUse hook fires before every Glob and Grep call:
 
 ## Graph output schema (what graph.json contains)
 
+**Verified against a real build (graphify 0.9.22)** — `graph.json` is a raw networkx
+node-link export, not a hand-rolled format. Top-level keys: `directed`, `multigraph`, `graph`,
+`nodes`, `links` (**not** `edges`), `hyperedges`, `built_at_commit`. Do not parse this file by
+hand — every skill uses `graphify query/path/explain` or reads `GRAPH_REPORT.md` instead; this
+section exists only so a citation ("relation: calls") maps to a real field.
+
 ```
 nodes[]:
-  id            string   — fully-qualified node identifier (file::ClassName::method)
-  label         string   — human-readable name
-  community     int      — Leiden cluster id
-  betweenness   float    — centrality score (higher = more load-bearing)
-  type          string   — class | function | module | concept | rationale | ...
-  source_file   string   — file path (for file-read citations)
+  id             string   — fully-qualified node identifier
+  label          string   — human-readable name
+  norm_label     string   — normalized label (for matching)
+  community      int      — Leiden cluster id
+  file_type      string   — code | doc | concept | rationale | ...
+  source_file    string   — file path (for file-read citations)
+  source_location string  — e.g. "L81"
+  _origin        string   — ast | llm | ...
+  # NOTE: there is NO `betweenness` (or any centrality) field. "God nodes" in
+  # GRAPH_REPORT.md / the CLI's ranking are the highest-DEGREE nodes (raw edge count,
+  # printed as `Degree: N` by `graphify explain`) — cite edge count, never "betweenness".
 
-edges[]:
-  source        string   — node id
-  target        string   — node id
-  relation      string   — calls | imports | rationale_for | semantically_similar_to | ...
-  provenance    string   — EXTRACTED | INFERRED | AMBIGUOUS
-  confidence    float    — 0.0–1.0
+links[]:                    # this is graph.json's actual key — NOT "edges"
+  source          string   — node id
+  target          string   — node id
+  relation        string   — calls | imports | contains | rationale_for | semantically_similar_to | ...
+  confidence      string   — EXTRACTED | INFERRED | AMBIGUOUS   (this is what carries provenance —
+                              there is no separate `provenance` field)
+  confidence_score float   — 0.0–1.0                             (the actual numeric confidence)
+  source_file     string   — file the edge was extracted from
+  source_location string   — e.g. "L556"
+  weight          float
+  _origin         string
 
 hyperedges[]:
   nodes[]       string[] — 3+ node ids (e.g. all classes implementing a shared protocol)
@@ -122,4 +138,15 @@ hyperedges[]:
 | "Does ServiceA actually call ServiceB?" | `graphify path "ServiceA" "ServiceB"` |
 | "What does this class do?" | `graphify explain "ClassName"` |
 | "Find hidden coupling in this slice" | `graphify query "what does SliceModule depend on?" --dfs` |
-| "Is this a high-risk component?" | Check GRAPH_REPORT.md god nodes; `betweenness > 0.05` = high risk |
+| "Is this a high-risk component?" | Check GRAPH_REPORT.md god nodes (ranked by edge count / `Degree`, not a centrality score) — top of that list = high risk |
+
+## Limitation: cross-language / cross-service coupling is invisible
+
+Extraction is AST/import-based and same-language — it cannot see a network call, an HTTP
+route dispatch, a message-queue publish/subscribe, or any other cross-process boundary. In a
+polyglot repo (e.g. a TS frontend/server talking to a Go backend over HTTP), `graphify path
+"FrontendCaller" "BackendHandler"` will correctly report **no path even when they are
+genuinely coupled at runtime** — the graph is honest about what it extracted, not omniscient
+about the whole system. Treat "no path" as "not visible to the graph," never as proof of "not
+coupled," whenever the two nodes could plausibly cross a language/process/service boundary —
+confirm with a direct read of the call site (HTTP client call, route registration) instead.
