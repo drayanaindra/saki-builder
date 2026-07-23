@@ -2,6 +2,28 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.23.2 — 2026-07-24
+
+- **Graphify: fixed a fictional `betweenness` field + doc/schema drift.** Verified against a real
+  build that `graph.json` has no `betweenness`/centrality field at all — "god nodes" are ranked by
+  raw edge count (`Degree` in `graphify explain` output), and edges live under `links[]`, not the
+  documented `edges[]`. Corrected `graphify-usage.md`'s schema section and every skill that cited
+  the fictional `betweenness > 0.05` threshold (`graphify`, `arch-check`, `prd`, `prd-review`,
+  `rplan-review`), and replaced a stale `graph.json`-parsing Python snippet in `graphify/SKILL.md`
+  with the CLI — the exact anti-pattern 0.23.1 was supposed to have removed everywhere.
+- **`rplan-review`: cross-service coupling caveat.** `graphify path` finding no path is not proof
+  of no coupling when the two nodes cross a language/process/service boundary (e.g. a TS
+  frontend/server node calling a Go HTTP handler) — AST extraction can't see network calls, so a
+  "no path" there is silence, not evidence. The graph-confirm/downgrade logic now verifies the
+  call site directly before downgrading a blocker on graph silence alone.
+- **`/saki-builder:prd`: automatic Discovery Spike.** Step 0b now runs a timeboxed spike itself
+  (reusing `/saki-builder:rplan`'s Spike Protocol) when the load-bearing assumption is `assumed`
+  and two failure reasons stand unrebutted, instead of only recommending one to the human. A
+  grounded finding retags the assumption `observed`/`validated`; an inconclusive one is recorded as
+  a `**Spike:**` line in §2 — which `/saki-builder:prd-review`'s evidence-floor and readiness
+  checks now recognize as the concrete artifact a "named spike" means, rather than accepting the
+  bare word in prose.
+
 ## 0.23.1 — 2026-07-21
 
 - **Graphify: correct integration pattern across all skills** — all graphify blocks rewritten to
