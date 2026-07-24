@@ -94,6 +94,24 @@ graphify path "ModuleA" "ModuleB"
 graphify explain "SomeNode"
 ```
 
+**Hybrid answering (graph orient → targeted reads).** The graph is blind to string
+literals — route paths, event/enum names, env-var values, exact config all live in source, not
+the graph. For a multi-file/architecture question, `graphify query`/`explain` first for
+orientation (which files and components matter), then Read/Grep **only** those files to pull
+literals and verify. On code-repo architecture questions this costs ~40% fewer tokens than blind
+exploration and matches full-read quality **when the graph's orientation is right**. A pure-graph
+answer that needs a literal value is incomplete — do the targeted read.
+
+**Frame-check before mapping any A→B relationship (mandatory).** The graph shows structure but
+can miss routing/indirection layers — proxies, dispatch tables, gateways, forwarders. Before
+mapping frontend→backend, caller→handler, or route→owner, grep for the routing/proxy/dispatch
+config (`proxy`, `target.*http`, dev-server config, route tables): **the file that _registers_ a
+route is not necessarily the one that _serves_ it.** Skipping this makes graph-oriented answers
+*confidently* wrong — in a benchmark on this repo, an unchecked hybrid attributed Go-served
+routes to the Node backend at HIGH confidence because the graph pointed at the file that only
+_declares_ them (`frontend/src/proxy-routes.ts` was the real owner). Adding the frame-check fixed
+it for ~8% more tokens (source: `tasks/graphify-token-benchmark-pipeline-studio.md`).
+
 ### When the global skill IS installed (enhancement, not required)
 
 If `~/.claude/skills/graphify/SKILL.md` exists, prefer it for corpora with **docs, papers, or images**
