@@ -89,7 +89,7 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
 - **Ingest the source PRD slice FIRST (if this task came from `/saki-builder:prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
   - the slice's **acceptance criteria** → seed the plan's Success Criteria
   - the slice's **`Assumes:`** line (if present) → seed the plan's implementation steps + **Migration Checklist** (the hidden work — migration/backfill/index/flag/permission/rollback — `/saki-builder:prd-review` surfaced and `/saki-builder:prd` stated; do NOT re-derive it)
-  - the source PRD's **§16 Technical Contract (thin)** (if present) → seed the plan's **Plan Wiring** + schema/endpoint design as the *shape to HARDEN* into full columns, request/response structs, and migration files. Do NOT re-derive the shape — deepen it: a §16 row tagged `NEW` is a create-target, a `REUSE` row (`path:line`) is an existing anchor to verify with grep/read. §16 is thin by design (entities/endpoint-purposes/one arch decision); the depth is yours to add here.
+  - the source PRD's **§16 Technical Contract (thin)** (if present) → seed the plan's **Plan Wiring** + schema/endpoint design as the *shape to HARDEN* into full columns, request/response structs, and migration files. Do NOT re-derive the shape — deepen it: a §16 row tagged `NEW` is a create-target, a `REUSE` row (`path:line`) is an existing anchor to verify with grep/read, and a **`CHANGE` row** (`path:line` + its `↳ Breaks:` note) is an existing anchor to verify **AND a mandatory Compatibility & Consumers entry** — carry its `↳ Breaks:` note straight into the consumer inventory below, then harden it into an expand-contract step sequence rather than a single in-place edit. §16 is thin by design (entities/endpoint-purposes/one arch decision); the depth is yours to add here.
   - the **§5 outcome IDs** it serves → keep each Success Criterion's `→ 5.x` link
   - each **`event`-class §5 Method** (`event: emit <name> when <trigger>`) → **instrumentation the metric needs**, so materialize BOTH, do NOT re-derive: (a) a **Steps** row `Emit <event_name> at <wiring point>` wired into **Plan Wiring** at the point the trigger fires, and (b) a **Success Criterion** `event <name> fires when <trigger> (→ 5.x)`. **Reuse-first:** grep for `<event_name>` first — if the emit already exists, make it an assert-only criterion (no new emit step). `query`/`external`-class Methods carry no instrumentation (data already persists / read outside our code) — skip them. This is the seam that turns a declared metric into built, verified instrumentation (parallel to the `Assumes:`-line ingestion above).
   - the **outcome-tied kill criterion** (§6) and the **feature appetite band** (§6/header — `small|medium|large`) → into the plan header (Step 2 / template). The band is the *feature-wide* recut ceiling; derive THIS plan's own appetite (`~N agent tasks`) from the slice's size (its acceptance-criteria count — ≤5 ≈ one agent iteration per INVEST), not from the band directly.
@@ -98,6 +98,17 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
     as `Source PRD: NOT LOCKED — requirements may still change`. Inside `/saki-builder:build` this never happens
     (build's Gate 1.5 hard-blocks an unlocked PRD *before* rplan runs); a **standalone** `/saki-builder:rplan`
     stays lenient — plan against it, but flag that the freeze (`/saki-builder:proto`'s lock) hasn't run yet.
+  - **Prior slices — plan against what SHIPPED, not what the PRD guessed.** On a slice-scoped invocation
+    (`/saki-builder:build` names the plan `<prd-slug>-slice<N>`), glob `tasks/<prd-slug>-slice*-plan.md`
+    and read every plan for slices **1..N-1**: their **Success Criteria** (what `/saki-builder:qa` actually
+    verified), their **Plan Wiring** (what `/saki-builder:approved` reconciled after implementation drift),
+    and their **Compatibility & Consumers** table. Where the PRD's §16 or slice text disagrees with what an
+    earlier slice actually built, **the shipped shape wins** — plan against it and record the divergence in
+    this plan's header. Record which plans you read in the header's `**Prior slices:**` line. INVEST rule 4
+    (forward-dependency-only) is *declared* in the PRD but verified nowhere else; this is where it is checked.
+    A prior plan predating this section → record `prior slice N predates the compat section` and fall back to
+    its Success Criteria + Plan Wiring. Slice 1, or no sibling plans → write `N/A — slice 1 / standalone`
+    and skip silently.
   If there is no source PRD (standalone `/saki-builder:rplan`), note "no source PRD" and continue.
 - **Persona check:** after PRD ingestion, check if `.claude/personas/*.md` exists. If it does,
   read the relevant persona(s) and carry forward into the plan:
@@ -107,6 +118,26 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
   Cite the persona when it drives a plan decision: `→ persona/buyer.md §5`.
   If no persona file exists, continue without one — this is a check, not a blocker.
 - Read ALL files related to the task: models, schemas, services, routes, frontend pages, migrations
+- **Consumer inventory (reverse dependencies — the direction the rest of this step does NOT cover).**
+  Everything above traces the chain *forward* (what this plan will call). This traces it *backward*:
+  **for every EXISTING surface this plan will change or remove** — a function/method signature, an
+  endpoint or its response shape, a DB field, a config/env key, an event payload, an exported symbol,
+  a CLI flag — `grep` every caller and record each one with a verdict:
+  - `unaffected` — the caller doesn't touch the part that changes (say which part)
+  - `updated in step N` — this plan fixes it; N must be a real step
+  - `breaks — <mitigation>` — it cannot be fixed in-plan; name the shim, the dual-read window, the
+    versioned field, or the deploy-order constraint that keeps it working
+  Write the result into the plan's **Compatibility & Consumers** table (template). A §16 `CHANGE` row
+  is a guaranteed entry. **Additive-only work (nothing existing changes) → write `None — additive only`
+  and move on** — this pass costs one line when there is nothing to break.
+  Then answer **forward compatibility** in one line: is the change additive-only, versioned, tolerant-reader,
+  or does it impose a deploy-order constraint (e.g. backend before frontend, expand before contract)?
+- **Schema change → load the expand-contract doctrine first.** If this task changes DB schema (any
+  Migration Checklist row), read `${CLAUDE_PLUGIN_ROOT}/config/skills/database/safe-migrations/SKILL.md`
+  BEFORE writing the migration steps — a rename, a drop, a new NOT NULL, or an index on a live table
+  must be planned as its multi-step expand-contract sequence, never a single ALTER. Its golden rule
+  ("never break the running application" — the migration must be compatible with the code running
+  BOTH before and after) is the DB-layer instance of the consumer inventory above.
 - Identify existing patterns, dependencies, constraints
 - For each user role affected (customer, admin, merchant, warehouse staff), trace the full path:
   - What UI they see
@@ -264,6 +295,11 @@ Before gating, verify EVERY item below. A single `[ ]` (unchecked) item on a sta
 - [ ] Mobile/responsive behavior noted if UI changes
 - [ ] `[task]-flow.md` exists with Gherkin scenarios per user-facing role (or task is backend-only and this is explicitly noted in the plan header)
 
+**Compatibility & Consumers**
+
+- [ ] Compatibility & Consumers filled — every changed/removed existing surface has enumerated consumers + a verdict, every `breaks` verdict has a mitigation step, and forward-compat is answered — **OR** the section reads `None — additive only`
+- [ ] Prior slices 1..N-1 read (slice plans only) — or `N/A — slice 1 / standalone`
+
 **Plan Wiring**
 
 - [ ] Each major flow has a written call chain: `ComponentX → apiService.methodY → POST /v1/endpoint → service.function → Model.field`
@@ -305,6 +341,9 @@ by the risk of the step it belongs to (§4c). Every Blocking item is binary and 
 | Missing user role coverage | Blocking |
 | Step missing Test column entry (business-logic step) | Blocking |
 | Capability claim uncited (no probe run — "I don't have tool X") | Blocking |
+| A step changes or removes an existing signature, endpoint, field, config key, or event payload with no enumerated consumers | Blocking |
+| A consumer enumerated as `breaks` with no mitigation step in this plan | Blocking |
+| A slice-N plan (N>1) whose **Prior slices:** header is empty or absent | Blocking |
 | Step Committable=No without grouping note | Advisory |
 | Implementation Checklist `[ ]` unchecked on a LOW cosmetic step | Advisory |
 | Style / polish / non-load-bearing gap | Advisory |
@@ -321,6 +360,11 @@ the step it belongs to:
 A checklist gap on a HIGH-risk migration step is Blocking; the same gap on a LOW cosmetic step is Advisory.
 An issue not tied to any step (e.g., a missing role) is Blocking. When in doubt, Blocking — an item you
 can't reduce to a binary yes/no + citation goes to Advisory instead.
+
+**The three compatibility predicates are Blocking regardless of the step's risk class.** A breaking change
+on a step someone scored LOW is a **mis-scored step**, not a cosmetic issue — a removed config key or a
+narrowed response shape breaks its consumers at whatever risk label the plan gave the step. Risk decides
+class for every *other* predicate; it may not demote these.
 
 #### 4d. Readiness actions
 
@@ -521,6 +565,7 @@ Recommendation: [one of the above]
 | Vague step | "update the service to handle X" | Name the file + function + the exact change |
 | Phantom anchor | a step references a function/file that doesn't `grep` | Verify; if absent it's a target needing a creating step (§4a) |
 | Orphan criterion | a Success Criterion with no `→ 5.x` link and no guardrail | Link the PRD outcome or name the guardrail, else cut it |
+| Consumer-blind change | a step changes an existing signature/endpoint/field/config key, and the plan traces only the NEW call chain — nobody asked who calls it today | Run the Step-1 consumer inventory: grep every caller, give each a verdict, mitigate every `breaks` (§4b). Forward wiring answers "what will this call"; it never answers "what already calls this" |
 | Hollow Blocking table | empty Blocking table on a 9-step HIGH-risk plan with an unverified anchor | Re-walk §4a, classify every reference; every unverified anchor is Blocking |
 | Stale model pin | leaving `claude-opus-4-x` hardcoded in Step 0 | Use the `opus` alias |
 
