@@ -2,6 +2,49 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.24.0 — 2026-07-27
+
+**Backward/forward compatibility + existing-capability chaining in the planning pipeline** (item I4).
+
+Compatibility coverage was **DB-schema-only** (`rplan` §3 "no breaking schema changes without a rollback
+strategy", plus the template's migration boxes). Neither `/saki-builder:prd`'s 32-row gate nor
+`/saki-builder:rplan`'s §4b had a single predicate about a breaking change outside migrations — an API
+field removal, a status-code change, a tightened validation, an auth-scope narrowing, a config/env rename,
+a flag-default flip, an event-payload reshape, or a removed exported symbol all passed silently. The two
+lenses that *do* ask about regression live in `/saki-builder:rplan-review`, which runs its expert panel on
+HIGH-risk plans only — and `rplan` explicitly tells LOW/MED plans not to invoke it. Dependency tracing was
+forward-only: Plan Wiring maps the *new* call chain, and §4a proves an anchor *exists* but never enumerates
+that anchor's existing callers.
+
+- **`/saki-builder:prd` — §16 `CHANGE` tag.** A third row tag beside `REUSE`/`NEW` for an existing surface
+  the feature *modifies*. Cited on the REUSE bar (a real `path:line`) **plus** a `↳ Breaks:` sub-line naming
+  what depends on the present shape. Applied to all three emit parts (the architecture-decision line hid
+  load-bearing modifications), with the `omit-if-none` hole closed — "adds no surface" let a
+  pure-modification feature skip §16 entirely. New `BLOCK` on a `Breaks:`-less CHANGE row; new deduction on
+  a REUSE row whose slice text says change/extend/rename.
+- **`/saki-builder:prd-review` — verifies it.** CHANGE accepted as cited; a new **Compat-declared** check
+  wired into *both* closed REVISE enumerations (a finding with no verdict path is inert); Judge 3 now
+  surfaces the compatibility shim / dual-read window as hidden build work.
+- **`/saki-builder:rplan` — consumer inventory + gate.** A Step-1 reverse-dependency pass (grep every caller
+  of each changed/removed surface, verdict each: `unaffected` / `updated in step N` / `breaks — <mitigation>`,
+  then answer forward-compat: additive / versioned / tolerant-reader / deploy-order); a
+  `## Compatibility & Consumers` plan-template section; two checklist boxes; and **three §4b Blocking
+  predicates** that §4c may not demote — a breaking change on a step scored LOW is a mis-scored step.
+  The §16 ingestion rule now knows the CHANGE tag (it was a closed two-tag vocabulary).
+- **Expand-contract doctrine un-orphaned.** `config/skills/database/safe-migrations/SKILL.md` (Backward
+  Compatible First, rename-via-copy, `CREATE INDEX CONCURRENTLY`, multi-step drop) already existed and was
+  reachable only from `gateway-database`. `rplan` Step 1 now loads it on any schema change.
+- **Cross-slice chaining.** `rplan` reads sibling `tasks/<prd-slug>-slice*-plan.md` for slices 1..N-1 and
+  plans against the **shipped** shape when it disagrees with the PRD. INVEST rule 4
+  (forward-dependency-only) was declared in the PRD and verified nowhere. `approved`'s drift-check now
+  reconciles the compat table too, so slice N never reads a stale one.
+- **`/saki-builder:rplan-review`** gained the matching Phase-1 required-section row (its structural scan
+  runs on every reviewed plan, unlike the HIGH-risk expert panel).
+
+**Additive — nothing existing is invalidated.** `REUSE`/`NEW`-only §16s remain valid; the new §4b
+predicates gate plan *construction* and **do not retroactively block plans written before 0.24.0**;
+additive-only work clears the whole pass by writing `None — additive only`.
+
 ## 0.23.2 — 2026-07-24
 
 - **Graphify: fixed a fictional `betweenness` field + doc/schema drift.** Verified against a real
