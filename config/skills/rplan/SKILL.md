@@ -301,7 +301,7 @@ Before gating, verify EVERY item below. A single `[ ]` (unchecked) item on a sta
 
 **Compatibility & Consumers**
 
-- [ ] Compatibility & Consumers filled — every changed/removed existing surface has enumerated consumers + a verdict, every `breaks` verdict has a mitigation step, and forward-compat is answered — **OR** the section reads `None — additive only`
+- [ ] Compatibility & Consumers filled — every changed/removed existing surface has a consumers cell (incl. `none found (grep: …)`) + a verdict, every `breaks` verdict has a mitigation step, and forward-compat is answered — **OR** the section reads `None — additive only`
 - [ ] Prior slices 1..N-1 read (slice plans only) — or `N/A — slice 1 / standalone`
 
 **Plan Wiring**

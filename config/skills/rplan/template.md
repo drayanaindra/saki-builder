@@ -100,7 +100,7 @@ Every EXISTING surface this plan changes or removes. Additive-only work → writ
 |---|---|---|---|---|
 | [`ExampleService.method()` — replace this row] | signature | 3 (`[path:line]`, `[path:line]`, `[path:line]`) | updated in step N | step N |
 | [`GET /v1/example` `status` field — replace this row] | API response | 1 (`[path:line]`) | breaks — keep old field one release | step N (expand-contract) |
-| [`EXAMPLE_ENV_KEY` — replace this row] | config key | none found (grep: `grep -rn EXAMPLE_ENV_KEY .`) | none found | — |
+| [`EXAMPLE_ENV_KEY` — replace this row] | config key | 0 | none found (grep: `grep -rn EXAMPLE_ENV_KEY .`) | — |
 
 Verdicts: `unaffected` (say which part it doesn't touch) · `updated in step N` (N must be a real step) ·
 `breaks — <mitigation>` (name the shim / dual-read window / versioned field / deploy-order constraint) ·
@@ -185,7 +185,7 @@ Any unchecked item on a state-changing step is a **Blocking** item; unchecked co
 - [ ] Mobile/responsive noted if UI changes
 
 **Compatibility & Consumers**
-- [ ] Compatibility & Consumers filled — every changed/removed existing surface has enumerated consumers + a verdict, every `breaks` verdict has a mitigation step, forward-compat answered — **OR** the section reads `None — additive only`
+- [ ] Compatibility & Consumers filled — every changed/removed existing surface has a consumers cell (incl. `none found (grep: …)`) + a verdict, every `breaks` verdict has a mitigation step, forward-compat answered — **OR** the section reads `None — additive only`
 - [ ] Prior slices 1..N-1 read (slice plans only) — or `N/A — slice 1 / standalone`
 
 **Plan Wiring**
