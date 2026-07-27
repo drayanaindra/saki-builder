@@ -187,8 +187,10 @@ cat graphify-out/GRAPH_REPORT.md 2>/dev/null || true
 ```
 
 If the report exists, read it fully before opening any file. Use it to:
-- **§16 Technical Contract REUSE rows** — god nodes the feature touches are load-bearing anchors;
-  mark them `REUSE (path:line)` from the start, not discovered at rplan time.
+- **§16 Technical Contract rows** — god nodes the feature touches are load-bearing anchors; tag them
+  from the start rather than discovering them at rplan time: `REUSE (path:line)` if the feature only
+  *consumes* the node, `CHANGE (path:line)` + a `↳ Breaks:` note if it *modifies* it. A god node is the
+  worst place to mis-tag a modification as reuse — its blast radius is the whole point of flagging it.
 - **Single architecture decision row** — if the feature's scope crosses >1 community cluster, it
   spans module boundaries; that is the architecture decision to name in §16.
 - **Scope honesty** — if a god node (top of the report's God Nodes list — highest edge count,
@@ -500,7 +502,7 @@ existing surface this feature *modifies*, i.e. a compatibility surface), or NEW,
 slice/outcome it serves. It is **shape, not
 design** — entities not columns, endpoint purposes not payloads, one architecture decision not a diagram; the
 full schema/req-resp/migrations are `/saki-builder:rplan`'s job. `/saki-builder:prd-review` **verifies** §16
-(present · cited · slice-coherent) then flags any residual gap; `/saki-builder:rplan` **ingests** §16 as the
+(present · cited · compat-declared · slice-coherent) then flags any residual gap; `/saki-builder:rplan` **ingests** §16 as the
 shape to harden. When the feature adds no backend surface, **omit §16** (write `No backend surface — UI-only
 change.`) — same "omit if none" rule as §13/§14/§15.
 

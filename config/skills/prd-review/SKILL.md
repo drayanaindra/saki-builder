@@ -1,6 +1,6 @@
 ---
 name: prd-review
-description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score. Autonomous by default — loops (review → apply the prescribed fixes to the PRD → re-review) until SHIP·READY or blocked; pass `--review-only` for a single non-editing pass (today's behavior).
+description: Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · compat-declared · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score. Autonomous by default — loops (review → apply the prescribed fixes to the PRD → re-review) until SHIP·READY or blocked; pass `--review-only` for a single non-editing pass (today's behavior).
 ---
 
 # PRD Review — Structural Scan + Adversarial Judge Panel + Pair-Review Blind-Spot Pass
@@ -217,9 +217,10 @@ Read the full report before constructing Judge 3's prompt. Thread the graph summ
 Context** in Judge 3's input. Judge 3 uses it to:
 - **Cross-boundary slice coupling** — if a slice's stated scope touches nodes in >1 community,
   prescribe an `Assumes:` line or a dedicated slice for the cross-boundary work.
-- **Omitted god-node REUSE rows** — a slice depending on a god node (top of the report's God Nodes
+- **Omitted god-node rows** — a slice depending on a god node (top of the report's God Nodes
   list — highest edge count) that §16 omits is a blocking §16 gap; prescribe adding
-  `REUSE (path:line)`.
+  `REUSE (path:line)` if the slice only consumes it, or `CHANGE (path:line)` + a `↳ Breaks:` note
+  if the slice modifies it (a modified god node is the highest-blast-radius compat surface there is).
 - **"Simple change" claims** — a change touching a god node is never simple; cite the node's edge
   count (`graphify explain` → `Degree: N`) as evidence for the finding.
 
@@ -433,7 +434,7 @@ IMPLEMENTATION-REALITY CHECKLIST (the headline — caught before manual test, no
   (full ledger + the [auto] criteria for /saki-builder:qa are in the review file)
 
 TECHNICAL CONTRACT (§16 verify) + RESIDUAL GAPS (flagged, not designed; omit a layer with none):
-  §16:   present | omitted(UI-only) · rows cited? · slice-coherent?   [REVISE if missing on a backend feature · uncited/untraceable row · incoherent · overstepped into full design]
+  §16:   present | omitted(UI-only) · rows cited? · compat-declared? · slice-coherent?   [REVISE if missing on a backend feature · uncited/untraceable row · CHANGE row with no Breaks: note · incoherent · overstepped into full design]
   DB:    <residual surface §16 leaves open, cited> → /saki-builder:rplan
   API:   <…> → /saki-builder:rplan
   Arch:  <…> → /saki-builder:rplan

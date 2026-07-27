@@ -48,13 +48,14 @@ A section is PRESENT only if it has real content — not headings, not "N/A", no
 | 5 | Implementation Completeness Checklist (all items `[x]`) | | |
 | 6 | Branch Points (or explicit "none") | | |
 | 7 | Success Criteria (testable, not vague) | | |
-| 8 | Compatibility & Consumers (`None — additive only` is a valid, complete answer) | | |
+| 8 | Compatibility & Consumers (`None — additive only` is a valid, complete answer; heading absent ⇒ predates 0.24.0 ⇒ ✅, see scan rules) | | |
 
 **Scan rules:**
 - Steps row saying "update frontend" or "add endpoint" without exact file+function = MISSING
 - Role Coverage with only one role when feature affects multiple = INCOMPLETE
 - Plan Wiring with "Component → API" but no service name and no DB model = INCOMPLETE
-- Compatibility & Consumers listing a changed surface with no consumers enumerated, or a `breaks` verdict with no mitigation step = INCOMPLETE
+- Compatibility & Consumers listing a changed surface whose Consumers/Verdict cells are blank, or a `breaks` verdict with no mitigation step = INCOMPLETE (`none found (grep: …)` is a **complete** verdict, not a blank one)
+- Compatibility & Consumers heading **entirely absent** = ✅ PRESENT, note `predates 0.24.0` — **NOT a failure.** `/saki-builder:rplan` ≥ 0.24.0 writes the section from `template.md`, so an absent heading means the plan predates it, and the section was never retroactive (the construction-time §4b predicates are the primary gate for new plans). A plan that HAS the heading but leaves it blank is INCOMPLETE by the rule above — absence is grandfathered, emptiness is not.
 - Checklist with any `[ ]` = INCOMPLETE
 
 **If ALL ✅:**

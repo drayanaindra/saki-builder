@@ -98,11 +98,13 @@ Every EXISTING surface this plan changes or removes. Additive-only work → writ
 
 | Changed surface (exact) | Kind | Consumers found (`grep`) | Verdict | Mitigation / step |
 |---|---|---|---|---|
-| `OrderService.split_batch()` | signature | 3 (`api/v1/orders.py:88`, `workers/pack.py:21`, `tests/test_orders.py:140`) | updated | step 4 |
-| `GET /v1/payouts` `status` field | API response | 1 (`frontend/src/services/api.ts:210`) | breaks | step 6 — keep old field one release (expand-contract) |
+| [`ExampleService.method()` — replace this row] | signature | 3 (`[path:line]`, `[path:line]`, `[path:line]`) | updated in step N | step N |
+| [`GET /v1/example` `status` field — replace this row] | API response | 1 (`[path:line]`) | breaks — keep old field one release | step N (expand-contract) |
+| [`EXAMPLE_ENV_KEY` — replace this row] | config key | none found (grep: `grep -rn EXAMPLE_ENV_KEY .`) | none found | — |
 
 Verdicts: `unaffected` (say which part it doesn't touch) · `updated in step N` (N must be a real step) ·
-`breaks — <mitigation>` (name the shim / dual-read window / versioned field / deploy-order constraint).
+`breaks — <mitigation>` (name the shim / dual-read window / versioned field / deploy-order constraint) ·
+`none found (grep: <command>)` (genuinely zero consumers — a **complete** verdict; cite the grep).
 A §16 `CHANGE` row from the source PRD is always an entry here — carry its `↳ Breaks:` note in.
 
 **Forward compatibility:** additive-only? / versioned? / tolerant-reader? / deploy-order constraint?

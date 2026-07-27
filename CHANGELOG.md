@@ -23,8 +23,9 @@ that anchor's existing callers.
   pure-modification feature skip §16 entirely. New `BLOCK` on a `Breaks:`-less CHANGE row; new deduction on
   a REUSE row whose slice text says change/extend/rename.
 - **`/saki-builder:prd-review` — verifies it.** CHANGE accepted as cited; a new **Compat-declared** check
-  wired into *both* closed REVISE enumerations (a finding with no verdict path is inert); Judge 3 now
-  surfaces the compatibility shim / dual-read window as hidden build work.
+  wired into *all three* closed REVISE enumerations — the step-8 finding list, the verdict table, and the
+  printed synthesis block (a finding with no verdict path is inert, and one that never prints is invisible);
+  Judge 3 now surfaces the compatibility shim / dual-read window as hidden build work.
 - **`/saki-builder:rplan` — consumer inventory + gate.** A Step-1 reverse-dependency pass (grep every caller
   of each changed/removed surface, verdict each: `unaffected` / `updated in step N` / `breaks — <mitigation>`,
   then answer forward-compat: additive / versioned / tolerant-reader / deploy-order); a
@@ -43,7 +44,10 @@ that anchor's existing callers.
 
 **Additive — nothing existing is invalidated.** `REUSE`/`NEW`-only §16s remain valid; the new §4b
 predicates gate plan *construction* and **do not retroactively block plans written before 0.24.0**;
-additive-only work clears the whole pass by writing `None — additive only`.
+additive-only work clears the whole pass by writing `None — additive only`. A plan with **no**
+`## Compatibility & Consumers` heading at all predates the section, so `rplan-review`'s Phase-1 scan
+marks it ✅ with a `predates 0.24.0` note rather than routing it back — absence is grandfathered, an
+empty section is not.
 
 ## 0.23.2 — 2026-07-24
 

@@ -127,6 +127,10 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
   - `updated in step N` — this plan fixes it; N must be a real step
   - `breaks — <mitigation>` — it cannot be fixed in-plan; name the shim, the dual-read window, the
     versioned field, or the deploy-order constraint that keeps it working
+  - `none found (grep: <the exact command>)` — the surface genuinely has **zero** consumers today.
+    This is a **complete** answer, not a missing one: cite the grep so the claim is checkable. It is
+    what distinguishes "nothing depends on this" from "nobody looked" — the §4b predicate below fires
+    only on the second.
   Write the result into the plan's **Compatibility & Consumers** table (template). A §16 `CHANGE` row
   is a guaranteed entry. **Additive-only work (nothing existing changes) → write `None — additive only`
   and move on** — this pass costs one line when there is nothing to break.
@@ -341,7 +345,7 @@ by the risk of the step it belongs to (§4c). Every Blocking item is binary and 
 | Missing user role coverage | Blocking |
 | Step missing Test column entry (business-logic step) | Blocking |
 | Capability claim uncited (no probe run — "I don't have tool X") | Blocking |
-| A step changes or removes an existing signature, endpoint, field, config key, or event payload with no enumerated consumers | Blocking |
+| A step changes or removes an existing signature, endpoint, field, config key, or event payload and the Compatibility & Consumers table has no row for it (the inventory was not run — `none found (grep: …)` IS a complete row) | Blocking |
 | A consumer enumerated as `breaks` with no mitigation step in this plan | Blocking |
 | A slice-N plan (N>1) whose **Prior slices:** header is empty or absent | Blocking |
 | Step Committable=No without grouping note | Advisory |
@@ -361,7 +365,8 @@ A checklist gap on a HIGH-risk migration step is Blocking; the same gap on a LOW
 An issue not tied to any step (e.g., a missing role) is Blocking. When in doubt, Blocking — an item you
 can't reduce to a binary yes/no + citation goes to Advisory instead.
 
-**The three compatibility predicates are Blocking regardless of the step's risk class.** A breaking change
+**The two compatibility predicates above (missing consumer row · unmitigated `breaks`) are Blocking
+regardless of the step's risk class.** A breaking change
 on a step someone scored LOW is a **mis-scored step**, not a cosmetic issue — a removed config key or a
 narrowed response shape breaks its consumers at whatever risk label the plan gave the step. Risk decides
 class for every *other* predicate; it may not demote these.
