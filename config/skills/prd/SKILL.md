@@ -343,15 +343,26 @@ Author the **§16 Technical Contract** (saved in Step 7) — the load-bearing DB
 the slices can't work without, and nothing more. This is the surface `/saki-builder:prd-review` verifies
 and `/saki-builder:rplan` hardens into full design. It is **shape, not design**.
 
-**Omit-if-none:** if the feature adds no data/API/architecture surface (pure UI/copy change), skip §16 —
+**Omit-if-none:** if the feature adds **or changes** no data/API/architecture surface (pure UI/copy change), skip §16 —
+a feature that only *modifies* existing surfaces adds none, but it is exactly the compat case §16 exists to
+surface — it does NOT qualify for the omission —
 in the saved file write the one-liner `No backend surface — UI-only change.` (same rule as §13/§14/§15).
 
 **Evidence rule (do NOT design blind).** Build §16 *from the Step 0.7 Tier-1 local-grounding scan* — do not
 re-scan and do not invent. Every row is one of:
-- **REUSE** — the entity/endpoint/component already exists; cite it `path:line` (the Tier-1 `observed` note).
+- **REUSE** — the entity/endpoint/component already exists **and this feature does not modify it**; cite it
+  `path:line` (the Tier-1 `observed` note).
+- **CHANGE** — it already exists **and this feature modifies it** (a field's meaning or shape, a response,
+  a signature, a status, a config key, an event payload). Cite it `path:line` like a REUSE row, **and add a
+  `↳ Breaks:` sub-line naming what currently depends on the present shape** — or `↳ Breaks: none (additive)`
+  when the change only adds. A CHANGE row is by definition a **compatibility surface**: it is what
+  `/saki-builder:rplan` turns into a Compatibility & Consumers entry, so an unstated blast radius here is
+  a breakage discovered mid-build. Prefer CHANGE over REUSE whenever in doubt — a modification tagged
+  REUSE is the exact failure this tag exists to catch.
 - **NEW** — it does not exist yet; tag `NEW` (no citation, but it must serve a slice).
 
-A row that cites nothing and isn't tagged `NEW` is fabricated — cut it or ground it.
+A row that cites nothing and isn't tagged `NEW` is fabricated — cut it or ground it. A `CHANGE` row with no
+`↳ Breaks:` sub-line is incomplete — it names a compat surface and then hides its blast radius.
 
 **YAGNI rule.** Every row MUST name the slice · outcome it serves (`8.x · 5.x`). A surface that serves no
 §8 slice / §5 outcome is speculative — cut it. The contract carries only what the slices imply.
@@ -359,14 +370,21 @@ A row that cites nothing and isn't tagged `NEW` is fabricated — cut it or grou
 **Thin rule (altitude — this is `/saki-builder:rplan`'s boundary).** Entities name the *thing*, not its
 columns. Endpoints name *method + path + purpose*, not request/response field lists. The architecture line
 is *one* load-bearing decision, not a component diagram. No migration files, no indexes, no schemas — those
-are `/saki-builder:rplan`. If you're writing field names, you've crossed the line.
+are `/saki-builder:rplan`. If you're writing field names, you've crossed the line. **A `CHANGE` row keeps the
+same altitude:** name *what kind* of change (a field's meaning, a response shape, a signature, a status set)
+and, in `↳ Breaks:`, *who depends on the present shape* — never the new column type or the new payload. A
+field name appearing inside a `↳ Breaks:` note is compat evidence, not design, and does not cross the line.
 
 Emit three parts (any part with no rows is omitted):
 
 ```
-**Entities (data):**       | Entity | Reuse / New | Evidence (`path:line`) or note | Serves |
-**Endpoints (API):**       | Method + path — purpose | Reuse / New | Evidence or note | Serves |   (purpose only, not payloads)
-**Architecture decision (one, load-bearing):**  - <decision> — <reused component `path:line` or NEW>. Serves 5.x. <alternative rejected + why>.
+**Entities (data):**       | Entity | Reuse / Change / New | Evidence (`path:line`) or note | Serves |
+**Endpoints (API):**       | Method + path — purpose | Reuse / Change / New | Evidence or note | Serves |   (purpose only, not payloads)
+**Architecture decision (one, load-bearing):**  - <decision> — <reused component `path:line` · CHANGED component `path:line` + ↳ Breaks: · or NEW>. Serves 5.x. <alternative rejected + why>.
+
+  (a CHANGE row's `↳ Breaks:` sub-line sits directly beneath it, e.g.
+   `| SellerPayout | CHANGE | backend/models/payout.py:14 | 8.2 · 5.1 |`
+   `|   ↳ Breaks: the payout-status webhook consumers read the old two-state field |`)
 ```
 
 ### Appetite, Kill Criteria & Decision Log (from Step 0.5 — feeds §6 + §7)
@@ -417,10 +435,12 @@ not in this table stays Advisory and never gates.
 | `🔒 INVARIANT` not tested by any acceptance criterion | BLOCK |
 | `🔒 INVARIANT` tested only by a happy-path criterion (no failure/edge criterion) | BLOCK |
 | Non-Goals < 2 | −5 |
-| §16 omitted while a slice implies a data/API/architecture surface (not marked UI-only) | −5 |
-| §16 row with no evidence tag (neither a REUSE `path:line` nor `NEW`) | −3 each |
+| §16 omitted while a slice implies **or modifies** a data/API/architecture surface (not marked UI-only) | −5 |
+| §16 row with no evidence tag (none of a REUSE `path:line`, a CHANGE `path:line`, or `NEW`) | −3 each |
+| §16 `CHANGE` row with no `↳ Breaks:` note (what depends on the current shape) | BLOCK |
+| §16 row tagged REUSE while its serving slice text says change/extend/rename/replace (a modification hiding as reuse) | −5 each |
 | §16 row serving no §8 slice / §5 outcome (speculative surface — YAGNI) | −5 each |
-| §16 crosses into full design (column/field names, full req/resp payload, migration file, index) | −3 |
+| §16 crosses into full design (column/field names, full req/resp payload, migration file, index) — **a field name inside a `↳ Breaks:` note is compat evidence, not design, and is exempt** | −3 |
 
 If any Blocking predicate is unresolved → fix the cited gaps and re-check. Do NOT present with a non-empty Blocking Set.
 
@@ -475,7 +495,9 @@ time (`UI approved: tasks/proto-<slug>/ · <date>`), so the locked artifact poin
 
 **§16 Technical Contract (thin)** is the PRD's **DB/API/architecture shape** in the saved artifact — the
 load-bearing surfaces the slices imply, authored in Step 6 from the Step 0.7 Tier-1 scan. Each row is REUSE
-(cites real code `path:line`) or NEW, and names the `8.x · 5.x` slice/outcome it serves. It is **shape, not
+(cites real code `path:line`), **CHANGE** (cites real code `path:line` **plus** a `↳ Breaks:` sub-line — an
+existing surface this feature *modifies*, i.e. a compatibility surface), or NEW, and names the `8.x · 5.x`
+slice/outcome it serves. It is **shape, not
 design** — entities not columns, endpoint purposes not payloads, one architecture decision not a diagram; the
 full schema/req-resp/migrations are `/saki-builder:rplan`'s job. `/saki-builder:prd-review` **verifies** §16
 (present · cited · slice-coherent) then flags any residual gap; `/saki-builder:rplan` **ingests** §16 as the
@@ -627,7 +649,9 @@ Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s j
 | Handing a PRD to `/saki-builder:build` (or `/saki-builder:rplan`) that isn't **Locked** | Requirements aren't frozen — `/saki-builder:proto`'s approval writes `Status: Locked` + `<!-- prd-locked -->`; build hard-refuses until it's present. `/saki-builder:prd` never writes the lock (absence = not-yet-frozen) |
 | A UI feature whose screens live only in the Step 8 human view | Persist them to §15 of the saved PRD — the artifact must name its UI, not compute-and-discard it |
 | §16 Technical Contract written with column/field names or full request/response payloads | Shape only — entity/endpoint-purpose/one-arch-decision; the schema depth is `/saki-builder:rplan`'s lane |
-| A §16 row that cites no code and isn't tagged `NEW`, or serves no §8/§5 ref | Ground it from the Tier-1 scan (REUSE `path:line` / NEW) and name its slice·outcome, or cut it (YAGNI) |
+| A §16 row that cites no code and isn't tagged `NEW`, or serves no §8/§5 ref | Ground it from the Tier-1 scan (REUSE / CHANGE `path:line` / NEW) and name its slice·outcome, or cut it (YAGNI) |
+| A §16 row tagged `REUSE` for a surface the feature actually **modifies** | Tag it `CHANGE` + add `↳ Breaks:` — a modification wearing a reuse tag is an invisible compat surface, the exact break this tag exists to catch |
+| A `CHANGE` row with no `↳ Breaks:` note | Name what depends on the present shape (or `none (additive)`) — a compat surface with an unstated blast radius is rediscovered mid-build |
 
 ## Script
 

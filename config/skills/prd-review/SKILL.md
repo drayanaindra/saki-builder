@@ -235,7 +235,7 @@ If absent: Judge 3 runs without graph context (unchanged behavior).
 1. **Missing failure/edge criteria — the post-manual-test bug source.** For each state-changing or `🔒` slice, name the failure paths the happy-path ACs leave untested and **prescribe the criterion that would catch each** (Given/When/Then + signal, tagged `[auto]`/`[manual]`). Draw from this canonical, **non-exhaustive** menu, applying an item *only where the slice's stated behavior implies that path* — prescribing a path the slice can't reach (e.g. `network-fail` for a slice that makes no network call) violates the grounding rule:
    over-limit · empty/zero · concurrent/double-submit · unauthorized/wrong-tenant · network-fail/timeout · partial-failure/rollback · idempotency-on-retry · pagination/large-N · error-state UI.
    **Anchor every prescription** to the slice + the exact behavior that implies it ("§8 Slice 3 debits balance → concurrent-debit criterion"). Prescribe, never merely flag — a flag forces the author to re-derive the fix and re-review. These prescribed criteria are exactly the "new tasks / bugs" that otherwise surface only when a human tests by hand.
-2. **Hidden implementation work a slice ASSUMES but never states.** For each slice, name the build work its stated behavior silently requires but the PRD omits: migration/backfill of existing rows, a feature flag, a new permission/role, an index the metric query needs, seed data, a rollback path. Anchor each to the slice text that implies it. This is the mid-build discovery this review exists to prevent — surface it now, not in the build. **Prescribe the fix as an `Assumes:` line on that slice** (`Assumes: <the hidden work>` — `/saki-builder:prd` Step 3) — or, when the work is a load-bearing capability in its own right, prescribe **promoting it to its own slice**. It counts as *addressed* only when the slice carries that `Assumes:` line (or the dedicated slice); an unstated assumption is not addressed. This is the wire that makes the finding reach `/saki-builder:rplan` — `/saki-builder:pickup` bakes the `Assumes:` line into the PRD on REVISE, and rplan ingests it from the PRD (the review file itself is not read downstream).
+2. **Hidden implementation work a slice ASSUMES but never states.** For each slice, name the build work its stated behavior silently requires but the PRD omits: migration/backfill of existing rows, a feature flag, a new permission/role, an index the metric query needs, seed data, a rollback path, **a compatibility shim / dual-read window** (whenever the slice touches a §16 `CHANGE` row — an existing consumer must keep working across the change, which is real build work the criteria never state). Anchor each to the slice text that implies it. This is the mid-build discovery this review exists to prevent — surface it now, not in the build. **Prescribe the fix as an `Assumes:` line on that slice** (`Assumes: <the hidden work>` — `/saki-builder:prd` Step 3) — or, when the work is a load-bearing capability in its own right, prescribe **promoting it to its own slice**. It counts as *addressed* only when the slice carries that `Assumes:` line (or the dedicated slice); an unstated assumption is not addressed. This is the wire that makes the finding reach `/saki-builder:rplan` — `/saki-builder:pickup` bakes the `Assumes:` line into the PRD on REVISE, and rplan ingests it from the PRD (the review file itself is not read downstream).
 3. Slices failing INVEST — especially **horizontal-as-vertical** ("build the API layer" is not a slice).
 4. **Forward-dependency violations** (slice N needs N+1) or orphan slices serving no JTBD.
 5. Is Slice 1 a **vertical walking skeleton**, or plumbing that ships no user-visible value?
@@ -336,19 +336,28 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
    *before* the `/saki-builder:proto` lock (it is how the PRD reaches green), so an unlocked PRD is expected, never a gap.
 8. **Technical contract check & residual-gaps handoff (verify what's stated, flag what's missing — never design).**
    The PRD now carries a **§16 Technical Contract (thin)** — the DB/API/architecture *shape* `/saki-builder:prd`
-   authored (entities · endpoint purposes · one architecture decision), each row REUSE (`path:line`) or NEW and
-   serving an `8.x · 5.x`. Two jobs:
+   authored (entities · endpoint purposes · one architecture decision), each row REUSE (`path:line`), CHANGE
+   (`path:line` + a `↳ Breaks:` sub-line), or NEW, and serving an `8.x · 5.x`. Two jobs:
 
    **(a) VERIFY §16** (when the feature has a backend surface — a UI-only PRD correctly omits it):
    - **Present** — §16 exists, OR is a correct `No backend surface — UI-only change.` omission.
    - **Cited** — every row is REUSE with a real `path:line` OR tagged `NEW`; no fabricated/uncited row.
+     A **CHANGE** row is cited on the same bar as REUSE — a real `path:line` — since it names an existing
+     surface. (REUSE/NEW-only §16s stay valid; CHANGE is an additional tag, not a replacement.)
+   - **Compat-declared** — every **CHANGE** row carries a `↳ Breaks:` sub-line naming what depends on the
+     present shape (or `none (additive)`). A CHANGE row without one declares a compatibility surface and
+     then hides its blast radius — it is a `REVISE` finding, because `/saki-builder:rplan` ingests exactly
+     that note as its Compatibility & Consumers entry. **Also flag the inverse mis-tag:** a row tagged
+     `REUSE` whose serving §8 slice text says change / extend / rename / replace / add-field is a
+     modification wearing a reuse tag — prescribe re-tagging it `CHANGE` + `↳ Breaks:`.
    - **Traceable** — every row serves a real §8 slice / §5 outcome (no speculative surface — YAGNI).
    - **Coherent** — no slice/rule implies a load-bearing surface that §16 omits; no §16 row references a
      non-existent slice/outcome. §16 must stay *shape* — a row carrying column/field names, a full request/
      response payload, or a migration file has overstepped into `/saki-builder:rplan`'s lane (flag it, don't
      bless it).
    A failure of (a) — §16 missing on a backend feature · an uncited row · an untraceable row · §16↔slice
-   incoherence · a row that overstepped into full design — is a `REVISE` finding (see step 9). You check the
+   incoherence · a row that overstepped into full design · **a CHANGE row with no Breaks: note (or a REUSE
+   row for a surface the slice modifies)** — is a `REVISE` finding (see step 9). You check the
    contract's **existence, grounding, and coherence** — you do NOT author or complete it.
 
    **(b) FLAG residual gaps** §16 does NOT cover — a **gaps-only** list, one row per *undefined load-bearing*
@@ -372,7 +381,7 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
    | Signal | Condition |
    |--------|-----------|
    | `DISCOVERY-FIRST` | premise laundered, OR evidence floor failed, OR the load-bearing assumption is unvalidated with no §2 `**Spike:**` line recorded (Readiness #4 unmet) |
-   | `REVISE` | any BLOCK or HIGH stands, **OR any state-changing/`🔒` slice is missing a prescribed failure criterion or has hidden work not yet stated as an `Assumes:` line / dedicated slice, OR §16 fails the contract check (missing on a backend feature · an uncited/untraceable row · §16↔slice incoherence · a row overstepped into full design), OR Readiness is NOT READY on a fixable blocker** — regardless of that finding's severity |
+   | `REVISE` | any BLOCK or HIGH stands, **OR any state-changing/`🔒` slice is missing a prescribed failure criterion or has hidden work not yet stated as an `Assumes:` line / dedicated slice, OR §16 fails the contract check (missing on a backend feature · an uncited/untraceable row · §16↔slice incoherence · a row overstepped into full design · **a CHANGE row with no Breaks: note**), OR Readiness is NOT READY on a fixable blocker** — regardless of that finding's severity |
    | `SHIP` | no BLOCK/HIGH; **every state-changing/`🔒` slice's failure surface is covered**; only MED/LOW polish remains |
 
    Print a **coverage line**: `Failure-surface: N/M state-changing slices fully covered · K hidden-work items surfaced.` A gap here holds `REVISE` even when the premise is clean. **Readiness is a distinct axis:** a `SHIP`-quality PRD that is not startable prints `SHIP · NOT READY` and Phase 4 points at the blocker, not `/saki-builder:rplan`.
@@ -580,7 +589,8 @@ grounded → ③ prescribe, don't lecture.**
   buildability-now. A `SHIP`-quality PRD can be `NOT READY` (unbuilt dep, slice-1-blocking open Q,
   unaccepted bet). Each readiness blocker cites an `R#`/section; it never re-derives quality.
 - **The technical-contract check verifies the §16 thin contract, then flags residual gaps — it NEVER designs.**
-  Job (a) checks §16 exists · is cited (REUSE `path:line` / NEW) · is slice-coherent · stayed *shape* (a row
+  Job (a) checks §16 exists · is cited (REUSE / CHANGE `path:line` / NEW) · is **compat-declared** (every
+  CHANGE row has a `↳ Breaks:` note) · is slice-coherent · stayed *shape* (a row
   with column names / full payloads / a migration file overstepped — flag it, don't complete it). Job (b) is
   gaps-only (undefined load-bearing surfaces §16 leaves open), not a full inventory; no fabricated
   schema/endpoint/architecture/UI; every entry cites PRD text. Detailed DB/API/arch is `/saki-builder:rplan`'s
