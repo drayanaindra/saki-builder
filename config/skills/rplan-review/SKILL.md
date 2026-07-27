@@ -48,11 +48,13 @@ A section is PRESENT only if it has real content — not headings, not "N/A", no
 | 5 | Implementation Completeness Checklist (all items `[x]`) | | |
 | 6 | Branch Points (or explicit "none") | | |
 | 7 | Success Criteria (testable, not vague) | | |
+| 8 | Compatibility & Consumers (`None — additive only` is a valid, complete answer) | | |
 
 **Scan rules:**
 - Steps row saying "update frontend" or "add endpoint" without exact file+function = MISSING
 - Role Coverage with only one role when feature affects multiple = INCOMPLETE
 - Plan Wiring with "Component → API" but no service name and no DB model = INCOMPLETE
+- Compatibility & Consumers listing a changed surface with no consumers enumerated, or a `breaks` verdict with no mitigation step = INCOMPLETE
 - Checklist with any `[ ]` = INCOMPLETE
 
 **If ALL ✅:**
