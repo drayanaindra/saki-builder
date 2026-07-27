@@ -13,6 +13,7 @@ Use this format for all non-trivial execution plans.
 **Unknown Count:** [N] / 2 max
 **Behavior Spec:** `tasks/[task]-flow.md` (user-facing) | N/A (backend-only)
 **Source PRD:** `tasks/prd-[feature].md` § slice N | N/A (standalone)
+**Prior slices:** `tasks/<prd-slug>-slice1-plan.md`, … (slices 1..N-1 read — their shipped shape wins over the PRD) | N/A — slice 1 / standalone
 **Appetite:** ~[N] agent tasks (from PRD slice) — recut if step count exceeds this
 **Kill-if:** [§5 metric] crosses [threshold] (from PRD slice) | N/A
 
@@ -90,6 +91,26 @@ Full call chain for each major flow. Format:
 
 ---
 
+## Compatibility & Consumers
+
+Every EXISTING surface this plan changes or removes. Additive-only work → write `None — additive only`.
+(The Role Coverage matrix above asks *who uses this*; this one asks *what depends on this*.)
+
+| Changed surface (exact) | Kind | Consumers found (`grep`) | Verdict | Mitigation / step |
+|---|---|---|---|---|
+| [`ExampleService.method()` — replace this row] | signature | 3 (`[path:line]`, `[path:line]`, `[path:line]`) | updated in step N | step N |
+| [`GET /v1/example` `status` field — replace this row] | API response | 1 (`[path:line]`) | breaks — keep old field one release | step N (expand-contract) |
+| [`EXAMPLE_ENV_KEY` — replace this row] | config key | 0 | none found (grep: `grep -rn EXAMPLE_ENV_KEY .`) | — |
+
+Verdicts: `unaffected` (say which part it doesn't touch) · `updated in step N` (N must be a real step) ·
+`breaks — <mitigation>` (name the shim / dual-read window / versioned field / deploy-order constraint) ·
+`none found (grep: <command>)` (genuinely zero consumers — a **complete** verdict; cite the grep).
+A §16 `CHANGE` row from the source PRD is always an entry here — carry its `↳ Breaks:` note in.
+
+**Forward compatibility:** additive-only? / versioned? / tolerant-reader? / deploy-order constraint?
+
+---
+
 ## Migration Checklist
 
 List every DB schema change and its migration.
@@ -101,6 +122,9 @@ List every DB schema change and its migration.
 - [ ] `alembic upgrade head` listed in success criteria
 - [ ] No destructive column drops without backup step
 - [ ] Rollback: `alembic downgrade -1` is safe (verified)
+- [ ] Every rename / drop / new-NOT-NULL / live-table index is planned as its multi-step **expand-contract**
+      sequence (add → backfill → dual-read → cutover → drop), not a single ALTER — the running app must
+      work against BOTH the old and the new schema. See `safe-migrations` (loaded in rplan Step 1).
 
 ---
 
@@ -159,6 +183,10 @@ Any unchecked item on a state-changing step is a **Blocking** item; unchecked co
 - [ ] API service call written out (function name + file)
 - [ ] Loading, error, empty states handled
 - [ ] Mobile/responsive noted if UI changes
+
+**Compatibility & Consumers**
+- [ ] Compatibility & Consumers filled — every changed/removed existing surface has a consumers cell (incl. `none found (grep: …)`) + a verdict, every `breaks` verdict has a mitigation step, forward-compat answered — **OR** the section reads `None — additive only`
+- [ ] Prior slices 1..N-1 read (slice plans only) — or `N/A — slice 1 / standalone`
 
 **Plan Wiring**
 - [ ] Every major flow has end-to-end call chain written out

@@ -48,11 +48,17 @@ A section is PRESENT only if it has real content — not headings, not "N/A", no
 | 5 | Implementation Completeness Checklist (all items `[x]`) | | |
 | 6 | Branch Points (or explicit "none") | | |
 | 7 | Success Criteria (testable, not vague) | | |
+| 8 | Compatibility & Consumers (`None — additive only` is a valid, complete answer; heading absent ⇒ check the plan's era via the `**Prior slices:**` header — see scan rules) | | |
 
 **Scan rules:**
 - Steps row saying "update frontend" or "add endpoint" without exact file+function = MISSING
 - Role Coverage with only one role when feature affects multiple = INCOMPLETE
 - Plan Wiring with "Component → API" but no service name and no DB model = INCOMPLETE
+- Compatibility & Consumers listing a changed surface whose Consumers/Verdict cells are blank, or a `breaks` verdict with no mitigation step = INCOMPLETE (`none found (grep: …)` is a **complete** verdict, not a blank one)
+- Compatibility & Consumers heading **entirely absent** — decide by the plan's **era**, don't assume it. `template.md` ≥ 0.24.0 emits BOTH a `**Prior slices:**` header and the compat section, so the header dates the plan:
+  - compat heading absent **AND** `**Prior slices:**` header absent → the plan predates 0.24.0 → ✅ PRESENT, note `predates 0.24.0`. The section was never retroactive.
+  - compat heading absent **BUT** `**Prior slices:**` header present → a 0.24.0-era plan that dropped the section → ❌ MISSING.
+  A plan that HAS the compat heading but leaves it blank is INCOMPLETE by the rule above. Absence-with-era-evidence is grandfathered; emptiness, and absence in a current-era plan, are not.
 - Checklist with any `[ ]` = INCOMPLETE
 
 **If ALL ✅:**
