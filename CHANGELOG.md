@@ -2,6 +2,48 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.25.0 — 2026-07-29
+
+**`docs/project-context.md` gets a scope, a reader, and a writer** (item I5).
+
+The file was written once by `/saki-builder:init-env` as three open-ended bullets — "business context
+expanded · architecture overview · key decisions and constraints" — and then **read by nobody and
+updated by nobody**: `grep -rn "project-context" config/` returned three hits, all inside `init-env`
+referring to itself. It rotted from the first commit. Meanwhile the *derivable* half of "what is this
+system" was already covered and auto-refreshed — `graphify-out/GRAPH_REPORT.md` (god nodes, communities,
+surprising edges; rebuilt by post-commit and post-checkout hooks) is read by seven skills, and
+`/saki-builder:arch-check` measures per-module tier on demand. So a free-prose revival would have been a
+second source of truth with no tiebreak, the exact failure `arch-check` forbids.
+
+The genuine gap is narrower. Graphify's extraction is AST/import-based and same-language, so it *cannot
+see* a network call, an HTTP route dispatch, or a queue publish/subscribe — it reports **no path**
+between two services that are genuinely coupled at runtime. And no graph carries intent: why a boundary
+exists, which invariants hold, what is deliberately absent. That gap, and only that gap, is what the
+revived file holds.
+
+- **The contract** — new `config/docs/project-context-contract.md`. One rule: *derivable ⇒ banned*, with
+  a table naming the owner of every banned category (god nodes, communities, per-file descriptions,
+  module LOC, architecture tier, business narrative). Three allowed sections — **Topology** (deployables
+  + the cross-boundary edges between them, cited `path:line`), **Invariants**, **Deliberate non-goals**.
+  Plus a skeleton, a cite-or-drop rule, and a **100-line ceiling** as the anti-rot guard.
+- **A reader** — `/saki-builder:rplan` §1 and `/saki-builder:prd` §0.7 Tier 1 now `cat
+  docs/project-context.md` alongside the existing graph-first read. Purely additive: no existing line
+  changed, and an absent file skips silently, so an un-upgraded project behaves exactly as before. The
+  `prd` copy also says what to do with it — a cross-boundary edge is a §16 surface the graph cannot
+  show; an invariant is a constraint a slice must not break.
+- **A writer** — `/saki-builder:wrap` gains Phase-2 sub-step **2a**, gated on three diff signals: a new
+  deployable, a new cross-boundary edge, or a new invariant. **0 signals → 0 writes** and a `Topology: ⏭`
+  line; an ordinary commit never touches the file. On a hit it updates (or bootstraps) the file and
+  stages it with the same commit. 2a is deliberately *not* a DoD gate — it sits in Phase 2, and
+  `Order is law` (DoD → commit → push → remove worktrees → switch to main) is unchanged.
+- **Scaffold on contract** — `/saki-builder:init-env` Step 3 emits the skeleton and names the banned
+  categories instead of the old free-prose brief. The file's path is unchanged.
+
+**Not retroactive.** A `docs/project-context.md` that **predates 0.25.0** was written to the old brief and
+is **off-contract, not an error**: readers consume it as-is and never validate its shape, nothing warns or
+blocks, and there is no migration to run. The first 2a trigger rewrites it in place, preserving whatever
+real topology and invariant content it already holds.
+
 ## 0.24.0 — 2026-07-27
 
 **Backward/forward compatibility + existing-capability chaining in the planning pipeline** (item I4).
