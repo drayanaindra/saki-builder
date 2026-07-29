@@ -287,6 +287,30 @@ git -C "$WT" status --porcelain   # nothing? skip this tree
 git -C "$WT" diff --stat
 ```
 
+### 2a: Topology & invariant drift (runs on the diff about to be committed)
+
+Scan the diff for the three signals that make `docs/project-context.md` stale — a **new deployable**
+(`Dockerfile*`, a new `docker-compose` service key, `Procfile`, a new entrypoint), a **new
+cross-boundary edge** (an added HTTP client call, route registration, or queue publish/subscribe), or a
+**new invariant** (an added UNIQUE/CHECK/FK constraint, transaction boundary, or auth guard).
+
+```bash
+git -C "$WT" diff HEAD -U0 | grep -icE '^\+.*(fetch\(|axios\.|http\.(Get|Post)|requests\.|httpx\.|router\.|app\.(get|post)|@app\.|\.Handle\(|publish|subscribe|CREATE UNIQUE INDEX|UNIQUE ?\(|CHECK ?\(|FOREIGN KEY|BEGIN;|\.Transaction\(|require_role|login_required)'
+```
+
+- **0 matches → skip silently.** Print `Topology: ⏭ no boundary/invariant change`. This is the common
+  case; the file is **not** touched on an ordinary commit.
+- **≥1 match →** update `docs/project-context.md` (create it from the contract's skeleton if absent),
+  editing ONLY the Topology / Invariants / Deliberate non-goals sections and the `Last verified:` stamp,
+  then stage it with the commit below. Never restate anything derivable — god nodes, communities, module
+  LOC and architecture tier belong to `graphify-out/GRAPH_REPORT.md` and `/saki-builder:arch-check`.
+  Contract (scope · banned list · skeleton · 100-line ceiling):
+  `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
+- A file **predating 0.25.0** is off-contract, not an error — rewrite it in place to the contract,
+  preserving any real topology/invariant content it already holds.
+
+This never gates: a doc that cannot be written is reported, not a reason to abandon a converged tree.
+
 Then:
 - **Stage explicit paths** from `git status --porcelain` — never `git add -A` in a shared tree
 - **Entanglement guard:** any file already `M` at session start that you did not author → **safe-stop** instead of sweeping it in
@@ -419,6 +443,7 @@ If any invariant is NOT met, replace with the **Safe-stop** for the blocker.
 - **DoD gate is a hard pre-condition.** Not a warning, not a suggestion. A failing gate means the work is not done.
 - **Order is law:** DoD gate → commit → push → remove worktrees → switch to main.
 - **Stage explicit paths.** Never `git add -A` or `git add .` in a shared tree.
+- **2a never gates.** It is a Phase-2 action, not a DoD gate — `Order is law` (DoD → commit → push) is unchanged. It writes `docs/project-context.md` only when the diff carries a topology or invariant signal; 0 signals means 0 writes.
 - **Verify against `origin/<branch>` after `git fetch`**, not the local checkout.
 - **Grep for conflict markers** after any merge.
 - **No force-push of the default branch.**
