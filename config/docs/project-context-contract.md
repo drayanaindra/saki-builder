@@ -82,10 +82,11 @@ Nothing to say in a section → write `None` and keep the heading.
 
 ---
 
-## Size ceiling — 100 lines
+## Size ceiling — 100 lines (applies to `docs/project-context.md`, not to this contract)
 
-Hard cap. The ceiling is the anti-rot guard, not a budget: a file over it has started restating
-derivable structure (the banned list above) or narrating history. Cut back to the three sections.
+Hard cap on the **artifact**. The ceiling is the anti-rot guard, not a budget: a `project-context.md`
+over it has started restating derivable structure (the banned list above) or narrating history. Cut
+back to the three sections.
 
 Every row carries a `path:line` citation. An uncited topology edge or invariant is a claim, not
 context — cite it or drop it.
