@@ -283,75 +283,76 @@ If ANY gate fails → **stop here**. Do not touch git.
 For the primary checkout **and every dirty worktree**, run with `git -C <worktree-path>`:
 
 ```bash
-git -C "$WT" status --porcelain   # nothing? skip this tree
+WT="<this tree's path>"            # the primary checkout ($PRIMARY from Phase 0) or a worktree path
+git -C "$WT" status --porcelain    # nothing? skip this tree
 git -C "$WT" diff --stat
 ```
-
-### 2a: Topology & invariant drift (runs on the work about to be committed)
-
-Refresh `docs/project-context.md` only when this commit could have changed the system's **shape** — a
-new deployable, a new cross-process edge, or a new invariant. Two scans, because the two cases have
-different evidence:
-
-**Scan A — new files (path-based).** New topology arrives as new files, and a new file is *untracked*,
-so `git diff` cannot see it. List new files from both sources:
-
-```bash
-NEWF=$( { git -C "$WT" diff HEAD --name-only --diff-filter=A; \
-          git -C "$WT" ls-files --others --exclude-standard; } | sort -u )
-printf '%s\n' "$NEWF" | grep -cE '(^|/)(Dockerfile|Procfile|[^/]*\.tf|docker-compose[^/]*\.ya?ml|fly\.toml|Chart\.yaml)$|(^|/)(main|server|worker|app)\.(go|py|ts|js|rb)$|(^|/)cmd/[^/]+/main\.go$'
-```
-
-**Scan B — edits to existing files (content-based).** Only *registration*, *messaging*, *DDL* and
-*auth-guard* shapes count. **Case-sensitive, `+++` headers stripped, `*.md` excluded, call-shape
-anchored** — an unanchored `grep -i` for bare words fires on `check(`, `unique(`, `router.push`,
-`npm publish` and the word "Subscribe" in prose, which would rewrite the file on nearly every commit;
-and prose *describing* a route or a constraint is not a route or a constraint, so documentation is out
-of scope by construction:
-
-```bash
-git -C "$WT" diff HEAD -U0 -- . ':(exclude)*.md' | grep -E '^\+' | grep -vE '^\+\+\+' | grep -cE \
- '\.(Publish|Subscribe|publish|subscribe|emit|consume|basicConsume)\(|(router|app|mux|r|srv)\.(Get|Post|Put|Patch|Delete|Handle|HandleFunc|get|post|put|patch|delete)\(|@(app|router)\.(get|post|put|patch|delete|route)\(|@(Get|Post|Put|Delete|Request)Mapping|ADD CONSTRAINT|CREATE UNIQUE INDEX|FOREIGN KEY|REFERENCES [A-Za-z_]+ ?\(|BEGIN TRANSACTION|\.Transaction\(|@Transactional|@UseGuards|require_role|login_required|requireAuth\('
-```
-
-Scan A's new files also get the **broad** edge check (a brand-new module's every outbound call is new
-topology): `grep -lE 'fetch\(|axios\.|http\.(Get|Post)|requests\.|httpx\.' -- $NEWF`.
-
-**Then:**
-
-- **Both scans 0 → skip silently.** Print `Topology: ⏭ no boundary/invariant change`. This is the
-  common case; the file is **not** touched on an ordinary commit.
-- **Any hit → open `$WT/docs/project-context.md` and reconcile it.** A hit means *look*, not *rewrite*:
-  if the file already describes the deployable/edge/invariant the scan found, print
-  `Topology: ✓ already current` and change nothing. Edit only when something is genuinely missing or
-  wrong — the Topology / Invariants / Deliberate non-goals sections and the `Last verified:` stamp —
-  then stage it with the commit below. This is what keeps a false-positive cheap: one read, not a
-  spurious diff.
-- **Absent file → create it** from the contract's skeleton, at `$WT/docs/project-context.md`.
-- **Off-contract file (predates 0.25.0)** → not an error. **Restructure it to the contract's three
-  sections**: keep every topology/invariant/non-goal claim it already makes, drop the rest (business
-  narrative, architecture overview, per-file notes). This is the one case where editing outside the
-  three sections is correct, because the sections do not exist yet.
-- **Enforce the ceiling you just wrote against** — `[ "$(wc -l < "$WT/docs/project-context.md")" -le 100 ]`;
-  over 100 lines means derivable content crept in, so cut before staging.
-
-Never restate anything derivable — god nodes, communities, module LOC and architecture tier belong to
-`graphify-out/GRAPH_REPORT.md` and `/saki-builder:arch-check`. Contract (scope · banned list · skeleton ·
-ceiling): `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
-
-Two known gaps, stated rather than silently missed: an outbound HTTP call added to an *existing* module
-(too common to gate on — Scan B ignores `fetch(`/`axios.`), and a new edge introduced only through
-config. Note either by hand when you know about it.
-
-This never gates: a doc that cannot be written is reported, not a reason to abandon a converged tree.
-Content 2a writes is staged **after** the Phase-1d secret scan, so it is out of that gate's scope —
-keep it to prose and `path:line` citations, never a credential or a connection string.
 
 Then:
 - **Stage explicit paths** from `git status --porcelain` — never `git add -A` in a shared tree
 - **Entanglement guard:** any file already `M` at session start that you did not author → **safe-stop** instead of sweeping it in
 - **Conflict-marker hygiene:** `grep -rnE '^(<{7}|={7}|>{7})' <touched-files>` — never commit live markers
-- Commit with a clear message. No force, no amend of pushed commits.
+- Run **2a** below, then commit with a clear message. No force, no amend of pushed commits.
+
+### 2a: Topology & invariant drift
+
+Runs **after staging, before the commit**, on the paths you just staged. Refresh
+`docs/project-context.md` only when this commit changed the system's **shape**: a new deployable, a new
+cross-process edge, or a system-wide invariant.
+
+**Check 1 — new deployable or migration (filenames only, a closed set).**
+
+```bash
+TREE="${WT:-$PRIMARY}"
+git -C "$TREE" diff --cached --name-only --diff-filter=A \
+| grep -cE '(^|/)(Dockerfile|Procfile|fly\.toml|Chart\.yaml|serverless\.ya?ml|kustomization\.ya?ml|[^/]*\.tf)$|(^|/)(docker-)?compose[^/]*\.ya?ml$|(^|/)(main|server|worker|index|app|Program|Main)\.(go|py|ts|js|rb|rs|java|cs)$|(^|/)(migrations?|db/migrate)/' || true
+```
+
+Filenames are enumerable, so this check has no false-positive tail. `|| true` because `grep -c` exits
+1 on the zero case, which is the *common* case, not an error.
+
+**Check 2 — the judgment call (this is deliberate, not a gap).**
+
+You have just read this diff to write the commit message. Answer one question honestly:
+
+> Did this commit add a **deployable**, a **cross-process edge** (HTTP / queue / RPC between two of our
+> own processes), or a **system-wide invariant** (a constraint, a transaction boundary, an auth rule
+> that other code must not violate)?
+> **If you cannot point at a specific added line, the answer is no.**
+
+There is deliberately **no content grep** here. Two review rounds established that any pattern broad
+enough to catch a route registration also fires on `req.Header.Get(`, `buffer.get(`, `container.get(`,
+`eventBus.emit(`, `npm publish` and the word "Subscribe" in prose — an always-on trigger rewrites this
+file on every commit, which is precisely the rot the contract exists to prevent. A trigger that cries
+wolf is worse than one honest question.
+
+**Then — every outcome gets a token; none is silent:**
+
+| Situation | Action | Token |
+|---|---|---|
+| Check 1 = 0 **and** Check 2 = no | change nothing | `Topology: ⏭ no shape change` |
+| Signal, and the file already covers it | change nothing | `Topology: ✓ already current` |
+| Signal, and the file is missing it | edit the Topology / Invariants / Deliberate non-goals sections + the `Last verified:` stamp | `Topology: ✎ updated` |
+| File absent | create it at `$TREE/docs/project-context.md` from the contract skeleton | `Topology: + created` |
+| File exists but has none of the three `##` headings (this is the off-contract test — there is no version stamp to read) | restructure into the three sections: keep every topology / invariant / non-goal claim it makes, drop the rest. The one case where editing outside the three sections is correct, because they do not exist yet | `Topology: ⇄ restructured` |
+| Write fails, or the tree is not writable | report and move on — never abandon a converged tree | `Topology: ⚠ not written (<reason>)` |
+
+Check the order top-to-bottom: *absent* and *off-contract* are decided **before** the edit rule, so the
+restricted-edit instruction never applies to a file whose sections do not exist.
+
+**After any write**, check the ceiling and say what you found:
+`L=$(wc -l < "$TREE/docs/project-context.md"); [ "$L" -le 100 ] && echo "ceiling ok ($L)" || echo "over ceiling ($L) — cut derivable content you added"`.
+Only cut lines **you** added; never delete pre-existing content you did not author inside someone
+else's commit.
+
+Never restate anything derivable — god nodes, communities, module LOC and architecture tier belong to
+`graphify-out/GRAPH_REPORT.md` and `/saki-builder:arch-check`. Contract (scope · banned list · skeleton ·
+ceiling): `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
+
+Then `git -C "$TREE" add docs/project-context.md` so the refresh lands in the same commit.
+
+This never gates. Content 2a writes is staged **after** the Phase-1d secret scan, so it is out of that
+gate's scope — keep it to prose and `path:line` citations, never a credential or a connection string.
 
 ---
 

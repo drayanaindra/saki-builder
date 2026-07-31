@@ -118,5 +118,7 @@ A `docs/project-context.md` that **predates 0.25.0** was written to the old free
 - **Refresh on signal, never on schedule.** `/saki-builder:wrap` Phase 2a looks only when the commit adds
   a deployable, a cross-process edge, or an invariant — an ordinary commit must not touch this file. A
   signal opens an inspection, not an automatic rewrite: if the file already covers what fired, 2a
-  changes nothing.
+  changes nothing. 2a detects this with a closed filename set plus one judgment question, **not** a
+  content grep over the diff — any pattern broad enough to catch a route registration also fires on
+  `req.Header.Get(` and `buffer.get(`, and an always-on refresh is the rot this file exists to prevent.
 - **Absence is fine.** Every reader skips silently when the file is missing. It is context, not a gate.
