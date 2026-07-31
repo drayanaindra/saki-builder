@@ -182,8 +182,11 @@ If `graphify-out/GRAPH_REPORT.md` is absent:
 **Non-derivable context (pairs with the graph — run in the same breath):**
 
 ```bash
-cat docs/project-context.md 2>/dev/null || true
+cat "$(git rev-parse --show-toplevel 2>/dev/null || echo .)/docs/project-context.md" 2>/dev/null || true
 ```
+
+(Repo-root-bound on purpose: a bare `cat docs/…` run from a monorepo subdirectory returns nothing, and
+absence is designed to be silent — so the miss would be indistinguishable from "no file".)
 
 The graph gives you derivable structure; this file gives you what no AST can see — deployables
 and the cross-process edges between them (graphify reports *no path* across a language/process

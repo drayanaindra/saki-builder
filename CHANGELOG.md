@@ -8,8 +8,10 @@ All notable changes to the saki-builder plugin. Versions track `.claude-plugin/p
 
 The file was written once by `/saki-builder:init-env` as three open-ended bullets — "business context
 expanded · architecture overview · key decisions and constraints" — and then **read by nobody and
-updated by nobody**: `grep -rn "project-context" config/` returned three hits, all inside `init-env`
-referring to itself. It rotted from the first commit. Meanwhile the *derivable* half of "what is this
+updated by nobody**: at 0.24.0 `git grep -c project-context -- config/` returned four hits — three in
+`config/skills/init-env/SKILL.md` referring to itself, one in the stale `config/antigravity-skills/`
+hand-port for another engine (still off-contract; excluded here, tracked separately). No reader, no
+updater. It rotted from the first commit. Meanwhile the *derivable* half of "what is this
 system" was already covered and auto-refreshed — `graphify-out/GRAPH_REPORT.md` (god nodes, communities,
 surprising edges; rebuilt by post-commit and post-checkout hooks) is read by seven skills, and
 `/saki-builder:arch-check` measures per-module tier on demand. So a free-prose revival would have been a
@@ -31,18 +33,29 @@ revived file holds.
   changed, and an absent file skips silently, so an un-upgraded project behaves exactly as before. The
   `prd` copy also says what to do with it — a cross-boundary edge is a §16 surface the graph cannot
   show; an invariant is a constraint a slice must not break.
-- **A writer** — `/saki-builder:wrap` gains Phase-2 sub-step **2a**, gated on three diff signals: a new
-  deployable, a new cross-boundary edge, or a new invariant. **0 signals → 0 writes** and a `Topology: ⏭`
-  line; an ordinary commit never touches the file. On a hit it updates (or bootstraps) the file and
-  stages it with the same commit. 2a is deliberately *not* a DoD gate — it sits in Phase 2, and
-  `Order is law` (DoD → commit → push → remove worktrees → switch to main) is unchanged.
+- **A writer** — `/saki-builder:wrap` gains Phase-2 sub-step **2a**, with two scans because the two cases
+  carry different evidence. **Scan A (paths)** catches a new deployable or entrypoint by *filename*,
+  reading `git ls-files --others` as well as the diff — new topology arrives as new files, and a new file
+  is untracked, so `git diff` alone cannot see it. **Scan B (content)** catches edges and invariants added
+  to existing files, matching *call and DDL shapes* case-sensitively with `+++` headers stripped
+  (`router.post(` / `mux.HandleFunc(` / `.Publish(` / `ADD CONSTRAINT` / `@UseGuards`), never bare words —
+  an unanchored case-insensitive word match fires on `check(`, `unique(`, `router.push`, `npm publish` and
+  the word "Subscribe" in prose, which would rewrite the file on nearly every commit. **Both scans 0 → 0
+  writes** and a `Topology: ⏭` line. A hit **opens an inspection, not a rewrite**: if the file already
+  covers what fired, 2a prints `✓ already current` and changes nothing, so a false positive costs one read
+  rather than a spurious diff. The 100-line ceiling is measured (`wc -l`) before staging. 2a is
+  deliberately *not* a DoD gate — it sits in Phase 2, and `Order is law` (DoD → commit → push → remove
+  worktrees → switch to main) is unchanged. Two gaps are stated rather than silently missed: an outbound
+  HTTP call added to an *existing* module, and an edge introduced only through config.
 - **Scaffold on contract** — `/saki-builder:init-env` Step 3 emits the skeleton and names the banned
   categories instead of the old free-prose brief. The file's path is unchanged.
 
 **Not retroactive.** A `docs/project-context.md` that **predates 0.25.0** was written to the old brief and
 is **off-contract, not an error**: readers consume it as-is and never validate its shape, nothing warns or
-blocks, and there is no migration to run. The first 2a trigger rewrites it in place, preserving whatever
-real topology and invariant content it already holds.
+blocks, and there is no migration to run. The first 2a trigger restructures it into the three sections —
+keeping every topology, invariant and non-goal claim it already makes and dropping the rest (business
+narrative, architecture overview, per-file notes). That is the one case where 2a edits outside the three
+sections, because the sections do not exist yet.
 
 ## 0.24.0 — 2026-07-27
 

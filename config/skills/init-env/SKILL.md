@@ -120,8 +120,12 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - Essential checklists
 
 3. **Create docs/project-context.md** — the ONE hand-written context file, scoped to what no tool derives:
-   - Read the contract first: `~/.claude/docs/project-context-contract.md` (source of truth for scope,
-     the banned list, the skeleton, and the 100-line ceiling). Emit its skeleton — three sections only:
+   - Read the contract first — `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`, falling
+     back to `~/.claude/docs/project-context-contract.md` (the symlink `install.sh` creates; a
+     marketplace-only install has the plugin path but not the symlink). It is the source of truth for
+     scope, the banned list, the skeleton, and the 100-line ceiling. **If neither path resolves, still
+     emit the three sections below** — an unreadable contract must not silently degrade the scaffold
+     back to free prose. Three sections only:
      - **Topology** — deployables (runtime + entrypoint `path:line`) and the **cross-boundary edges**
        between them (HTTP / queue / RPC, with call site + handler). This is graphify's blind spot: its
        extraction is same-language AST-based, so it sees no path across a process boundary.

@@ -99,8 +99,11 @@ A `docs/project-context.md` that **predates 0.25.0** was written to the old free
 (business context · architecture overview · key decisions). It is **off-contract, not an error**:
 
 - Readers (`rplan`, `prd`) consume it as-is — they never validate its shape.
-- The first `/saki-builder:wrap` Phase-2a trigger rewrites it in place to this contract, preserving any
-  genuine topology/invariant content it already holds and dropping the rest.
+- The first `/saki-builder:wrap` Phase-2a trigger **restructures it into the three sections**: every
+  topology, invariant and non-goal claim it already makes is kept; everything else (business narrative,
+  architecture overview, per-file notes) is dropped. This is the one case where 2a edits outside the
+  three sections, because the sections do not exist yet. Stated identically in `wrap` §2a — if the two
+  ever disagree, this file wins.
 - Nothing fails, warns, or blocks on an off-contract file. There is no migration to run.
 
 ---
@@ -110,7 +113,10 @@ A `docs/project-context.md` that **predates 0.25.0** was written to the old free
 - **Derivable ⇒ banned.** The table above names the owner for each banned category; point at the owner
   instead of copying it.
 - **Cite or drop.** Every topology edge and invariant carries `path:line`.
-- **100 lines, hard.** Over the ceiling means the scope leaked.
-- **Refresh on signal, never on schedule.** `/saki-builder:wrap` Phase 2a writes only when the diff shows
-  a new deployable, a new cross-boundary edge, or a new invariant — an ordinary commit must not touch it.
+- **100 lines, hard.** Over the ceiling means the scope leaked. `wrap` §2a measures it (`wc -l`) before
+  staging — a ceiling nobody checks is a wish, not a rule.
+- **Refresh on signal, never on schedule.** `/saki-builder:wrap` Phase 2a looks only when the commit adds
+  a deployable, a cross-process edge, or an invariant — an ordinary commit must not touch this file. A
+  signal opens an inspection, not an automatic rewrite: if the file already covers what fired, 2a
+  changes nothing.
 - **Absence is fine.** Every reader skips silently when the file is missing. It is context, not a gate.

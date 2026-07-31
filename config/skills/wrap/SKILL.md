@@ -287,29 +287,65 @@ git -C "$WT" status --porcelain   # nothing? skip this tree
 git -C "$WT" diff --stat
 ```
 
-### 2a: Topology & invariant drift (runs on the diff about to be committed)
+### 2a: Topology & invariant drift (runs on the work about to be committed)
 
-Scan the diff for the three signals that make `docs/project-context.md` stale — a **new deployable**
-(`Dockerfile*`, a new `docker-compose` service key, `Procfile`, a new entrypoint), a **new
-cross-boundary edge** (an added HTTP client call, route registration, or queue publish/subscribe), or a
-**new invariant** (an added UNIQUE/CHECK/FK constraint, transaction boundary, or auth guard).
+Refresh `docs/project-context.md` only when this commit could have changed the system's **shape** — a
+new deployable, a new cross-process edge, or a new invariant. Two scans, because the two cases have
+different evidence:
+
+**Scan A — new files (path-based).** New topology arrives as new files, and a new file is *untracked*,
+so `git diff` cannot see it. List new files from both sources:
 
 ```bash
-git -C "$WT" diff HEAD -U0 | grep -icE '^\+.*(fetch\(|axios\.|http\.(Get|Post)|requests\.|httpx\.|router\.|app\.(get|post)|@app\.|\.Handle\(|publish|subscribe|CREATE UNIQUE INDEX|UNIQUE ?\(|CHECK ?\(|FOREIGN KEY|BEGIN;|\.Transaction\(|require_role|login_required)'
+NEWF=$( { git -C "$WT" diff HEAD --name-only --diff-filter=A; \
+          git -C "$WT" ls-files --others --exclude-standard; } | sort -u )
+printf '%s\n' "$NEWF" | grep -cE '(^|/)(Dockerfile|Procfile|[^/]*\.tf|docker-compose[^/]*\.ya?ml|fly\.toml|Chart\.yaml)$|(^|/)(main|server|worker|app)\.(go|py|ts|js|rb)$|(^|/)cmd/[^/]+/main\.go$'
 ```
 
-- **0 matches → skip silently.** Print `Topology: ⏭ no boundary/invariant change`. This is the common
-  case; the file is **not** touched on an ordinary commit.
-- **≥1 match →** update `docs/project-context.md` (create it from the contract's skeleton if absent),
-  editing ONLY the Topology / Invariants / Deliberate non-goals sections and the `Last verified:` stamp,
-  then stage it with the commit below. Never restate anything derivable — god nodes, communities, module
-  LOC and architecture tier belong to `graphify-out/GRAPH_REPORT.md` and `/saki-builder:arch-check`.
-  Contract (scope · banned list · skeleton · 100-line ceiling):
-  `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
-- A file **predating 0.25.0** is off-contract, not an error — rewrite it in place to the contract,
-  preserving any real topology/invariant content it already holds.
+**Scan B — edits to existing files (content-based).** Only *registration*, *messaging*, *DDL* and
+*auth-guard* shapes count. **Case-sensitive, `+++` headers stripped, `*.md` excluded, call-shape
+anchored** — an unanchored `grep -i` for bare words fires on `check(`, `unique(`, `router.push`,
+`npm publish` and the word "Subscribe" in prose, which would rewrite the file on nearly every commit;
+and prose *describing* a route or a constraint is not a route or a constraint, so documentation is out
+of scope by construction:
+
+```bash
+git -C "$WT" diff HEAD -U0 -- . ':(exclude)*.md' | grep -E '^\+' | grep -vE '^\+\+\+' | grep -cE \
+ '\.(Publish|Subscribe|publish|subscribe|emit|consume|basicConsume)\(|(router|app|mux|r|srv)\.(Get|Post|Put|Patch|Delete|Handle|HandleFunc|get|post|put|patch|delete)\(|@(app|router)\.(get|post|put|patch|delete|route)\(|@(Get|Post|Put|Delete|Request)Mapping|ADD CONSTRAINT|CREATE UNIQUE INDEX|FOREIGN KEY|REFERENCES [A-Za-z_]+ ?\(|BEGIN TRANSACTION|\.Transaction\(|@Transactional|@UseGuards|require_role|login_required|requireAuth\('
+```
+
+Scan A's new files also get the **broad** edge check (a brand-new module's every outbound call is new
+topology): `grep -lE 'fetch\(|axios\.|http\.(Get|Post)|requests\.|httpx\.' -- $NEWF`.
+
+**Then:**
+
+- **Both scans 0 → skip silently.** Print `Topology: ⏭ no boundary/invariant change`. This is the
+  common case; the file is **not** touched on an ordinary commit.
+- **Any hit → open `$WT/docs/project-context.md` and reconcile it.** A hit means *look*, not *rewrite*:
+  if the file already describes the deployable/edge/invariant the scan found, print
+  `Topology: ✓ already current` and change nothing. Edit only when something is genuinely missing or
+  wrong — the Topology / Invariants / Deliberate non-goals sections and the `Last verified:` stamp —
+  then stage it with the commit below. This is what keeps a false-positive cheap: one read, not a
+  spurious diff.
+- **Absent file → create it** from the contract's skeleton, at `$WT/docs/project-context.md`.
+- **Off-contract file (predates 0.25.0)** → not an error. **Restructure it to the contract's three
+  sections**: keep every topology/invariant/non-goal claim it already makes, drop the rest (business
+  narrative, architecture overview, per-file notes). This is the one case where editing outside the
+  three sections is correct, because the sections do not exist yet.
+- **Enforce the ceiling you just wrote against** — `[ "$(wc -l < "$WT/docs/project-context.md")" -le 100 ]`;
+  over 100 lines means derivable content crept in, so cut before staging.
+
+Never restate anything derivable — god nodes, communities, module LOC and architecture tier belong to
+`graphify-out/GRAPH_REPORT.md` and `/saki-builder:arch-check`. Contract (scope · banned list · skeleton ·
+ceiling): `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
+
+Two known gaps, stated rather than silently missed: an outbound HTTP call added to an *existing* module
+(too common to gate on — Scan B ignores `fetch(`/`axios.`), and a new edge introduced only through
+config. Note either by hand when you know about it.
 
 This never gates: a doc that cannot be written is reported, not a reason to abandon a converged tree.
+Content 2a writes is staged **after** the Phase-1d secret scan, so it is out of that gate's scope —
+keep it to prose and `path:line` citations, never a credential or a connection string.
 
 Then:
 - **Stage explicit paths** from `git status --porcelain` — never `git add -A` in a shared tree
@@ -402,6 +438,7 @@ Definition of Done:
   ✓ SonarQube:   PASSED (or: Not configured)
 
 Git cleanup:
+  ✓ Topology:    [⏭ no boundary/invariant change | ✓ already current | updated docs/project-context.md]
   ✓ Committed:   [N commits across M trees, or "nothing to commit"]
   ✓ Pushed:      [branch → origin/branch, ahead 0]
   ✓ Worktrees:   [removed: <paths>, or "none"]
