@@ -5,7 +5,7 @@
 # Add personal @imports below (RTK, etc.)
 
 
-<!-- ↓ inlined from /Users/indrayana/claude-config/config/CLAUDE.md -->
+<!-- ↓ inlined from ~/claude-config/config/CLAUDE.md -->
 # Global Development Environment
 
 ## Execution Protocol (BLOCKING)
@@ -238,10 +238,10 @@ Niche stack-specific patterns live in their own files to keep this index focused
 - **Verify "what's on `main`" against `origin/<branch>` after a fresh `fetch` — never trust the local checkout or the board**: in multi-machine / active-remote repos (another machine or an `[auto]` bot pushes constantly), both the checkout AND any board lag reality. Footguns: planning a slice against a dep that lives only on a feature branch (grep it at `origin/main` first); calling an epic "not started" when it's already merged; a new-ID on a stale base colliding with claimed IDs (`git ls-tree -r --name-only origin/main | grep -oE 'E[0-9]+'` for the true next-free). **Push-race recovery:** on a rejected push, inspect the incoming commit's files — CANONICAL repo, no file overlap → `git pull --rebase && push`; READ-ONLY synced/generated copy → `fetch → reset --hard origin/main → regenerate → commit → push` (rebase hits whole-file conflicts on generated content). **Never force-push `main`.** **Conflict-marker hygiene:** after ANY conflict resolution, `grep -rnE '^(<{7}|={7}|>{7})'` every touched file before `git add`/`rebase --continue` (truncated output hides which files conflicted). Never `git add -A` in a shared repo — stage explicit paths. (confidence: HIGH, source: confirmed across 4 projects + many sessions, date: 2026-05-25 → 2026-06-03)
 - **Even an EXPLICIT-path `git add` captures a concurrent session's uncommitted edits in that file** — "stage explicit paths" is necessary but NOT sufficient when another agent/session edits the SAME working tree (no remote needed): `git add foo.ts` stages foo.ts's WHOLE diff vs HEAD, hunks you didn't write included. Real failure: a "focused fix" swept in another session's in-flight feature whose code `import`ed an UNTRACKED module → HEAD failed to build standalone though the working-tree `tsc` passed. Mitigations, cheapest first: (1) at session-start `git status`, any already-`M` file (or part of an in-flight feature) is entangled BEFORE you touch it; (2) `git diff --cached <file>` before commit — confirm ONLY your hunks are staged; (3) verify **HEAD itself**, not the working tree, in a throwaway `git worktree add --detach /tmp/x HEAD` (+ symlink `node_modules`, per-workspace `tsc`/test) — only this catches a feature split across the commit boundary; (4) clean-tip recovery: if your commits are the only ones on a known-good base, `git reset --mixed <base>` (zero file changes), then commit only self-contained files and leave the entangled blob for its owner. (confidence: HIGH, source: confirmed 2× on same project — concurrent same-tree editing, date: 2026-06-27)
 <!-- ↑ end ~/.claude/memory/patterns.md -->
-<!-- ↑ end /Users/indrayana/claude-config/config/CLAUDE.md -->
+<!-- ↑ end ~/claude-config/config/CLAUDE.md -->
 
 # Personal extensions (uncomment and customize):
-# @/Users/indrayana/claude-config/personal/RTK.md
+# @~/claude-config/personal/RTK.md
 # graphify
 - **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
 When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.

@@ -35,14 +35,19 @@ echo "▸ output dir   : $OUT"
 python3 - "$SRC_ROOT" > "$OUT/AGENTS.md" <<'PY'
 import os, re, sys
 
+HOME = os.path.expanduser("~")
 IMPORT = re.compile(r'^\s*@(\S+)\s*$')   # whole line is just @path
+
+def norm(s):
+    """Replace the real home path with ~ so the output is machine-portable."""
+    return s.replace(HOME, "~")
 
 def expand(path, seen, depth=0):
     rp = os.path.realpath(os.path.expanduser(path))
     if rp in seen:
-        return [f"<!-- skipped circular @import: {path} -->\n"]
+        return [f"<!-- skipped circular @import: {norm(path)} -->\n"]
     if not os.path.isfile(rp):
-        return [f"<!-- missing @import: {path} -->\n"]
+        return [f"<!-- missing @import: {norm(path)} -->\n"]
     seen = seen | {rp}
     out, in_fence = [], False
     with open(rp, encoding="utf-8") as f:
@@ -50,16 +55,16 @@ def expand(path, seen, depth=0):
             s = line.strip()
             if s.startswith("```"):
                 in_fence = not in_fence
-                out.append(line); continue
+                out.append(norm(line)); continue
             m = None if in_fence else IMPORT.match(line)
             if m:
                 imp = m.group(1)
                 base = imp if imp.startswith(("/", "~")) else os.path.join(os.path.dirname(rp), imp)
-                out.append(f"\n<!-- ↓ inlined from {imp} -->\n")
+                out.append(f"\n<!-- ↓ inlined from {norm(imp)} -->\n")
                 out.extend(expand(base, seen, depth+1))
-                out.append(f"<!-- ↑ end {imp} -->\n")
+                out.append(f"<!-- ↑ end {norm(imp)} -->\n")
             else:
-                out.append(line)
+                out.append(norm(line))
     return out
 
 root = sys.argv[1]
