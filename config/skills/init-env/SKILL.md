@@ -125,13 +125,15 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      marketplace-only install has the plugin path but not the symlink). It is the source of truth for
      scope, the banned list, the skeleton, and the 100-line ceiling. **If neither path resolves, still
      emit the three sections below** — an unreadable contract must not silently degrade the scaffold
-     back to free prose. Three sections only:
-     - **Topology** — deployables (runtime + entrypoint `path:line`) and the **cross-boundary edges**
+     back to free prose. Exactly three sections, each a **level-2 `## ` heading, spelled verbatim** —
+     `wrap` §2a treats a file with none of these three headings as off-contract and restructures it, so
+     a fallback scaffold that uses bold labels instead would be rewritten on its first trigger:
+     - `## Topology` — deployables (runtime + entrypoint `path:line`) and the **cross-boundary edges**
        between them (HTTP / queue / RPC, with call site + handler). This is graphify's blind spot: its
        extraction is same-language AST-based, so it sees no path across a process boundary.
-     - **Invariants** — rules that must hold system-wide, each with where it is enforced (`path:line`).
-     - **Deliberate non-goals** — what is intentionally absent, so nobody "helpfully" adds it back.
-     - A `Last verified: <date> (commit <sha>)` stamp.
+     - `## Invariants` — rules that must hold system-wide, each with where it is enforced (`path:line`).
+     - `## Deliberate non-goals` — what is intentionally absent, so nobody "helpfully" adds it back.
+     - A `Last verified: <date> (commit <sha>)` stamp above the first heading.
    - **Do NOT write** god nodes, communities, per-file descriptions, module LOC, architecture stage, or
      business narrative — `graphify-out/GRAPH_REPORT.md`, `/saki-builder:arch-check` and the roadmap/PRDs
      already own those, and a second copy has no tiebreak. Nothing to say in a section → `None`.

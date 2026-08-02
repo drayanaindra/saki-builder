@@ -33,8 +33,11 @@ revived file holds.
   `prd` copy also says what to do with it — a cross-boundary edge is a §16 surface the graph cannot
   show; an invariant is a constraint a slice must not break.
 - **A writer** — `/saki-builder:wrap` gains Phase-2 sub-step **2a**, running after staging on the paths
-  actually staged. **Check 1** matches *filenames only* against a closed set (Dockerfile, compose,
-  Procfile, Terraform, chart, entrypoint, `migrations/`) — enumerable, so it has no false-positive tail.
+  actually staged. **Check 1** matches *filenames only*, against the **infrastructure** that accompanies
+  a new service (Dockerfile, compose, Procfile, Terraform, chart, k8s manifest, `cmd/*/main.go`,
+  migration files). It deliberately does **not** match language entrypoints — `index.ts`, `app.ts`,
+  `main.py`, `server.js` are barrel files and modules far more often than deployables — and it is
+  narrow, not exhaustive: a zero is not proof, which is why Check 2 exists.
   **Check 2 is a judgment call, deliberately not a content grep**: the agent has just read the diff to
   write the commit message, so it answers one question — did this add a deployable, a cross-process edge,
   or a system-wide invariant? — with the rule *if you cannot point at a specific added line, the answer is

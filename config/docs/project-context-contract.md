@@ -96,7 +96,12 @@ context — cite it or drop it.
 ## Grandfathering
 
 A `docs/project-context.md` that **predates 0.25.0** was written to the old free-prose brief
-(business context · architecture overview · key decisions). It is **off-contract, not an error**:
+(business context · architecture overview · key decisions).
+
+**The operative test is section absence, not the version** — the artifact carries no version stamp, so
+"predates 0.25.0" is not readable at runtime: a file is off-contract when it has **none** of the three
+`## Topology` / `## Invariants` / `## Deliberate non-goals` headings. It is **off-contract, not an
+error**:
 
 - Readers (`rplan`, `prd`) consume it as-is — they never validate its shape.
 - The first `/saki-builder:wrap` Phase-2a trigger **restructures it into the three sections**: every
