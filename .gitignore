@@ -28,6 +28,7 @@ debug/
 file-history/
 telemetry/
 plugins/
+!opencode/plugins/
 tasks/
 todos/
 plans/

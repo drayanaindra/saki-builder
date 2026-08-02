@@ -126,16 +126,46 @@ if [[ -d "$AGENTS_SRC_DIR" ]]; then
   for f in "$AGENTS_SRC_DIR"/*.md; do
     [[ -e "$f" ]] || continue
     python3 - "$f" "$OUT/agent/$(basename "$f")" <<'PY'
-import sys
+import re, sys
 src, dst = sys.argv[1], sys.argv[2]
 lines = open(src, encoding="utf-8").read().splitlines(keepends=True)
+
+# Map Claude Code named colors -> OpenCode valid values (semantic or hex)
+COLOR_MAP = {
+    "yellow": "warning", "orange": "warning",
+    "blue": "info",   "cyan": "info",
+    "green": "success",
+    "red": "error",   "pink": "error",
+    "purple": "accent", "violet": "accent",
+}
+
+def transform_fm_line(line):
+    # Drop tools: entirely — OpenCode schema expects object|undefined, not a CSV string
+    if re.match(r'^\s*tools\s*:', line):
+        return None
+    # Map color: <name> -> OpenCode valid semantic color
+    m = re.match(r'^(\s*color\s*:\s*)(\S+)\s*$', line)
+    if m:
+        val = m.group(2).strip('"\'')
+        mapped = COLOR_MAP.get(val.lower())
+        if mapped:
+            return f"{m.group(1)}{mapped}\n"
+    return line
+
 if lines and lines[0].strip() == "---":
     end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
-    fm = lines[1:end] if end else []
-    if not any(l.strip().startswith("mode:") for l in fm):
-        lines.insert(1, "mode: subagent\n")
+    if end:
+        fm_lines = lines[1:end]
+        new_fm = [transform_fm_line(l) for l in fm_lines]
+        new_fm = [l for l in new_fm if l is not None]
+        if not any(l.strip().startswith("mode:") for l in new_fm):
+            new_fm.insert(0, "mode: subagent\n")
+        lines = ["---\n"] + new_fm + lines[end:]
+    else:
+        if not any(l.strip().startswith("mode:") for l in lines[1:]):
+            lines.insert(1, "mode: subagent\n")
 else:
-    lines = ["---\nmode: subagent\n---\n"] + lines   # no frontmatter -> add minimal
+    lines = ["---\nmode: subagent\n---\n"] + lines
 open(dst, "w", encoding="utf-8").write("".join(lines))
 PY
     n=$((n+1))
@@ -143,13 +173,65 @@ PY
 fi
 echo "✓ agent/         ($n files)"
 
-# ── 4. optional install: symlink into ~/.config/opencode/ ──────────────────────
+# ── 4. skills → opencode/commands/*.md ─────────────────────────────────────────
+SKILLS_SRC_DIR="$REPO/config/skills"
+python3 - "$SKILLS_SRC_DIR" "$OUT/commands" <<'PY'
+import os, re, sys
+
+skills_dir, out_dir = sys.argv[1], sys.argv[2]
+os.makedirs(out_dir, exist_ok=True)
+
+FM_DELIM = re.compile(r'^---\s*$')
+
+def parse_skill(path):
+    lines = open(path, encoding='utf-8').read().splitlines(keepends=True)
+    name = desc = None
+    body_start = 0
+    if lines and FM_DELIM.match(lines[0]):
+        end = next((i for i in range(1, len(lines)) if FM_DELIM.match(lines[i])), None)
+        if end:
+            fm = ''.join(lines[1:end])
+            m = re.search(r'^name:\s*(.+)$', fm, re.MULTILINE)
+            if m: name = m.group(1).strip().strip('"\'')
+            m = re.search(r'^description:\s*(.+)$', fm, re.MULTILINE)
+            if m: desc = m.group(1).strip().strip('"\'')
+            body_start = end + 1
+    body = ''.join(lines[body_start:]).strip()
+    return name, desc, body
+
+n = 0
+for entry in sorted(os.listdir(skills_dir)):
+    entry_path = os.path.join(skills_dir, entry)
+    if os.path.isdir(entry_path):
+        skill_file = os.path.join(entry_path, 'SKILL.md')
+        if not os.path.isfile(skill_file): continue
+        path, skill_name = skill_file, entry
+    elif entry.endswith('.md'):
+        path, skill_name = entry_path, entry[:-3]
+    else:
+        continue
+    fm_name, desc, body = parse_skill(path)
+    cmd_name = fm_name or skill_name
+    header = '---\n'
+    if desc:
+        safe_desc = desc.replace('"', '\\"')
+        header += f'description: "{safe_desc}"\n'
+    header += '---\n\n'
+    with open(os.path.join(out_dir, f'{cmd_name}.md'), 'w', encoding='utf-8') as f:
+        f.write(header + body + '\n')
+    n += 1
+PY
+echo "✓ commands/      ($(ls "$OUT/commands" | wc -l | tr -d ' ') files)"
+
+# ── 5. optional install: symlink into ~/.config/opencode/ ──────────────────────
 if [[ "$INSTALL" == "1" ]]; then
   DEST="$HOME/.config/opencode"
-  mkdir -p "$DEST"
-  ln -sfn "$OUT/AGENTS.md"     "$DEST/AGENTS.md"
-  ln -sfn "$OUT/opencode.json" "$DEST/opencode.json"
-  ln -sfn "$OUT/agent"         "$DEST/agent"
+  mkdir -p "$DEST/plugins"
+  ln -sfn "$OUT/AGENTS.md"                 "$DEST/AGENTS.md"
+  ln -sfn "$OUT/opencode.json"             "$DEST/opencode.json"
+  ln -sfn "$OUT/agent"                     "$DEST/agent"
+  ln -sfn "$OUT/commands"                  "$DEST/commands"
+  ln -sfn "$OUT/plugins/safety-hooks.ts"   "$DEST/plugins/safety-hooks.ts"
   echo "✓ installed → $DEST (symlinks)"
 fi
 
@@ -157,9 +239,9 @@ fi
 cat <<'EOF'
 
 ── done. Still needs a human (out of scope for static generation): ──
-  • Hooks: settings.json hooks (sonar-gate, rtk-rewrite, secrets, dangerous-cmd)
-    are NOT translated. Install the bridge: opencode plugin add opencode-claude-hooks
-    (github.com/magarcia/opencode-claude-hooks, ~80% drop-in), or port to JS plugins.
+  • Hooks: safety-hooks.ts is symlinked into ~/.config/opencode/plugins/ (when --install
+    is used). It covers dangerous-cmd, force-push, secrets, and pre-push quality gates.
+    No "opencode plugin add" command exists — plugins are files in the plugins/ directory.
   • Orchestration skills (/build, /rplan→/approved→/qa→/reviewer): they run as
     markdown but the Agent/Skill multi-agent control flow is Claude-runtime-specific.
     Re-express in opencode's agent system before relying on /build.

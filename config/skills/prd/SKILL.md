@@ -207,6 +207,24 @@ graphify path "ProposedModule" "ExistingModule"   # confirm coupling the PRD ass
 
 If absent: skip. ≥20 files → note once: *"Consider `/saki-builder:graphify .` for richer §16."*
 
+**Non-derivable context (pairs with the graph — run in the same breath):**
+
+```bash
+cat "$(git rev-parse --show-toplevel 2>/dev/null || echo .)/docs/project-context.md" 2>/dev/null || true
+```
+
+(Repo-root-bound on purpose: a bare `cat docs/…` run from a monorepo subdirectory returns nothing, and
+absence is designed to be silent — so the miss would be indistinguishable from "no file".)
+
+The graph gives you derivable structure; this file gives you what no AST can see — deployables
+and the cross-process edges between them (graphify reports *no path* across a language/process
+boundary even when the two are genuinely coupled), the invariants that must hold, and what is
+deliberately absent. A cross-boundary edge it names is a §16 surface the graph cannot show you;
+an invariant it names is a constraint a slice must not break. Cite it like any other anchor
+(`docs/project-context.md § Topology`). Absent → skip silently; it is written by
+`/saki-builder:init-env` and refreshed by `/saki-builder:wrap`.
+Contract: `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
+
 Grep/read the codebase to verify every technical claim before writing anything:
 - Code confirms it → tag `observed`, note `path:line` internally
 - Code contradicts it → fix the claim

@@ -179,6 +179,22 @@ If `graphify-out/GRAPH_REPORT.md` is absent:
   cheaper research? (skipping proceeds with file reads)"
 - <20 files → skip silently.
 
+**Non-derivable context (pairs with the graph — run in the same breath):**
+
+```bash
+cat "$(git rev-parse --show-toplevel 2>/dev/null || echo .)/docs/project-context.md" 2>/dev/null || true
+```
+
+(Repo-root-bound on purpose: a bare `cat docs/…` run from a monorepo subdirectory returns nothing, and
+absence is designed to be silent — so the miss would be indistinguishable from "no file".)
+
+The graph gives you derivable structure; this file gives you what no AST can see — deployables
+and the cross-process edges between them (graphify reports *no path* across a language/process
+boundary even when the two are genuinely coupled), the invariants that must hold, and what is
+deliberately absent. Cite it like any other anchor (`docs/project-context.md § Topology`).
+Absent → skip silently; it is written by `/saki-builder:init-env` and refreshed by
+`/saki-builder:wrap`. Contract: `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
+
 **Spike Protocol (XP):** If during research you encounter an unknown that cannot be resolved by reading code (e.g., third-party API behavior, performance characteristics, library compatibility), run a timeboxed spike:
 1. Spawn a subagent with a 15-minute timebox question. For genuinely **external** unknowns (third-party API/library behavior, current pricing/limits, ecosystem facts), the spike may use `WebSearch` / `/deep-research` / a connected MCP server — not only code reading.
 2. Spike output must include: question answered, approach tried, key findings, recommendation, remaining unknowns

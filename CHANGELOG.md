@@ -2,6 +2,71 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.25.0 — 2026-07-29
+
+**`docs/project-context.md` gets a scope, a reader, and a writer** (item I5).
+
+The file was written once by `/saki-builder:init-env` as three open-ended bullets — "business context
+expanded · architecture overview · key decisions and constraints" — and then **read by nobody and
+updated by nobody**: at 0.24.0 `git grep -c project-context -- config/` returned four hits — three in
+`config/skills/init-env/SKILL.md` referring to itself, one in `config/antigravity-skills/init-env.md`.
+No reader, no updater. It rotted from the first commit. Meanwhile the *derivable* half of "what is this
+system" was already covered and auto-refreshed — `graphify-out/GRAPH_REPORT.md` (god nodes, communities,
+surprising edges; rebuilt by post-commit and post-checkout hooks) is read by seven skills, and
+`/saki-builder:arch-check` measures per-module tier on demand. So a free-prose revival would have been a
+second source of truth with no tiebreak, the exact failure `arch-check` forbids.
+
+The genuine gap is narrower. Graphify's extraction is AST/import-based and same-language, so it *cannot
+see* a network call, an HTTP route dispatch, or a queue publish/subscribe — it reports **no path**
+between two services that are genuinely coupled at runtime. And no graph carries intent: why a boundary
+exists, which invariants hold, what is deliberately absent. That gap, and only that gap, is what the
+revived file holds.
+
+- **The contract** — new `config/docs/project-context-contract.md`. One rule: *derivable ⇒ banned*, with
+  a table naming the owner of every banned category (god nodes, communities, per-file descriptions,
+  module LOC, architecture tier, business narrative). Three allowed sections — **Topology** (deployables
+  + the cross-boundary edges between them, cited `path:line`), **Invariants**, **Deliberate non-goals**.
+  Plus a skeleton, a cite-or-drop rule, and a **100-line ceiling** as the anti-rot guard.
+- **A reader** — `/saki-builder:rplan` §1 and `/saki-builder:prd` §0.7 Tier 1 now `cat
+  docs/project-context.md` alongside the existing graph-first read. Purely additive: no existing line
+  changed, and an absent file skips silently, so an un-upgraded project behaves exactly as before. The
+  `prd` copy also says what to do with it — a cross-boundary edge is a §16 surface the graph cannot
+  show; an invariant is a constraint a slice must not break.
+- **A writer** — `/saki-builder:wrap` gains Phase-2 sub-step **2a**, running after staging on the paths
+  actually staged. **Check 1** matches *filenames only*, against the **infrastructure** that accompanies
+  a new service (Dockerfile, compose, Procfile, Terraform, chart, k8s manifest, `cmd/*/main.go`,
+  migration files). It deliberately does **not** match language entrypoints — `index.ts`, `app.ts`,
+  `main.py`, `server.js` are barrel files and modules far more often than deployables — and it is
+  narrow, not exhaustive: a zero is not proof, which is why Check 2 exists.
+  **Check 2 is a judgment call, deliberately not a content grep**: the agent has just read the diff to
+  write the commit message, so it answers one question — did this add a deployable, a cross-process edge,
+  or a system-wide invariant? — with the rule *if you cannot point at a specific added line, the answer is
+  no*. Two adversarial review rounds established why: any regex broad enough to catch a route registration
+  also fires on `req.Header.Get(`, `buffer.get(`, `container.get(`, `eventBus.emit(`, `npm publish` and the
+  word "Subscribe" in prose. An always-on trigger rewrites the file on every commit — exactly the rot the
+  contract exists to prevent — so one honest question beats a pattern that cries wolf. **No signal → no
+  write** and a `Topology: ⏭` line. A signal **opens an inspection, not a rewrite**: if the file already
+  covers it, 2a prints `✓ already current` and changes nothing. Every outcome carries a token (`⏭ ✓ ✎ + ⇄
+  ⚠`) so no branch is silent, and the 100-line ceiling is measured (`wc -l`) after any write. 2a is
+  deliberately *not* a DoD gate — it sits in Phase 2, and `Order is law` (DoD → commit → push → remove
+  worktrees → switch to main) is unchanged.
+- **Scaffold on contract** — `/saki-builder:init-env` Step 3 emits the three sections and the
+  `Last verified:` stamp, and names the banned categories, instead of the old free-prose brief. The
+  file's path is unchanged.
+
+**Known gap, stated not hidden.** `config/antigravity-skills/init-env.md` still carries the old
+free-prose brief, and it is **live** — `setup-antigravity.sh:78` symlinks it into the Antigravity
+workflow paths. So that engine still scaffolds off-contract files, which 2a's grandfathering then has to
+restructure. Excluded from this change by a documented No-Go (it is a separate hand-maintained port for
+a different engine); it needs its own item, and the exclusion is **not** because the port is unused.
+
+**Not retroactive.** A `docs/project-context.md` that **predates 0.25.0** was written to the old brief and
+is **off-contract, not an error**: readers consume it as-is and never validate its shape, nothing warns or
+blocks, and there is no migration to run. The first 2a trigger restructures it into the three sections —
+keeping every topology, invariant and non-goal claim it already makes and dropping the rest (business
+narrative, architecture overview, per-file notes). That is the one case where 2a edits outside the three
+sections, because the sections do not exist yet.
+
 ## 0.24.0 — 2026-07-27
 
 **Backward/forward compatibility + existing-capability chaining in the planning pipeline** (item I4).

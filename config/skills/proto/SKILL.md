@@ -13,7 +13,9 @@ This is a *preview*, not a build. Hold the line on what it is and isn't:
 
 - **It IS faithful on**: layout, component selection, visual hierarchy, copy, look-and-feel,
   responsive behavior, **page composition within the real app shell** (nav / header / sidebar around
-  the slice), and the per-state look (loading / error / empty / validation / permission).
+  the slice), **consistency with the product's analogous shipped pages** (a new screen reads as this
+  app's next iteration, not a standalone bolt-on), and the per-state look (loading / error / empty /
+  validation / permission).
 - **It IS only approximate on**: live data density, real content lengths, true edge cases —
   these are mocked, not real.
 - **It is NOT**: a backend, real data fetching, state logic, validation rules, business-rule
@@ -361,8 +363,21 @@ only then ask three questions per screen: **(a) where does a component need to b
 existing component needs to *scale* (a variant)?** **(c) how does the user *interact* here, and does the
 current component set support that interaction?** Those three questions ARE the gap analysis (2.5) — 2.4 is
 the "look first" that must precede them. So for any screen that **modifies an existing page**, capture that
-page's **current-state screenshot** as the visual baseline you design the delta against (a brand-new screen
-with no predecessor skips this — there is nothing to look at yet).
+page's **current-state screenshot** as the visual baseline you design the delta against.
+
+**A brand-new screen has no direct predecessor — but it is NEVER a blank canvas (BLOCKING anchor).** It
+always has a **nearest-analogous shipped page**: the closest same-product surface by *shape* — a list, a
+detail view, a form, a wizard step, a settings pane, a dashboard. Find it (grep the real feature dirs for the
+same shape, not the same nouns), open it, and make ITS composition the baseline the new screen inherits:
+**page scaffold** (where the header / primary action / sidebar sit), **content density + spacing rhythm**,
+and the **interaction model** (how rows / cards / forms behave elsewhere in THIS app). A net-new feature that
+invents its own layout paradigm — even from perfectly correct design-system components — reads as *a different
+product bolted on*, not this product's next iteration. That anchor is the whole difference between
+"design-wise correct" and "looks like the same app grew a feature," and its absence is the #1 cause of a
+proto that feels standalone per-task instead of continuous product development. Record the chosen anchor in
+the Reuse Map (below); it is what Step 2.5's page-consistency check and Step 5d's coherence check verify
+against. Only if a genuinely-honest search finds NO analogous shipped surface (a first-of-its-kind product
+shape) is there nothing to anchor to — say so explicitly in `reuse-map.md`, don't skip silently.
 
 Gate 2 detected the design *system* (primitives + shell) and the *app shell import path*. That is not
 enough: a journey usually reuses **existing feature-level implementation** too — a page already built, a
@@ -402,7 +417,10 @@ New Product (form)      ProductForm               NEW              — (spec in 
   re-approximates an EXISTING component into a "design-wise correct but different" version. The fidelity
   target is the **existing app's look**, not a fresh design of it.
 - **PRIMITIVE** → a design-system primitive (Gate 2) → use as-is.
-- **NEW** → no equivalent exists → flows to Step 2.5 for a spec. **Only genuinely-absent surfaces.**
+- **NEW** → no equivalent exists → flows to Step 2.5 for a spec. **Only genuinely-absent surfaces.** Each
+  NEW *screen* row MUST also record its **anchor** — the nearest-analogous shipped page it inherits
+  composition from (`anchor: <page> @ <path>`), or `anchor: none (first-of-shape)` if an honest search found
+  none. A NEW *component* inherits its anchor from the screen it lives on; it needs no separate one.
 
 **Reuse-first is the rule, not a preference:** if a screen is largely already implemented, proto's job is
 to mount the real implementation with mock data — not to redesign it. Do NOT send an EXISTING component to
@@ -529,7 +547,20 @@ For every ⚠️ and ❌, produce a **component spec** that thinks like a UI/UX 
    syntax.
 5. **States** — hover, focus, disabled, loading, error, selected — only what the component actually needs
 6. **Accessibility** — ARIA role, keyboard behavior, contrast check (4.5:1 minimum)
-7. **Consistency check** — name 2–3 closest existing components; note deviations and why
+7. **Consistency check (component + page)** — name 2–3 closest existing components; note deviations and why.
+   **For a net-new screen, ALSO name its Step-2.4 anchor page and the composition it inherits** — layout
+   paradigm, header / primary-action placement, density + spacing rhythm, interaction model — and justify
+   every deviation from it. An unjustified new layout paradigm is the defect that makes a feature read as a
+   standalone product; if the screen genuinely needs a paradigm the anchor can't host, that is a 🔶 (design
+   change), not a silent divergence.
+   **When the Step-2.4 anchor is `none` (first-of-shape — a page shape the app has never had),
+   page-anchoring is impossible; fidelity then rests on the materials + idioms that DO have siblings:**
+   (i) compose inside the real app shell — never a bare page; (ii) real design-system tokens/primitives
+   only — build any new pattern to the design-system-contract + the `frontend-design` skill, never
+   free-hand it; (iii) borrow the app's cross-cutting idioms — empty / loading / selection states, panel
+   chrome, spacing rhythm — from existing screens even though the layout is new (*new composition, same
+   vocabulary*). Mark the screen **`first-of-shape`** so Step 7 eyeballs it hardest: it is the one screen
+   with no sibling to auto-check against, so it carries the highest residual look-risk.
 
 Present the gap analysis as a labelled table before rendering. Example format (library-based project
 — MUI-style; replace token format with the project's actual format):
@@ -827,6 +858,28 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   (The Reuse Map is guaranteed present + non-empty here by the **Step 5 Grounding gate**, so this provenance
   grep can never pass *vacuously* on an absent/empty map — the hole that once shipped reinvented components.
   This bullet checks the render's *content*; the gate guarantees the *contract* exists.)
+- **Anchor-coherence check (net-new screens — the "same product" gate):** the provenance grep above proves a
+  screen used real *components*; it does NOT prove a NEW screen composes like the rest of the app. For every
+  NEW screen with a Step-2.4 `anchor` (not `none`), verify its harness **imports the same app shell as the
+  anchor page** and **composes within it** (same header / primary-action placement and sidebar use), rather
+  than mounting a bespoke full-page layout. Mechanically: the shell import path must be present, and the
+  screen must not introduce its own top-level page chrome (`<header>` / bespoke nav / a full-bleed root that
+  bypasses the shell). If a NEW screen renders outside the shell or invents a layout paradigm the anchor
+  doesn't use **without a 2.5-recorded 🔶 justification**, **HARD-STOP: "net-new screen diverges from its
+  anchor `<page>` — compose within the shell / mirror its scaffold, or record the paradigm change as a 🔶."**
+  **Match the import PATH, never the bare component name** — grep for `from '<recorded-path>'` (or the aliased
+  form), not `CloneOverlay`/`LiveLog` as a word: the name appears in the harness's own header comment
+  ("reuses `LiveLog`…"), so a bare-name grep false-passes on a divergent harness that only *mentions* the
+  anchor in prose. Anchor the pattern to a real `import` line (same comment-trap as parsing mixed tool/model
+  output — match the structural token, not the word).
+  This is the render-time backstop for the "per-task standalone" defect — it catches at capture time what the
+  2.4 anchor and 2.5 page-consistency check specify, so the human at Step 7 never has to.
+  **A `none` (first-of-shape) screen is exempt from this *mirror* check — there is no sibling to mirror —
+  but NOT from coherence:** it must still pass the universal shell/provenance import above (composed in the
+  real shell, real tokens, no bespoke page chrome) AND carry the `first-of-shape` flag into `index.md`. The
+  coherence it can't get from a sibling comes from the shell + real materials; the flag routes the residual
+  look-risk to the Step-7 human. So `none` is never a silent escape from every check — only from the one
+  check that needs a sibling that doesn't exist.
 - **Serve & verify:** getting a server up is **Step 5.5** (self-run) — it reuses a running one, else boots
   it, triages a failed boot, and records `devserver.json`. Do not restate that logic here. Once 5.5 reports
   READY, smoke-test the route with `curl` (expect HTTP 200, no `Failed to compile`).

@@ -1,0 +1,320 @@
+---
+description: "Scaffold the Claude Code development environment for a new project. Creates CLAUDE.md, hooks, agents, and project structure."
+---
+
+# Initialize Project Environment
+
+Set up the Claude Code production development environment for this project: $ARGUMENTS
+
+## Invocation modes
+
+Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule for Step 1:
+
+- **Interactive (default)** — a human ran `/saki-builder:init-env`. Ask for project name, business context, key
+  constraints as normal.
+- **Non-interactive / PRD-driven** — `$ARGUMENTS` contains a path to a PRD (e.g.
+  `tasks/prd-*.md` / `docs/prd/**/prd.md`), OR no `$ARGUMENTS` were given but a `tasks/prd-*.md`
+  exists in the repo. This happens when a tool (e.g. pipeline-studio) runs `/saki-builder:init-env` headless in a
+  SINGLE turn before a build. In this mode you have **no human to ask** and **one turn to finish** —
+  so do NOT run the full 14-step Process below. Instead run this **LEAN, BOUNDED scaffold** and
+  complete ALL of it before stopping:
+
+  > **Headless scaffold — do every item, in order, then STOP. You are NOT done until
+  > `.claude/.env-init.json` exists AND you have committed.** Do not pause, do not ask, do not
+  > narrate alternatives — just create the files.
+  >
+  > 0. Read the PRD; DERIVE project name, business context, constraints, and **tech stack** from it
+  >    (TL;DR / problem / JTBD / any stack notes). For an empty repo with no stack files, infer the
+  >    stack from the PRD ("a Next.js app" → Node/TS). Default anything unstated; never prompt.
+  >    If an existing `.claude/` is FOREIGN, back it up first (see Step 1 backup rule).
+  > 1. `CLAUDE.md` (lean, <100 lines) — Step 2 below, but skip the interactive "ask user" parts.
+  > 2. `.claude/agents/reviewer.md` and `.claude/agents/qa.md` — Steps 6–7 below (these are what
+  >    `/saki-builder:build` invokes). Also `.claude/agents/planner.md` (Step 5).
+  > 3. `.claude/memory/patterns.md` and `.claude/memory/lessons-learned.md` — Step 11 below (the
+  >    `@import` target + raw inbox).
+  > 4. The marker `.claude/.env-init.json` — Step 12 below (config MUST be `$HOME`).
+  > 5. Self-commit — Step 14 below (`git add` only the created paths + `commit --no-verify`).
+  >
+  > **Deliberately SKIP in headless mode** (heavier / better done interactively later; and the hooks
+  > would interfere with the autonomous build that runs right after): git-provider auth (Step 1b —
+  > login needs a human), the design engine (Step 1c — needs a human choice + the Figma MCP),
+  > `.claude/settings.json` hooks (Step 4), `docs/project-context.md` (Step 3),
+  > `.claude/hooks/` scripts (Step 8), skill overrides (Step 9), Playwright infra (Step 10), the
+  > product roadmap (Step 11b). The operator can run `/saki-builder:init-env` interactively later to
+  > add these.
+
+## Process
+
+1. **Detect project context**:
+   - Read package.json, pyproject.toml, go.mod, Cargo.toml to detect tech stack
+   - Check for existing CLAUDE.md, .claude/ directory
+   - Identify test framework, linter, type checker
+   - **Interactive mode:** ask user for project name, business context, key constraints.
+     **Non-interactive / PRD-driven mode:** derive all of these from the PRD (see "Invocation modes") — do NOT ask.
+   - **If an existing `.claude/` is FOREIGN** (present but `.claude/.env-init.json` is missing or its
+     `config` ≠ this machine's `$HOME` — i.e. it came from another saki-builder install, so its `@import`
+     paths / hook scripts / agents won't resolve here): back it up FIRST —
+     `ts=$(date +%Y%m%d-%H%M%S); mv .claude ".claude.bak-$ts"; [ -f CLAUDE.md ] && mv CLAUDE.md "CLAUDE.md.bak-$ts"` —
+     then scaffold fresh below. Never overwrite a foreign `.claude/` in place.
+
+1b. **Set up git-provider access** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
+    Full MR/PR/commit/review access needs the repo's provider CLI installed and authenticated. Run
+    the read-only detector from the repo root and act on its `status`:
+    ```bash
+    ~/.claude/hooks/repo-auth-setup.sh
+    ```
+    It classifies the git remote's host → provider CLI (`*github*` → `gh`, `*gitlab*` → `glab`,
+    including self-hosted like `gitlab.example.com`) and reports install + auth state:
+
+    | status | do this |
+    |--------|---------|
+    | `READY` | ✓ note "authed to HOST as ACCOUNT"; confirm access with the printed `glab mr list` / `gh pr list`, then continue |
+    | `NEEDS_INSTALL` | tell the user to run the printed `action` themselves (e.g. `! brew install glab`), then re-run the detector |
+    | `NEEDS_LOGIN` | tell the user to run the printed `action` themselves (e.g. `! glab auth login --hostname HOST`) — the token MUST NOT pass through chat (secrets rule) — then re-run to confirm `READY` |
+    | `NO_REMOTE` (fresh project) | ask which provider they want (GitHub / GitLab / a self-hosted host); install the CLI if missing, have them `! <cli> auth login`, then re-check with the chosen host: `~/.claude/hooks/repo-auth-setup.sh . <host>`. Offer `git remote add origin <url>` if they have the URL. |
+    | `UNKNOWN_HOST` | ask whether HOST is GitHub or GitLab, then treat it as that provider and re-check |
+
+    **Never** run `auth login` yourself and **never** accept a pasted token — the user completes the
+    interactive login in their own terminal via the `!` prefix; the detector is read-only and only
+    tells you the exact command. An MCP-based git-provider server is an optional advanced alternative,
+    but the CLI already covers MR/commit/review — defer MCP unless the user asks for it.
+
+1c. **Choose + record the design engine** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
+    `/saki-builder:proto` can preview a PRD two ways — **native** (render the project's real design system
+    into an HTML gallery; the canonical path `/saki-builder:build` reads) or **figma** (use a connected
+    Figma design as the SOURCE via the Figma MCP, routed by seat capability). Record the project's choice
+    so proto routes on it:
+    ```bash
+    ~/.claude/hooks/design-engine-setup.sh detect
+    ```
+    Then ask the user **native or figma** (default **native** — always available, no external dependency):
+    - **native** → `~/.claude/hooks/design-engine-setup.sh record --engine native`
+    - **figma** → verify the live Figma MCP + seat by calling the Figma MCP **`whoami`** tool (a bash hook
+      cannot see the MCP — you MUST call the tool yourself):
+      - **Not connected** → tell the user to connect the Figma MCP (Figma desktop app running, or the
+        first-party Figma plugin authed), then re-check. If they can't connect now, record `native` and
+        note they can re-run this step later.
+      - **Connected** → read the seat and map it → capability: `view`/`dev` → **read** (design-to-code
+        only); `edit`/`editor`/`full`/`design` → **write** (read + can also export to canvas); unknown →
+        **read** (conservative). Ask for the Figma **source file URL** proto should read from, then record:
+        ```bash
+        ~/.claude/hooks/design-engine-setup.sh record --engine figma \
+          --seat <seat> --capability <read|write> --source "<figma-file-url>" --handle "<whoami handle>"
+        ```
+    `whoami` returns only a handle + seat tier (not secrets), so nothing sensitive passes through chat. The
+    record lands at `.claude/design-engine.json`; `/saki-builder:proto` Step 0 reads it and routes.
+
+2. **Create project CLAUDE.md** (lean, <100 lines):
+   - Project identity and business context
+   - Tech stack and key commands Claude can't guess
+   - @import global execution protocol
+   - @import DDD patterns: `@~/.claude/docs/ddd-patterns.md`
+   - @import modular architecture: `@~/.claude/docs/modular-architecture.md`
+   - @import project-local learned patterns: `@.claude/memory/patterns.md` — the promoted store for THIS repo (created in Step 11). Auto-loads project-specific patterns so `/saki-builder:prd`/`/saki-builder:rplan`/`/saki-builder:build` recall them. Do NOT import `lessons-learned.md` (raw inbox — keeps context lean).
+   - Detect project stage (Stage 1-4) based on model count, file sizes, team size
+   - Add a "Bounded Contexts" table (ask user or infer from project structure)
+   - Add "Architecture Stage" section noting current stage and transition triggers
+   - Project-specific rules only (don't duplicate global)
+   - Essential checklists
+
+3. **Create docs/project-context.md** — the ONE hand-written context file, scoped to what no tool derives:
+   - Read the contract first — `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`, falling
+     back to `~/.claude/docs/project-context-contract.md` (the symlink `install.sh` creates; a
+     marketplace-only install has the plugin path but not the symlink). It is the source of truth for
+     scope, the banned list, the skeleton, and the 100-line ceiling. **If neither path resolves, still
+     emit the three sections below** — an unreadable contract must not silently degrade the scaffold
+     back to free prose. Exactly three sections, each a **level-2 `## ` heading, spelled verbatim** —
+     `wrap` §2a treats a file with none of these three headings as off-contract and restructures it, so
+     a fallback scaffold that uses bold labels instead would be rewritten on its first trigger:
+     - `## Topology` — deployables (runtime + entrypoint `path:line`) and the **cross-boundary edges**
+       between them (HTTP / queue / RPC, with call site + handler). This is graphify's blind spot: its
+       extraction is same-language AST-based, so it sees no path across a process boundary.
+     - `## Invariants` — rules that must hold system-wide, each with where it is enforced (`path:line`).
+     - `## Deliberate non-goals` — what is intentionally absent, so nobody "helpfully" adds it back.
+     - A `Last verified: <date> (commit <sha>)` stamp above the first heading.
+   - **Do NOT write** god nodes, communities, per-file descriptions, module LOC, architecture stage, or
+     business narrative — `graphify-out/GRAPH_REPORT.md`, `/saki-builder:arch-check` and the roadmap/PRDs
+     already own those, and a second copy has no tiebreak. Nothing to say in a section → `None`.
+   - Single-deployable project → one Topology row plus the invariants; still worth writing.
+   - `/saki-builder:wrap` Phase 2a refreshes this file when a diff adds a deployable, a cross-boundary
+     edge, or an invariant — so it stays true instead of rotting from the first commit.
+
+4. **Create .claude/settings.json** with hooks:
+
+   For Python projects:
+   - PostToolUse:Edit|Write -> run type checker (mypy/pyright)
+   - PreToolUse (git commit hook script) -> run tests (pytest)
+
+   For TypeScript/JavaScript projects:
+   - PostToolUse:Edit|Write -> run type checker (tsc --noEmit)
+   - PreToolUse (git commit hook script) -> run tests (jest/vitest)
+
+   For Go projects:
+   - PostToolUse:Edit|Write -> run vet (go vet)
+   - PreToolUse (git commit hook script) -> run tests (go test)
+
+5. **Create .claude/agents/planner.md**:
+   - Read-only planning subagent
+   - Tools: Read, Grep, Glob, WebFetch, WebSearch
+   - Model: sonnet (fast, good enough for exploration)
+
+6. **Create .claude/agents/reviewer.md**:
+   - Fresh-context code reviewer
+   - Tools: Read, Grep, Glob, Bash
+   - Model: opus (thorough review needs best model)
+
+7. **Create .claude/agents/qa.md**:
+   - Copy from global template: `~/.claude/agents/qa.md`
+   - The global template auto-detects the stack at runtime (Python/Go/TS/Rust)
+   - No customization needed — it reads `pyproject.toml`, `package.json`, etc. to pick the right commands
+   - This agent is invoked by Claude programmatically (not by user via /saki-builder:qa)
+   - Usage by orchestrator Claude: `Agent(subagent_type="qa", prompt="Verify criteria for: [task]. Plan: [path]")`
+
+8. **Create .claude/hooks/ scripts** (if needed):
+   - protect-files.sh (block edits to .env, lock files — project-specific patterns)
+   - pre-commit-check.sh (run tests before commit)
+   - NOTE: `dangerous-command-guard.sh` is already active globally via the saki-builder plugin.
+     It blocks DROP DB/TABLE, destructive rm, git push --force main, migrate down/force/drop, curl|sh, etc.
+     Do NOT recreate it per-project — it applies automatically to all projects.
+
+9. **Scaffold project-specific skill overrides** in `.claude/skills/`:
+
+   Create `.claude/skills/rplan-review/SKILL.md` tailored to the detected stack.
+   Use the global `~/.claude/skills/rplan-review/SKILL.md` as the base structure, but replace
+   the generic expert agent prompts with project-specific ones:
+
+   | Stack detected | Expert agents to generate |
+   |----------------|--------------------------|
+   | Go | Go Engineer (ctx, error handling, service layer patterns) |
+   | Python/FastAPI | Python Engineer (Pydantic, async, dependency injection) |
+   | Rust | Rust Engineer (ownership, error types, async runtime) |
+   | Next.js/React | Frontend Engineer (App Router or Pages Router, state, auth) |
+   | Vue/Nuxt | Frontend Engineer (Composition API, Pinia, SSR) |
+   | PostgreSQL | DB/Security (migrations, RLS if multi-tenant, SQL safety) |
+   | MySQL/SQLite | DB/Security (migrations, query safety) |
+   | Multi-tenant | add RLS/tenant isolation checks to DB agent |
+
+   Each agent prompt must include:
+   - The project's specific conventions (from CLAUDE.md)
+   - File path patterns specific to this project
+   - Domain-specific blockers (e.g., missing tenant guard for multi-tenant apps)
+   - Output format: `[DOMAIN] REVIEW / Blockers / Warnings` (Phase 3 classifies each as Blocking/Advisory — do NOT propose a numeric adjustment)
+
+   Also create `.claude/skills/qa/SKILL.md` as a project override that extends the global
+   qa skill's Playwright logic. The override should:
+   - Document the project's API base URL and dev server start command
+   - Note any project-specific auth strategy (JWT keys, cookie name, OAuth vs token)
+   - Leave Playwright generation logic (Step 1.5 template) unchanged — it is project-agnostic
+
+   Optionally create `.claude/skills/prd-review/SKILL.md` as a project override when the repo
+   has domain-specific judges or a house style. Use the global as the base structure and:
+   - Replace the four judge prompts with project-specific lenses (domain metric model, house JTBD style)
+   - Keep Phase 1's executable-criteria gate (`[auto]`/`[manual]` tag, invariant failure-path) and
+     the Phase 3 manual-test checklist unchanged — both are project-agnostic and load-bearing
+   - Document the project's `[auto]` verification commands (curl base URL, test runner) so the
+     manual-test checklist cleanly separates from what `/saki-builder:qa` will automate
+
+10. **Scaffold Playwright test infrastructure** (if frontend detected):
+
+   a. Install dotenv if not present: `npm install dotenv --save-dev`
+   
+   b. Create `e2e/fixtures/auth.ts` using the `base.extend<>` fixture pattern:
+   ```typescript
+   // Fill in the auth strategy for this project (replace the comment below)
+   import { test as base } from '@playwright/test';
+   type AuthFixtures = { loginWithToken: (token: string) => Promise<void> };
+   export const test = base.extend<AuthFixtures>({
+     loginWithToken: async ({ page }, use) => {
+       await use(async (token: string) => {
+         test.skip(!process.env.TEST_JWT, 'TEST_JWT not set');
+         // TODO: replace with this project's auth strategy
+         // e.g. localStorage keys, cookie name, session storage key
+         await page.addInitScript(
+           ({ accessToken, refreshToken }: { accessToken: string; refreshToken: string }) => {
+             localStorage.setItem('access_token', accessToken);
+             localStorage.setItem('refresh_token', refreshToken);
+           },
+           { accessToken: token, refreshToken: 'placeholder-refresh' },
+         );
+       });
+       await page.evaluate(() => localStorage.clear());
+     },
+   });
+   export { expect } from '@playwright/test';
+   ```
+   
+   c. Add `dotenv.config({ path: '.env.test' })` to top of `playwright.config.ts`
+      (Playwright does NOT auto-load `.env.test` — Next.js does, Playwright doesn't)
+   
+   d. Create `e2e/qa-generated/.gitkeep`
+   
+   e. Add to `.gitignore`:
+   ```
+   .env.test
+   e2e/qa-generated/*.spec.ts
+   ```
+   
+   f. Create `.env.test` with placeholder:
+   ```
+   TEST_JWT=
+   ```
+   Note to user: "Fill in TEST_JWT with a long-lived (≥24h) dev token for Playwright auth tests"
+
+11. **Initialize memory** (two files, two roles — mirror the global `~/.claude/memory/` split):
+   - Create `.claude/memory/lessons-learned.md` (empty template) — the **raw inbox**. `/saki-builder:retro`
+     appends session learnings here. **NOT** imported into CLAUDE.md (unpromoted/noisy — keeping it
+     out keeps always-on context lean).
+   - Create `.claude/memory/patterns.md` (empty template) — the **promoted store**. `/saki-builder:reflect` writes
+     confirmed project-specific patterns here. This is the file the project CLAUDE.md `@import`s
+     (Step 2), so promoted patterns auto-load into `/saki-builder:prd` / `/saki-builder:rplan` / `/saki-builder:build`. Seed it with a
+     header comment: `# Project Learned Patterns` + `> Promoted by /saki-builder:reflect from lessons-learned.md.
+     Auto-loaded via CLAUDE.md. Raw notes live in lessons-learned.md.`
+
+11b. **Offer the product roadmap** (INTERACTIVE mode only — SKIP in headless/PRD-driven mode):
+    disciplined product work starts from a roadmap of items. Ask once:
+    `Set up a product roadmap now? It's how work gets started — /saki-builder:add categorizes each item
+    (epic · feature · improvement · bug) and routes it. (y/n)`
+    - **y** → scaffold `tasks/roadmap.md` via `/saki-builder:roadmap init` (ask for the product name, default
+      the repo name), then offer to add the first 1–3 items with `/saki-builder:add`. Don't force it — one
+      item is enough to demonstrate the flow; the rest can be added later.
+    - **n** → skip; note the operator can run `/saki-builder:roadmap init` + `/saki-builder:add` anytime. Do not
+      block init on this.
+
+12. **Write the init marker** `.claude/.env-init.json` — the durable "this repo's Claude env was
+    initialized by THIS config" stamp that tools use to detect env state. Write exactly:
+    ```bash
+    cat > .claude/.env-init.json <<EOF
+    {
+      "tool": "pipeline-studio-init-env",
+      "config": "$HOME",
+      "version": 1,
+      "createdAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    }
+    EOF
+    ```
+    `config` MUST be the literal value of `$HOME` so a repo carrying a marker from another machine/config
+    reads as FOREIGN (its `config` won't match this `$HOME`).
+
+13. **Verify**:
+    - Run a test hook to confirm it works
+    - Show summary of what was created
+
+14. **Non-interactive / PRD-driven mode only — self-commit the env** so the repo is clean before any
+    downstream build branches:
+    - Stage ONLY the paths this skill ACTUALLY created (never `git add -A` — don't sweep unrelated/
+      concurrent edits; and never name a path you didn't create — `git add` of a missing pathspec
+      exits non-zero and stages nothing, breaking the commit). For the LEAN headless scaffold that is
+      exactly: `git add CLAUDE.md .claude`. (Only add `docs/project-context.md` / `e2e` / `.env.test`
+      etc. if a fuller scaffold actually created them — they are SKIPPED in lean headless mode.)
+    - Commit with the hook bypass so the just-installed pre-commit test hook can't block a project
+      that has no tests yet: `git -c commit.gpgsign=false commit --no-verify -m "chore(claude-env): initialize Claude environment"`.
+    - (Interactive mode: leave the changes unstaged for the human to review/commit — do NOT self-commit.)
+
+## Tech Stack Detection
+
+| File | Stack | Type Checker | Test Runner | Linter |
+|------|-------|-------------|-------------|--------|
+| pyproject.toml | Python | mypy | pytest | ruff |
+| package.json | Node/TS | tsc --noEmit | vitest/jest | eslint |
+| go.mod | Go | go vet | go test | golangci-lint |
+| Cargo.toml | Rust | cargo check | cargo test | clippy |
