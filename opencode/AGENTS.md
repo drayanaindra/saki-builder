@@ -242,3 +242,6 @@ Niche stack-specific patterns live in their own files to keep this index focused
 
 # Personal extensions (uncomment and customize):
 # @/Users/indrayana/claude-config/personal/RTK.md
+# graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
