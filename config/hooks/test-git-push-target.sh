@@ -81,5 +81,24 @@ no "push -u origin HEAD off main" 'git push -u origin HEAD'
 git checkout -q main
 
 echo
+echo "push_command_cwd — the repo the push runs in, not the shell's cwd:"
+eq() { # label expected actual
+	if [ "$2" = "$3" ]; then pass=$((pass + 1)); printf '  ok    %s\n' "$1"
+	else fail=$((fail + 1)); printf '  FAIL  %s — expected [%s] got [%s]\n' "$1" "$2" "$3"; fi
+}
+mkdir -p "$TMP/elsewhere"
+eq "no cd -> PWD"            "$PWD"            "$(push_command_cwd 'git push origin main')"
+eq "cd <abs> && push"        "$TMP/elsewhere"  "$(push_command_cwd "cd $TMP/elsewhere && git push origin main")"
+eq "git -C <dir> push"       "$TMP/elsewhere"  "$(push_command_cwd "git -C $TMP/elsewhere push origin main")"
+eq "cd to a missing dir"     "$PWD"            "$(push_command_cwd 'cd /no/such/dir && git push origin main')"
+
+# The repo a push targets decides the branch, not the shell's cwd: this work tree is on
+# main, the sibling clone is on a feature branch — a bare push there must NOT match.
+git clone -q "$TMP/remote.git" "$TMP/other" 2>/dev/null
+git -C "$TMP/other" checkout -q -b feature/other
+no "bare push in a repo on a feature branch" "cd $TMP/other && git push"
+ok "bare push back in the main work tree"    "cd $TMP/work && git push"
+
+echo
 printf 'passed=%s failed=%s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

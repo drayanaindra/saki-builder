@@ -73,7 +73,10 @@ SONAR_URL="${SONAR_URL:-http://localhost:9000}"
 # ─── Find project key ────────────────────────────────────────────────────────
 
 find_sonar_props() {
-  local dir="${PWD}"
+  # Walk up from the repo the PUSH runs in, not from the shell's cwd — otherwise
+  # `cd ~/other-repo && git push origin main` is gated against whatever project the
+  # shell happened to be sitting in.
+  local dir="${1:-$PWD}"
   while [ "$dir" != "/" ]; do
     if [ -f "$dir/sonar-project.properties" ]; then
       echo "$dir/sonar-project.properties"
@@ -84,7 +87,7 @@ find_sonar_props() {
   return 1
 }
 
-SONAR_PROPS="$(find_sonar_props)"
+SONAR_PROPS="$(find_sonar_props "$(push_command_cwd "$COMMAND")")"
 if [ -z "$SONAR_PROPS" ]; then
   exit 0  # Not a SonarQube project — skip gate
 fi

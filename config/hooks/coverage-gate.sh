@@ -96,9 +96,11 @@ read_hook_command() {
 		2>/dev/null
 }
 
-# find_up REL_SUBPATH → prints the first REL_SUBPATH found walking PWD → /.
+# find_up REL_SUBPATH [START_DIR] → prints the first REL_SUBPATH found walking
+# START_DIR (default PWD) → /. START_DIR is the repo the push runs in, not the shell's
+# cwd, so `cd ~/other-repo && git push` reads that repo's coverage report.
 find_up() {
-	local rel="$1" dir="$PWD"
+	local rel="$1" dir="${2:-$PWD}"
 	while [ "$dir" != "/" ]; do
 		if [ -f "$dir/$rel" ]; then
 			echo "$dir/$rel"
@@ -120,14 +122,17 @@ main() {
 	local min="${COVERAGE_MIN:-80}"
 	local strict="${COVERAGE_STRICT:-0}"
 
+	local repo
+	repo="$(push_command_cwd "$command")"
+
 	local file="" pct="" desc=""
-	if file="$(find_up coverage/coverage-summary.json)"; then
+	if file="$(find_up coverage/coverage-summary.json "$repo")"; then
 		pct="$(parse_json_summary "$file")"; desc="coverage-summary.json"
-	elif file="$(find_up coverage.xml)"; then
+	elif file="$(find_up coverage.xml "$repo")"; then
 		pct="$(parse_cobertura "$file")"; desc="coverage.xml (Cobertura)"
-	elif file="$(find_up coverage/lcov.info)"; then
+	elif file="$(find_up coverage/lcov.info "$repo")"; then
 		pct="$(parse_lcov "$file")"; desc="lcov.info"
-	elif file="$(find_up coverage.out)"; then
+	elif file="$(find_up coverage.out "$repo")"; then
 		pct="$(parse_go_out "$file")"; desc="coverage.out (Go)"
 	else
 		file=""

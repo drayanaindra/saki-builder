@@ -26,19 +26,19 @@
 _gpt_default_branch_names() {
 	# The remote's advertised default, plus main/master as a safety net — these hooks
 	# are documented as guarding main/master specifically.
-	local detected
-	detected="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)"
+	local dir="${1:-$PWD}" detected
+	detected="$(git -C "$dir" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)"
 	detected="${detected#origin/}"
 	printf '%s\n' "$detected" main master | grep -v '^$' | sort -u
 }
 
-# _gpt_is_default_branch NAME → 0 when NAME is a default-branch name.
+# _gpt_is_default_branch NAME [DIR] → 0 when NAME is a default-branch name.
 _gpt_is_default_branch() {
-	local name="$1"
+	local name="$1" dir="${2:-$PWD}"
 	[ -n "$name" ] || return 1
 	name="${name#+}"          # force-push marker
 	name="${name#refs/heads/}"
-	_gpt_default_branch_names | grep -qxF "$name"
+	_gpt_default_branch_names "$dir" | grep -qxF "$name"
 }
 
 # _gpt_strip_quotes_and_comments STR → STR with quoted spans and #-comments removed.
@@ -105,12 +105,40 @@ _gpt_push_args() {
 	return 0
 }
 
-# _gpt_current_branch_targets → the default-branch-relevant names a bare `git push`
-# would update: the current branch, and its upstream's remote branch (push.default
-# =upstream means a locally-renamed branch can still land on main).
+# _gpt_current_branch_targets [DIR] → the default-branch-relevant names a bare
+# `git push` would update: the current branch, and its upstream's remote branch
+# (push.default=upstream means a locally-renamed branch can still land on main).
 _gpt_current_branch_targets() {
-	git rev-parse --abbrev-ref HEAD 2>/dev/null
-	git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null | sed 's#^[^/]*/##'
+	local dir="${1:-$PWD}"
+	git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null
+	git -C "$dir" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null | sed 's#^[^/]*/##'
+}
+
+# push_command_cwd COMMAND → the directory the push would actually run in.
+#
+# `cd ~/other-repo && git push origin main` runs in ~/other-repo, but a hook's own PWD
+# is wherever the shell happens to be. Judging the push against the shell's directory
+# gates the wrong repository — it blocked a legitimate push to one repo by reading a
+# different project's quality gate. `git -C <dir> push` wins over a preceding `cd`.
+push_command_cwd() {
+	local cleaned seg dir="$PWD" candidate
+	cleaned="$(_gpt_strip_quotes_and_comments "${1:-}")"
+	while IFS= read -r seg; do
+		# shellcheck disable=SC2086
+		set -- $seg
+		[ $# -gt 0 ] || continue
+		if [ "$1" = "cd" ] && [ -n "${2:-}" ]; then
+			candidate="${2/#\~/$HOME}"
+			case "$candidate" in
+				/*) dir="$candidate" ;;
+				*) dir="$dir/$candidate" ;;
+			esac
+		elif [ "$1" = "git" ] && [ "${2:-}" = "-C" ] && [ -n "${3:-}" ]; then
+			candidate="${3/#\~/$HOME}"
+			[ -d "$candidate" ] && dir="$candidate"
+		fi
+	done < <(_gpt_segments "$cleaned")
+	[ -d "$dir" ] && printf '%s' "$dir" || printf '%s' "$PWD"
 }
 
 # _gpt_refspec_dst REFSPEC → the destination ref (right of ':', or the whole thing).
@@ -122,9 +150,10 @@ _gpt_refspec_dst() {
 	esac
 }
 
-# _gpt_segment_targets_default SEGMENT → 0 when this one command pushes to a default branch.
+# _gpt_segment_targets_default SEGMENT [DIR] → 0 when this one command pushes to a
+# default branch, resolving refs against DIR (the repo the push runs in).
 _gpt_segment_targets_default() {
-	local args
+	local args dir="${2:-$PWD}"
 	args="$(_gpt_push_args "$1")" || return 1
 
 	local -a positional=() flags=()
@@ -152,12 +181,13 @@ _gpt_segment_targets_default() {
 		for ((idx = 1; idx < ${#positional[@]}; idx++)); do
 			dst="$(_gpt_refspec_dst "${positional[$idx]}")"
 			if [ "$dst" = "HEAD" ]; then
-				_gpt_current_branch_targets | while IFS= read -r b; do
-					_gpt_is_default_branch "$b" && exit 0
-				done && return 0
+				local h
+				while IFS= read -r h; do
+					_gpt_is_default_branch "$h" "$dir" && return 0
+				done < <(_gpt_current_branch_targets "$dir")
 				continue
 			fi
-			_gpt_is_default_branch "$dst" && return 0
+			_gpt_is_default_branch "$dst" "$dir" && return 0
 		done
 		return 1
 	fi
@@ -166,19 +196,20 @@ _gpt_segment_targets_default() {
 	# old grep missed entirely — `git push` while sitting on main.
 	local b
 	while IFS= read -r b; do
-		_gpt_is_default_branch "$b" && return 0
-	done < <(_gpt_current_branch_targets)
+		_gpt_is_default_branch "$b" "$dir" && return 0
+	done < <(_gpt_current_branch_targets "$dir")
 	return 1
 }
 
 # command_pushes_to_default_branch COMMAND → 0 when the command would update main/master.
 command_pushes_to_default_branch() {
-	local cleaned seg
+	local cleaned seg dir
 	cleaned="$(_gpt_strip_quotes_and_comments "${1:-}")"
 	[ -n "$cleaned" ] || return 1
+	dir="$(push_command_cwd "${1:-}")"
 	while IFS= read -r seg; do
 		[ -n "$seg" ] || continue
-		_gpt_segment_targets_default "$seg" && return 0
+		_gpt_segment_targets_default "$seg" "$dir" && return 0
 	done < <(_gpt_segments "$cleaned")
 	return 1
 }
