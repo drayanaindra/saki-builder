@@ -6,15 +6,31 @@
 # Server source: ~/.sonar/sonarqube-cli/state.json (activeConnectionId → serverUrl)
 # If SonarQube is unreachable: warns and allows push (infra failure ≠ code failure).
 
-COMMAND="${CLAUDE_TOOL_INPUT_COMMAND:-}"
+# ─── Read the command being run ──────────────────────────────────────────────
+# PreToolUse hooks receive their payload as JSON on stdin; the Bash command lives at
+# .tool_input.command. There is no CLAUDE_TOOL_INPUT_COMMAND env var — relying on one
+# left COMMAND empty, so the grep below never matched and this gate allowed every push.
+# `[ -t 0 ]` keeps a manual run from hanging on a terminal stdin.
+STDIN_JSON=""
+[ -t 0 ] || STDIN_JSON="$(cat 2>/dev/null)"
 
-# Only trigger on git push targeting main/master
-if ! echo "$COMMAND" | grep -qE 'git\s+push\b'; then
+COMMAND="${CLAUDE_TOOL_INPUT_COMMAND:-}"
+if [ -z "$COMMAND" ] && [ -n "$STDIN_JSON" ] && command -v python3 >/dev/null 2>&1; then
+  COMMAND="$(printf '%s' "$STDIN_JSON" | python3 -c \
+    'import json,sys;print(json.load(sys.stdin).get("tool_input",{}).get("command",""))' 2>/dev/null)"
+fi
+
+# Only trigger on a git push that would actually update main/master. The matcher is
+# shared with coverage-gate.sh so the two gates can never disagree about what counts.
+_GATE_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/git-push-target.sh"
+if [ ! -r "$_GATE_LIB" ]; then
+  echo "WARNING: sonar-gate: ${_GATE_LIB} missing — cannot identify push target, allowing." >&2
   exit 0
 fi
-if ! echo "$COMMAND" | grep -qE '\b(main|master)\b'; then
-  exit 0
-fi
+# shellcheck source=./lib/git-push-target.sh
+. "$_GATE_LIB"
+
+command_pushes_to_default_branch "$COMMAND" || exit 0
 
 # ─── Resolve SonarQube connection ────────────────────────────────────────────
 
@@ -116,14 +132,19 @@ case "$STATUS" in
     exit 0
     ;;
   *)
-    echo "BLOCKED: SonarQube quality gate is ${STATUS} for project '${PROJECT_KEY}'."
-    echo ""
-    echo "Resolve failing conditions before pushing to main:"
-    echo "  /sonarqube:sonar-quality-gate   — see gate breakdown"
-    echo "  /sonarqube:sonar-list-issues    — see blocking issues"
-    echo ""
-    echo "After fixing: re-run analysis, verify gate is PASSED, then push."
-    echo "To push without this check, run the git command manually outside Claude Code."
-    exit 1
+    # Exit 2 is the ONLY code that blocks a PreToolUse tool call; exit 1 is a
+    # non-blocking error and the push would proceed. On exit 2 stdout is discarded
+    # and stderr is what gets surfaced — so the whole message goes to stderr.
+    {
+      echo "BLOCKED: SonarQube quality gate is ${STATUS} for project '${PROJECT_KEY}'."
+      echo ""
+      echo "Resolve failing conditions before pushing to main:"
+      echo "  /sonarqube:sonar-quality-gate   — see gate breakdown"
+      echo "  /sonarqube:sonar-list-issues    — see blocking issues"
+      echo ""
+      echo "After fixing: re-run analysis, verify gate is PASSED, then push."
+      echo "To push without this check, run the git command manually outside Claude Code."
+    } >&2
+    exit 2
     ;;
 esac
