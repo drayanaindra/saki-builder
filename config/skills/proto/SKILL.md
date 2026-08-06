@@ -129,7 +129,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 5. **Approval is proven ONLY by the lock marker (Step 8.5), never by a later artifact.** Step 7's human
    approval is in-context and not durably recorded until the lock is written. So even when `preview.html` and
    the notes exist, an **unlocked** PRD resumes at **Step 7 (re-present for approval)** — never auto-lock a run
-   whose approval you cannot see. The lock marker is the single durable proof the human said yes.
+   whose approval you cannot see. The lock markers are the durable proof the human said yes.
 6. **Partial-write safety.** A hard stop *inside* a phase can leave a half-written component (2.6) or harness
    file (5); the re-verify column catches it — a failing typecheck/provenance gate means that checkpoint is
    NOT DONE, so resume re-enters that phase and completes it rather than trusting a corrupt artifact. This is
@@ -1647,7 +1647,7 @@ that run is stamped `PARTIAL` everywhere so it can never be mistaken for full co
 
 ---
 
-## Step 8.5 — Lock the PRD (the explicit freeze before `/saki-builder:build`)
+## Step 8.5 — Lock the approval (the explicit freeze before `/saki-builder:build`)
 
 This is the **terminal act of the PRD phase**: with the UI/UX approved (Step 7) and the journey fully
 captured (Coverage Gate passed), **freeze the requirements** so `/saki-builder:build` — which hard-refuses an
@@ -1656,12 +1656,15 @@ locks here after approval; a no-UI PRD (GATE 1 branch) jumps straight here on th
 Do **not** lock a `PARTIAL` (`--slice=N`) run — a partial preview hasn't approved the whole journey; print
 `Not locking — PARTIAL run (--slice). Re-run /saki-builder:proto with no --slice to lock.` and skip this step.
 
-Write the approval into **two** artifacts. `<@approver>` = the PRD header `Owner` if set, else
+Write the approval into the gallery **always**, and into the PRD file **when it exists** (two artifacts in PRD-first order, one in proto-first). `<@approver>` = the PRD header `Owner` if set, else
 `@<git config user.name>`, else `unassigned`; `<YYYY-MM-DD>` = `date +%F`. Never emit either before the
 human has approved (Step 7 / the no-UI confirm) — the marker IS the approval record.
 
 1. **Gallery marker (always)** — write `tasks/proto-<slug>/.prd-locked` containing one line:
-   `<@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/`  (`ui:none` for a no-UI PRD).
+   `<@approver> · <YYYY-MM-DD> · prd:prd-<slug>.md · ui:tasks/proto-<slug>/`  (`ui:none` for a no-UI PRD).
+   The `prd:` field names the PRD this approval froze. GATE 1.5 verifies it against the PRD it was
+   handed, so one gallery's approval can never be inherited by a different file that happens to derive
+   the same slug.
    This is the artifact that exists in **both** pipeline orders. The gallery is proto's own output, so it
    is always present at Step 8.5 — whereas the PRD file is only guaranteed in PRD-first order.
 2. **Header marker (when the PRD file exists)** — add, in the PRD's top comment block, on its own line:
@@ -1679,7 +1682,7 @@ Then announce it plainly:
 🔒 APPROVAL LOCKED — requirements frozen (tasks/proto-<slug>/.prd-locked · Status: Locked · ui:tasks/proto-<slug>/).
    /saki-builder:build tasks/prd-<slug>.md can now proceed (it refuses an unlocked PRD).
 ```
-The lock is `/saki-builder:proto`'s one write-back into the PRD — it **never** edits scope, criteria, or rules
+The lock is `/saki-builder:proto`'s only write-back into the PRD — it **never** edits scope, criteria, or rules
 (that stays `/saki-builder:prd`); it only stamps the freeze marker + the design reference.
 
 ---

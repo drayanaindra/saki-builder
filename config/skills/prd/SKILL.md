@@ -553,6 +553,11 @@ the requirements are frozen before any slice reaches `/saki-builder:rplan`. The 
   AND its UI/UX designed/approved AND requirements frozen (build-ready). A Locked PRD is by definition Approved;
   the lock is what `/saki-builder:build` reads — from **either** the PRD marker or `tasks/proto-<slug>/.prd-locked`;
   it **hard-refuses to start until one of them is present**
+  **Changing requirements voids a prior approval.** When this skill REWRITES an existing PRD's scope,
+  slices, criteria, or rules, delete `tasks/proto-<slug>/.prd-locked` (and any `<!-- prd-locked: … -->`
+  line) — the human approved the previous journey, not this one, so the gate must fire again. Writing
+  the FIRST PRD for an already-approved gallery (proto-first order) is not a rewrite: leave the marker.
+  This is what keeps "absence = not-yet-frozen" true now that the proof can live outside the file.
   (a GATE before `/saki-builder:rplan`). This is the "lock Product Requirement before hand off to rplan" gate.
 - `ui:` points at the approved proto gallery (`tasks/proto-<slug>/`), so the locked artifact references its
   design; §15 carries the same reference in prose. On a no-UI PRD the value is `none`.

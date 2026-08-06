@@ -231,10 +231,18 @@ proves it (the gallery marker is the one that also exists when proto ran before 
 ```bash
 # LOCKED if the approval is provable from EITHER artifact. The PRD marker stays the primary for every
 # PRD-first run; the gallery marker is the one that also exists when proto ran before the PRD existed.
-SLUG="$(basename "<prd-path>" .md | sed 's/^prd-//')"
-if   grep -qE '^<!-- prd-locked:' "<prd-path>" 2>/dev/null; then echo "LOCKED (prd marker)"
-elif [ -f "tasks/proto-$SLUG/.prd-locked" ];                 then echo "LOCKED (gallery marker)"
-else echo UNLOCKED; fi
+PRD="<prd-path>"; ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+SLUG="$(basename "$PRD" .md | sed 's/^prd-//')"
+MARK="$ROOT/tasks/proto-$SLUG/.prd-locked"
+if grep -qE '^<!-- prd-locked:' "$PRD" 2>/dev/null; then
+  echo "LOCKED (prd marker)"
+# The gallery marker must name the PRD it froze — otherwise any file deriving the same slug
+# (build accepts a PRD by content shape, not filename) would inherit another PRD's approval.
+elif [ -f "$MARK" ] && grep -qF "prd:$(basename "$PRD")" "$MARK"; then
+  echo "LOCKED (gallery marker)"
+else
+  echo UNLOCKED
+fi
 ```
 
 If **neither** marker is present, **STOP** — do not plan, do not touch code:
@@ -244,7 +252,8 @@ Requirements aren't frozen — no approval found in the PRD (<!-- prd-locked: �
 gallery (tasks/proto-<slug>/.prd-locked).
 /saki-builder:build won't hand unfrozen scope to /saki-builder:rplan.
 Lock it first:  /saki-builder:proto <E<n>|F<n> | prd-file.md>
-  — designs + approves the UI, then writes Status: Locked (a no-UI PRD is frozen there too).
+  — designs + approves the UI, then writes tasks/proto-<slug>/.prd-locked (always) and
+    Status: Locked + <!-- prd-locked --> in the PRD (a no-UI PRD is frozen there too).
 Then re-run /saki-builder:build.
 ```
 
