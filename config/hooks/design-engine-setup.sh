@@ -82,7 +82,7 @@ cmd_detect() {
 	seat=$(read_field "$record" '.figma.seat' 'seat')
 	cap=$(read_field "$record" '.figma.capability' 'capability')
 	emit_detect "RECORDED" "$engine" "$source" "$seat" "$cap" "$frontend" "$record" \
-		"proto Step 0 routes on this record"
+		"/saki-builder:proto Step 0 routes on this record"
 }
 
 write_record() {

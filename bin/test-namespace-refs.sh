@@ -118,5 +118,24 @@ check "11 plan-history untouched" 1 "$(grep -c 'history: /prd' "$TMP/ex/plan-his
 node "$SCRIPT" --dir "$TMP/ex" --exclude >/dev/null 2>&1
 check "12 bare --exclude exits non-zero" 1 "$?"
 
+# ── 13. REGRESSION (reviewer MED): an --exclude that matches NOTHING must fail loud ───
+#     Excludes are BASE-relative, so the natural repo-relative spelling silently protected nothing
+#     while the summary still printed "(excluding …)" — it rewrote the tree it claimed to guard.
+node "$SCRIPT" --dir "$TMP/ex" --exclude config/antigravity-skills --dry >/dev/null 2>&1
+check "13 dead exclude exits 1" 1 "$?"
+node "$SCRIPT" --dir "$TMP/ex" --exclude antigravity-skills --dry >/dev/null 2>&1
+check "13 live exclude exits 0" 0 "$?"
+
+# ── 14. REGRESSION (reviewer LOW): --dir must not swallow a following flag ────────
+#     `--dir --dry` set DIR='--dry', scanned nothing, and printed "0 refs" with exit 0 —
+#     a silent no-op indistinguishable from "already fully namespaced".
+node "$SCRIPT" --dir --dry >/dev/null 2>&1
+check "14 --dir --dry exits 1" 1 "$?"
+
+# ── 15. --dir can target a SINGLE .md file (needed to de-namespace opencode's AGENTS.md) ──
+printf 'one /prd and /qa\n' >"$TMP/single.md"
+check "15 single-file --dir" 2 \
+	"$(node "$SCRIPT" --dir "$TMP/single.md" --dry 2>&1 | grep -oE '[0-9]+ refs' | grep -oE '^[0-9]+')"
+
 echo "namespace-refs: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

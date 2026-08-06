@@ -36,7 +36,10 @@ const PREFIX = 'saki-builder'
 // rewriting a BRIDGED output dir (e.g. ~/.config/opencode/skills) rather than the sources.
 const dirFlag = process.argv.indexOf('--dir')
 const DIR = dirFlag !== -1 ? process.argv[dirFlag + 1] : null
-if (dirFlag !== -1 && !DIR) {
+// Reject a missing value AND a following flag: `--dir --dry` would otherwise set DIR='--dry',
+// scan a nonexistent tree, and print "0 refs across 0 files" with exit 0 — a silent no-op that
+// reads exactly like "already fully namespaced".
+if (dirFlag !== -1 && (!DIR || DIR.startsWith('--'))) {
   console.error('namespace-refs: --dir needs a path')
   process.exit(1)
 }
@@ -60,7 +63,11 @@ for (let i = 0; i < process.argv.length; i++) {
   }
   EXCLUDES.push(val)
 }
-const excluded = (rel) => EXCLUDES.some((e) => rel.includes(e))
+// Track which excludes actually fired. An --exclude that matches nothing is the dangerous case: the
+// run still prints "(excluding X)" while rewriting the very tree X was meant to protect. Excludes are
+// BASE-relative, so the natural repo-relative spelling (`config/antigravity-skills` under
+// `--dir config`) matches nothing — a typo and a wrong prefix look identical without this check.
+const EXCLUDE_HITS = new Set()
 
 // OUR invocable skills = top-level dirs under config/skills (nested library skills are
 // user-invocable:false docs, never slash-invoked, so not namespace targets).
@@ -89,11 +96,14 @@ const BASE = DIR ? path.resolve(DIR) : ROOT
 function mdFiles (rel) {
   const abs = path.join(BASE, rel)
   if (!fs.existsSync(abs)) return []
-  if (fs.statSync(abs).isFile()) return rel.endsWith('.md') ? [rel] : []
+  // When BASE itself is a file, `rel` is '.', which never ends in .md — test the real path instead,
+  // so `--dir path/to/AGENTS.md` targets that one file.
+  if (fs.statSync(abs).isFile()) return abs.endsWith('.md') ? [rel] : []
   const out = []
   for (const d of fs.readdirSync(abs, { withFileTypes: true })) {
     const child = path.join(rel, d.name)
-    if (excluded(child)) continue
+    const hit = EXCLUDES.find((e) => child.includes(e))
+    if (hit) { EXCLUDE_HITS.add(hit); continue }
     if (d.isDirectory()) out.push(...mdFiles(child))
     else if (d.name.endsWith('.md')) out.push(child)
   }
@@ -101,6 +111,13 @@ function mdFiles (rel) {
 }
 
 const targets = DIR ? mdFiles('.') : [...mdFiles('config/skills'), ...mdFiles('config/agents')]
+
+const deadExcludes = EXCLUDES.filter((e) => !EXCLUDE_HITS.has(e))
+if (deadExcludes.length) {
+  console.error(`namespace-refs: --exclude matched nothing: ${deadExcludes.join(', ')}`)
+  console.error('  excludes are relative to --dir; under `--dir config` use `antigravity-skills`, not `config/antigravity-skills`.')
+  process.exit(1)
+}
 let totalHits = 0
 let filesChanged = 0
 const perFile = []

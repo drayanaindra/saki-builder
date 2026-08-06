@@ -115,8 +115,12 @@ fi
 # cancelled. Copies + an unconditional rewrite is simply correct, and `commands/` needs it too:
 # build-opencode.sh emits ~56 command files that carry the same namespaced refs.
 if [[ "$DRY" != "1" ]]; then
-	for stage in "$DEST/skills" "$DEST/commands"; do
-		[[ -d "$stage" ]] || continue
+	# AGENTS.md is included deliberately: on the NON---from-plugin path build-opencode.sh flattens
+	# the owner's ~/.claude/CLAUDE.md (which @imports config/CLAUDE.md) into it, and config/CLAUDE.md
+	# is namespaced. opencode registers skills BARE, so a `/saki-builder:qa` there names a command
+	# that does not exist — the same failure the antigravity exclusion prevents on the Gemini side.
+	for stage in "$DEST/skills" "$DEST/commands" "$DEST/AGENTS.md"; do
+		[[ -e "$stage" ]] || continue
 		node "$ROOT/bin/namespace-refs.js" --reverse --dir "$stage" >/dev/null 2>&1 ||
 			warn "de-namespace pass failed for $stage — refs may still read /saki-builder:x"
 	done
