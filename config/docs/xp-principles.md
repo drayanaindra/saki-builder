@@ -1,8 +1,8 @@
 # XP Core Principles (Extreme Programming)
 
-These practices are embedded into the workflow skills (`/rplan`, `/approved`, `/qa`). Follow them during all implementation work.
+These practices are embedded into the workflow skills (`/saki-builder:rplan`, `/saki-builder:approved`, `/saki-builder:qa`). Follow them during all implementation work.
 
-## TDD (Test-Driven Development) — enforced by /approved
+## TDD (Test-Driven Development) — enforced by /saki-builder:approved
 
 - Default cycle: RED (write failing test) → GREEN (minimum code to pass) → REFACTOR (clean up)
 - Never skip the RED step — a test that never failed proves nothing
@@ -13,13 +13,13 @@ These practices are embedded into the workflow skills (`/rplan`, `/approved`, `/
   - Trivial (config, rename) → Test-After (run existing suite)
   - Critical (auth, payment, multi-tenant) → Human-Test-First (human writes test, AI implements)
 
-## YAGNI (You Ain't Gonna Need It) — enforced by /rplan self-review
+## YAGNI (You Ain't Gonna Need It) — enforced by /saki-builder:rplan self-review
 
 - For each new function/struct/file, ask: "Can I delete this and still ship the current step?" If yes → cut it
 - Common violations to catch: premature abstraction, unused config options, pagination before data exists, factory patterns for single-use
 - When uncertain: DEFER. Adding later costs the same unless it creates a breaking change
 
-## Small Releases — enforced by /approved
+## Small Releases — enforced by /saki-builder:approved
 
 - Each plan step must produce a committable, working state
 - Commit after each step's GREEN phase (tests pass)

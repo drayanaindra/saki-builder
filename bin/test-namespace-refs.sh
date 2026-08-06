@@ -92,5 +92,31 @@ printf 'One ref only: /saki-builder:prd\n' >"$TMP/scoped/skills/demo/SKILL.md"
 check "8 --dir scopes reverse" 1 \
 	"$(node "$SCRIPT" --reverse --dir "$TMP/scoped" --dry 2>&1 | grep -oE '[0-9]+ refs' | grep -oE '^[0-9]+')"
 
+# ── 9. --exclude skips a matching subtree (the I10 requirement) ───────────────
+#     Without this, `--dir config` rewrites config/antigravity-skills (a DIFFERENT engine, where the
+#     saki-builder: namespace does not exist) and config/docs/plan-history (historical records).
+mkdir -p "$TMP/ex/skills/keep" "$TMP/ex/antigravity-skills" "$TMP/ex/plan-history"
+printf 'ours: /prd\n' >"$TMP/ex/skills/keep/SKILL.md"
+printf 'other engine: /prd\n' >"$TMP/ex/antigravity-skills/build.md"
+printf 'history: /prd\n' >"$TMP/ex/plan-history/old.md"
+check "9 no exclude sees all 3" 3 \
+	"$(node "$SCRIPT" --dir "$TMP/ex" --dry 2>&1 | grep -oE '[0-9]+ refs' | grep -oE '^[0-9]+')"
+check "9 one exclude drops one" 2 \
+	"$(node "$SCRIPT" --dir "$TMP/ex" --exclude antigravity-skills --dry 2>&1 | grep -oE '[0-9]+ refs' | grep -oE '^[0-9]+')"
+
+# ── 10. two --exclude flags compose ───────────────────────────────────────────
+check "10 two excludes compose" 1 \
+	"$(node "$SCRIPT" --dir "$TMP/ex" --exclude antigravity-skills --exclude plan-history --dry 2>&1 | grep -oE '[0-9]+ refs' | grep -oE '^[0-9]+')"
+
+# ── 11. apply: the non-excluded path IS rewritten, the excluded ones are NOT ──
+node "$SCRIPT" --dir "$TMP/ex" --exclude antigravity-skills --exclude plan-history >/dev/null 2>&1
+check "11 kept file rewritten" 1 "$(grep -c 'ours: /saki-builder:prd' "$TMP/ex/skills/keep/SKILL.md")"
+check "11 antigravity untouched" 1 "$(grep -c 'other engine: /prd' "$TMP/ex/antigravity-skills/build.md")"
+check "11 plan-history untouched" 1 "$(grep -c 'history: /prd' "$TMP/ex/plan-history/old.md")"
+
+# ── 12. --exclude with no value must not silently swallow the next flag ───────
+node "$SCRIPT" --dir "$TMP/ex" --exclude >/dev/null 2>&1
+check "12 bare --exclude exits non-zero" 1 "$?"
+
 echo "namespace-refs: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

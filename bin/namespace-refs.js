@@ -22,6 +22,7 @@
 // Usage:  node bin/namespace-refs.js --dry                    (preview, writes nothing)
 //         node bin/namespace-refs.js                          (apply, forward, repo skills+agents)
 //         node bin/namespace-refs.js --reverse --dir <path>   (strip namespace under <path>)
+//         node bin/namespace-refs.js --dir config --exclude antigravity-skills --exclude plan-history
 
 const fs = require('fs')
 const path = require('path')
@@ -39,6 +40,27 @@ if (dirFlag !== -1 && !DIR) {
   console.error('namespace-refs: --dir needs a path')
   process.exit(1)
 }
+
+// --exclude <substring>: repeatable. Skips any file whose path (relative to BASE) contains the
+// substring. This gates FILE SELECTION only — the regex and its guards are untouched.
+//
+// Why it exists: `mdFiles` recurses over every `.md` under BASE, so `--dir config` would also rewrite
+// config/antigravity-skills/ — which setup-antigravity.sh installs into a Gemini/Antigravity runtime
+// where the `saki-builder:` namespace does not exist at all — and config/docs/plan-history/, which is
+// historical record. Rewriting either points text at a command its reader cannot resolve.
+const EXCLUDES = []
+for (let i = 0; i < process.argv.length; i++) {
+  if (process.argv[i] !== '--exclude') continue
+  const val = process.argv[i + 1]
+  // Reject a missing value AND a following flag, so `--exclude --dry` can't silently swallow --dry
+  // and leave the run unfiltered — the failure mode this flag exists to prevent.
+  if (!val || val.startsWith('--')) {
+    console.error('namespace-refs: --exclude needs a substring')
+    process.exit(1)
+  }
+  EXCLUDES.push(val)
+}
+const excluded = (rel) => EXCLUDES.some((e) => rel.includes(e))
 
 // OUR invocable skills = top-level dirs under config/skills (nested library skills are
 // user-invocable:false docs, never slash-invoked, so not namespace targets).
@@ -70,8 +92,10 @@ function mdFiles (rel) {
   if (fs.statSync(abs).isFile()) return rel.endsWith('.md') ? [rel] : []
   const out = []
   for (const d of fs.readdirSync(abs, { withFileTypes: true })) {
-    if (d.isDirectory()) out.push(...mdFiles(path.join(rel, d.name)))
-    else if (d.name.endsWith('.md')) out.push(path.join(rel, d.name))
+    const child = path.join(rel, d.name)
+    if (excluded(child)) continue
+    if (d.isDirectory()) out.push(...mdFiles(child))
+    else if (d.name.endsWith('.md')) out.push(child)
   }
   return out
 }
@@ -95,7 +119,7 @@ for (const rel of targets) {
 }
 
 perFile.sort((a, b) => b[1] - a[1])
-console.log(`${DRY ? '[dry-run] ' : ''}namespace-refs${REVERSE ? ' [reverse]' : ''}: ${names.length} skill names, ${totalHits} refs across ${filesChanged} files${DIR ? ` under ${DIR}` : ''}`)
+console.log(`${DRY ? '[dry-run] ' : ''}namespace-refs${REVERSE ? ' [reverse]' : ''}: ${names.length} skill names, ${totalHits} refs across ${filesChanged} files${DIR ? ` under ${DIR}` : ''}${EXCLUDES.length ? ` (excluding ${EXCLUDES.join(', ')})` : ''}`)
 for (const [rel, hits] of perFile.slice(0, 20)) console.log(`  ${String(hits).padStart(4)}  ${rel}`)
 if (perFile.length > 20) console.log(`  … +${perFile.length - 20} more files`)
 if (DRY) console.log('\n(no files written — rerun without --dry to apply)')

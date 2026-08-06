@@ -143,13 +143,13 @@ main() {
 		if [ "$strict" = "1" ]; then
 			{
 				echo "BLOCKED: no test-coverage report found and COVERAGE_STRICT=1."
-				echo "Generate coverage (e.g. /qa, or your test runner with coverage on),"
+				echo "Generate coverage (e.g. /saki-builder:qa, or your test runner with coverage on),"
 				echo "then push. Looked for: coverage/coverage-summary.json, coverage.xml,"
 				echo "coverage/lcov.info, coverage.out (from $PWD, walking up then down)."
 			} >&2
 			return 2
 		fi
-		echo "coverage-gate: no coverage report found — skipping (run /qa to generate one; set COVERAGE_STRICT=1 to require it)."
+		echo "coverage-gate: no coverage report found — skipping (run /saki-builder:qa to generate one; set COVERAGE_STRICT=1 to require it)."
 		return 0
 	fi
 
@@ -172,7 +172,7 @@ main() {
 		echo "  report: ${file}"
 		echo ""
 		echo "Raise coverage above ${min}% before pushing to main:"
-		echo "  /qa            — add tests, re-run, and re-check the floor"
+		echo "  /saki-builder:qa            — add tests, re-run, and re-check the floor"
 		echo ""
 		echo "Threshold is COVERAGE_MIN (default 80). To push without this check,"
 		echo "run the git command manually outside Claude Code."

@@ -72,7 +72,7 @@ cmd_detect() {
 
 	if [ ! -f "$record" ]; then
 		emit_detect "NONE" "" "" "" "" "$frontend" "$record" \
-			"no design engine recorded — /init-env Step 1c should ask figma|native (default native)"
+			"no design engine recorded — /saki-builder:init-env Step 1c should ask figma|native (default native)"
 		return 0
 	fi
 

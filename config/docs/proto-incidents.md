@@ -1,4 +1,4 @@
-# /proto — incident record (why each gate exists)
+# /saki-builder:proto — incident record (why each gate exists)
 
 **Loaded on demand, never automatically.** `config/skills/proto/SKILL.md` carries the *rules*; this file
 carries the *war stories* that produced them. Read it when you are about to weaken, remove, or argue with

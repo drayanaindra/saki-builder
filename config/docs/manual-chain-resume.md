@@ -1,12 +1,12 @@
 # Manual-Chain Resume Manifest
 
-The manual chain — `/rplan → /rplan-review → /approved → /qa → /reviewer → (/security-review) → /wrap`,
-run by hand rather than orchestrated by `/build` — has no built-in resume state. This doc defines a
+The manual chain — `/saki-builder:rplan → /saki-builder:rplan-review → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → (/security-review) → /saki-builder:wrap`,
+run by hand rather than orchestrated by `/saki-builder:build` — has no built-in resume state. This doc defines a
 small on-disk manifest that lets it **survive a context clear / interruption**: after a `/clear` you (or
 Claude) read one file to know what's done and what's next, instead of re-deriving it from plan checkboxes
 and git.
 
-It is the manual-chain analog of `/build`'s `tasks/.build-<prd-slug>-state.json`, adapted to a **single
+It is the manual-chain analog of `/saki-builder:build`'s `tasks/.build-<prd-slug>-state.json`, adapted to a **single
 task** (no slices). Load this doc **on demand** — only when a manual-chain skill reaches its manifest
 touch-point, never eagerly.
 
@@ -16,15 +16,15 @@ touch-point, never eagerly.
 
 1. **Best-effort, never a gate.** Every read/write is wrapped so a failure is silent (`|| true`). A skill
    MUST behave exactly as it does today when the manifest is absent, unreadable, or stale. A standalone
-   one-off `/qa` (or any skill) with no manifest runs unchanged. The manifest is *additive orientation*,
+   one-off `/saki-builder:qa` (or any skill) with no manifest runs unchanged. The manifest is *additive orientation*,
    not a new precondition.
-2. **The human drives — this is orientation, not auto-loop.** Unlike `/build`, nothing auto-advances. The
+2. **The human drives — this is orientation, not auto-loop.** Unlike `/saki-builder:build`, nothing auto-advances. The
    manifest's job is to answer *"where was I, what's next"* after an interruption. Skills stamp their step
    on completion; the reader protocol (below) reports the next uncompleted step.
 3. **Redo-over-skip.** When in doubt, redo. A skill trusts a prior step as done only if the manifest says
    so AND its artifact verifies (plan file exists / commit resolves). The non-committed gates (`qa`,
    `reviewer`, `security`) are cheap to re-run and should be, rather than trusted blindly.
-4. **Never clobber `/build`'s manifest.** `/build` owns `tasks/.build-<prd-slug>-state.json` (schema has a
+4. **Never clobber `/saki-builder:build`'s manifest.** `/saki-builder:build` owns `tasks/.build-<prd-slug>-state.json` (schema has a
    top-level `slices` array). Manual-chain manifests are `tasks/.<slug>-state.json` (schema has a top-level
    `steps` object, no `slices`). Readers that glob must disambiguate on that.
 
@@ -34,7 +34,7 @@ touch-point, never eagerly.
 
 - **Path:** `tasks/.<slug>-state.json`, a hidden dotfile beside the plan, where
   `<slug>` = the plan filename minus `-plan.md` (so `tasks/foo-plan.md` → `tasks/.foo-state.json`).
-- **Owner:** created by `/rplan` (Step 7, when it writes the plan); each later skill stamps its own step.
+- **Owner:** created by `/saki-builder:rplan` (Step 7, when it writes the plan); each later skill stamps its own step.
 
 ## Schema
 
@@ -59,7 +59,7 @@ touch-point, never eagerly.
 
 **Status vocabulary.** A step key that is **absent** means *not-reached* (for the optional steps
 `rplan-review` / `security`, absent = *skipped / n/a*). `in-progress` marks a step that started but did
-not finish (e.g. a crash mid-`/approved`). The terminal-fail states (`not-ready`, `red`,
+not finish (e.g. a crash mid-`/saki-builder:approved`). The terminal-fail states (`not-ready`, `red`,
 `changes-requested`) record that the step ran and did not pass — resume re-enters there.
 
 **Step order** (canonical, for the reader): `rplan → rplan-review → approved → qa → reviewer → security → wrap`.
@@ -72,10 +72,10 @@ next step.
 
 Both are best-effort: they no-op silently on any error and never fail the calling skill.
 
-### Init (create or refresh) — used by `/rplan`
+### Init (create or refresh) — used by `/saki-builder:rplan`
 
 ```bash
-# PLAN_FILE = the plan path /rplan just wrote. ITEM = "I3"/"B7" or "" if none.
+# PLAN_FILE = the plan path /saki-builder:rplan just wrote. ITEM = "I3"/"B7" or "" if none.
 SLUG="$(basename "$PLAN_FILE" -plan.md)"
 STATE="$(dirname "$PLAN_FILE")/.${SLUG}-state.json"
 STATE="$STATE" SLUG="$SLUG" PLAN="$PLAN_FILE" \
@@ -119,7 +119,7 @@ json.dump(d, open(p,"w"), indent=2)
 PY
 ```
 
-`/wrap` has no plan handle, so it resolves the manifest by newest instead — see its touch-point below.
+`/saki-builder:wrap` has no plan handle, so it resolves the manifest by newest instead — see its touch-point below.
 
 ---
 
@@ -129,17 +129,17 @@ Each skill does a tiny amount. Read this doc, run the matching snippet, move on.
 
 | Skill | Where | Action |
 |-------|-------|--------|
-| `/rplan` | Step 7 (Output), after writing the plan | **Init** the manifest; stamps `rplan=done` (+ `item` if seeded from a roadmap item in Step 0.6). |
-| `/rplan-review` | Final Verdict | Stamp `rplan-review=done` on APPROVED, `rplan-review=not-ready` otherwise. (Skipped for LOW/MED plans → key stays absent = n/a.) |
-| `/approved` | Step 3 (begin) / Completion | Stamp `approved=in-progress` at start; `approved=done` with `EXTRA='{"lastCommit":"<final sha>"}'` at completion. |
-| `/qa` | Step 6 (Report) | Stamp `qa=done` when the verdict is ALL PASS, else `qa=red`. |
-| `/reviewer` | Step 4 (Act on verdict) | Stamp `reviewer=done` on APPROVE, `reviewer=changes-requested` on REQUEST CHANGES. |
-| `/wrap` | Phase 6 (Final report) | Stamp `wrap=done` on the newest manual-chain manifest (glob below). Terminal marker. |
+| `/saki-builder:rplan` | Step 7 (Output), after writing the plan | **Init** the manifest; stamps `rplan=done` (+ `item` if seeded from a roadmap item in Step 0.6). |
+| `/saki-builder:rplan-review` | Final Verdict | Stamp `rplan-review=done` on APPROVED, `rplan-review=not-ready` otherwise. (Skipped for LOW/MED plans → key stays absent = n/a.) |
+| `/saki-builder:approved` | Step 3 (begin) / Completion | Stamp `approved=in-progress` at start; `approved=done` with `EXTRA='{"lastCommit":"<final sha>"}'` at completion. |
+| `/saki-builder:qa` | Step 6 (Report) | Stamp `qa=done` when the verdict is ALL PASS, else `qa=red`. |
+| `/saki-builder:reviewer` | Step 4 (Act on verdict) | Stamp `reviewer=done` on APPROVE, `reviewer=changes-requested` on REQUEST CHANGES. |
+| `/saki-builder:wrap` | Phase 6 (Final report) | Stamp `wrap=done` on the newest manual-chain manifest (glob below). Terminal marker. |
 
 `/security-review` is a global/plugin skill outside this repo, so it is **not** instrumented. The manual
 chain leaves `security` absent (= n/a); stamp it by hand only if you track it.
 
-### `/wrap` manifest resolution (no plan handle)
+### `/saki-builder:wrap` manifest resolution (no plan handle)
 
 ```bash
 # Newest tasks/.*-state.json that is a manual-chain manifest (top-level "steps", not "slices").
@@ -176,7 +176,7 @@ maps the next step to its command; reach for it first. The raw protocol below is
 After a `/clear`, to answer *"where was I on task `<slug>`, what's next":*
 
 ```bash
-STATE="tasks/.<slug>-state.json"   # or the /wrap glob above if the slug is unknown
+STATE="tasks/.<slug>-state.json"   # or the /saki-builder:wrap glob above if the slug is unknown
 STATE="$STATE" python3 - <<'PY' 2>/dev/null || true
 import json, os
 order=["rplan","rplan-review","approved","qa","reviewer","security","wrap"]
@@ -184,7 +184,7 @@ optional={"rplan-review","security"}
 fail={"not-ready","red","changes-requested","in-progress"}
 try: d=json.load(open(os.environ["STATE"]))
 except Exception:
-    print("no manifest — start fresh (or run /rplan)"); raise SystemExit
+    print("no manifest — start fresh (or run /saki-builder:rplan)"); raise SystemExit
 steps=d.get("steps",{})
 nxt=None
 for s in order:
