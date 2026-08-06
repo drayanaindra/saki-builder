@@ -35,6 +35,13 @@ never started · `RUNNING` with `heartbeat_ts` advancing = alive · `RUNNING` wi
 = hung · terminal = done. `status` is one of `RUNNING · DONE · BLOCKED · NEEDS_INPUT · UNKNOWN`.
 Concurrent runs each get `tasks/.saki/<session_id>.json`; `latest.json` is the last writer.
 
+**A terminal status is provisional until `final`.** The three completion gates run *before* the state
+hook in the `Stop` array and can block the stop to push the model back to work — and the hook cannot
+see their verdict. So a tool batch arriving after a terminal write resurrects the run to `RUNNING`
+(`resumed_after_stop` increments); only `SessionEnd` sets `"final": true`. A supervisor should wait for
+`final`, or for a terminal status to hold across two polls, before tearing down. Caught in review: the
+first cut froze the heartbeat permanently on exactly the `/build` runs the gates exist for.
+
 **Staleness is the supervisor's judgement, and that is not a shortcut.** No hook survives `kill -9`.
 A SIGKILLed session leaves `RUNNING` on disk forever and nothing in-process can change that, so
 `docs/AGENT-RUNNERS.md` hands the timeout to the caller (`SAKI_STALE_SECONDS`, ~300s) instead of
