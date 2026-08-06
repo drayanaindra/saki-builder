@@ -347,7 +347,7 @@ PICKUP_RECUT: <parent-id> → <mvp-id>(MVP) + <deferred ids> · phases registere
 ## Phase 3 — Ready for proto (terminal success — NO lock flag written here)
 
 The PRD is green. `/saki-builder:pickup` stops here. It writes **no** lock flag — running `/saki-builder:proto E<n>`
-designs the UI/UX and **locks** the PRD (`Status: Locked` + `<!-- prd-locked -->`, freezing requirements), the
+designs the UI/UX and **locks** the approval (`tasks/proto-<slug>/.prd-locked`, plus `Status: Locked` + `<!-- prd-locked -->` in the PRD when it exists — freezing requirements), the
 single human gate before build. The item stays `In-progress`.
 
 Ensure `phase:"proto-ready"` and the state file is written, then print:

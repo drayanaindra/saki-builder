@@ -224,18 +224,36 @@ normally (step 3.5 skips).
 > plan-track skips proto). Proceed to GATE 0 → GATE 2 → The Single-Plan Loop. The rest of this gate is PRD mode.
 
 `/saki-builder:build` runs only against a **Locked** PRD — the requirements are frozen before any slice
-reaches `/saki-builder:rplan`. Grep the PRD (loaded in Gate 1) for the lock marker:
+reaches `/saki-builder:rplan`. The approval is written by `/saki-builder:proto` into **two** artifacts —
+the PRD's `<!-- prd-locked: … -->` marker and the gallery's `tasks/proto-<slug>/.prd-locked`. Either one
+proves it (the gallery marker is the one that also exists when proto ran before the PRD did):
 
 ```bash
-grep -qE '^<!-- prd-locked:' "<prd-path>" && echo LOCKED || echo UNLOCKED
+# LOCKED if the approval is provable from EITHER artifact. The PRD marker stays the primary for every
+# PRD-first run; the gallery marker is the one that also exists when proto ran before the PRD existed.
+PRD="<prd-path>"; ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+SLUG="$(basename "$PRD" .md | sed 's/^prd-//')"
+MARK="$ROOT/tasks/proto-$SLUG/.prd-locked"
+if grep -qE '^<!-- prd-locked:' "$PRD" 2>/dev/null; then
+  echo "LOCKED (prd marker)"
+# The gallery marker must name the PRD it froze — otherwise any file deriving the same slug
+# (build accepts a PRD by content shape, not filename) would inherit another PRD's approval.
+elif [ -f "$MARK" ] && grep -qF "prd:$(basename "$PRD")" "$MARK"; then
+  echo "LOCKED (gallery marker)"
+else
+  echo UNLOCKED
+fi
 ```
 
-If the marker is **absent**, **STOP** — do not plan, do not touch code:
+If **neither** marker is present, **STOP** — do not plan, do not touch code:
 ```
 HARD STOP — PRD NOT LOCKED
-Requirements aren't frozen; /saki-builder:build won't hand unfrozen scope to /saki-builder:rplan.
+Requirements aren't frozen — no approval found in the PRD (<!-- prd-locked: … -->) or in the
+gallery (tasks/proto-<slug>/.prd-locked).
+/saki-builder:build won't hand unfrozen scope to /saki-builder:rplan.
 Lock it first:  /saki-builder:proto <E<n>|F<n> | prd-file.md>
-  — designs + approves the UI, then writes Status: Locked (a no-UI PRD is frozen there too).
+  — designs + approves the UI, then writes tasks/proto-<slug>/.prd-locked (always) and
+    Status: Locked + <!-- prd-locked --> in the PRD (a no-UI PRD is frozen there too).
 Then re-run /saki-builder:build.
 ```
 
@@ -243,8 +261,9 @@ This is the gate that enforces **"lock Product Requirement before hand off to rp
 confirmation prompt (TRUST MODE holds) — it is a *precondition*: the lock is written by a human-gated step
 (`/saki-builder:proto`) **before** build, so build itself never pauses to ask. A Locked PRD is by definition
 Approved + review-green (the lock is the last gate of the PRD phase), so no separate approval check is needed
-here. `--slice` PARTIAL proto runs do not lock, so a build after one still correctly hard-stops until a full
-`/saki-builder:proto` locks the whole journey.
+here. `--slice` PARTIAL proto runs write **neither** marker, so a build after one still correctly hard-stops
+until a full `/saki-builder:proto` locks the whole journey. Accepting two artifacts widens *where* the
+approval can be proven; it never widens *whether* it must be — a run with neither still stops here.
 
 ---
 
