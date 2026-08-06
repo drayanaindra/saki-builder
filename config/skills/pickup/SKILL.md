@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: Pull a PRD-track roadmap item (Epic E<n> or Feature F<n>) into active development — the disciplined entry point for feature work. `/saki-builder:pickup <id>` reads the item from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: <id>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the item Planned→In-progress. If review dead-ends on a **scope** blocker (non-convergence / over-appetite), acts as a Senior PM — recuts the initiative into an MVP + trigger-gated follow-on phases, registers each on the roadmap via /saki-builder:add, and drives the MVP PRD to green (follow-on phases stay Planned for a later pickup); escapes to Blocked only when the review can't reach a shippable PRD for a non-scope reason (discovery/premise). Running /saki-builder:proto <id> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Plan-track items (Improvement/Bug) don't come here — they go to /saki-builder:rplan. Usage — /saki-builder:pickup <E<n>|F<n>>.
+description: Pull a PRD-track roadmap item (Epic E<n> or Feature F<n>) into active development — the disciplined entry point for feature work. `/saki-builder:pickup <id>` reads the item from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: <id>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the item Planned→In-progress. If the PRD's slice count exceeds its appetite band (checked before any review round) — or the review later dead-ends on a **scope** blocker (non-convergence) — acts as a Senior PM — recuts the initiative into an MVP + trigger-gated follow-on phases, registers each on the roadmap via /saki-builder:add, and drives the MVP PRD to green (follow-on phases stay Planned for a later pickup); escapes to Blocked only when the review can't reach a shippable PRD for a non-scope reason (discovery/premise). Running /saki-builder:proto <id> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Plan-track items (Improvement/Bug) don't come here — they go to /saki-builder:rplan. Usage — /saki-builder:pickup <E<n>|F<n>>.
 ---
 
 # Pick up a PRD-track item → write & review its PRD to green (ready for proto)
@@ -20,7 +20,9 @@ on `tasks/roadmap.md`; there is no cold-intent path. Epics and Features are hand
   → resolve E3 from tasks/roadmap.md   (flip Planned → In-progress)
   → /saki-builder:prd   (seeded by the item; PRD stamped `Item: E3`)
   → loop /saki-builder:prd-review until SHIP · READY   (≤3 rounds)
-       ↳ scope blocker (non-convergence / over-appetite) → Phase 2b: Senior-PM recut
+       ↳ scope blocker → Phase 2b: Senior-PM recut
+         · from Phase 1.5 (over-appetite: §8 slice count > §6 band) — before any review round
+         · from Phase 2  (non-convergence / readiness blocker) — the sentinel backstop
          → split into MVP + trigger-gated phases → /saki-builder:add each → drive the MVP to green
        ↳ non-scope blocker (discovery / unproven premise) → escape to Blocked
   → STOP — MVP PRD green & ready. Run /saki-builder:proto E3 (it designs the UI/UX and LOCKS the PRD).
@@ -186,6 +188,42 @@ lookup-by-parent-id always resolves.
 
 ---
 
+## Phase 1.5 — Appetite gate  (route on the SCOPE SIGNAL, not on a review sentinel)
+
+The recut exists because an initiative can be **too big for its appetite**. That is a property of the
+PRD, knowable the moment Phase 1 writes it — so it is checked here, **before** `/saki-builder:prd-review`
+runs. Binding the recut only to prd-review's `non-convergence` sentinel makes a *scope* gate depend on a
+*review* stage: in any order where the render happens before the review, an over-appetite initiative gets
+its whole journey built and approved before a scope gate can fire.
+
+Read the PRD Phase 1 just wrote (`$PRD` = `tasks/prd-<slug>.md`):
+
+```bash
+# The caps are OWNED by config/skills/prd/SKILL.md (Appetite section: small <=2 / medium <=4 / large <=7).
+# Cite them; never restate them here as a second source of truth.
+BAND="$(grep -oiE '\*\*Appetite:?\*\*[^|]*\b(small|medium|large)\b' "$PRD" 2>/dev/null \
+        | grep -oiE '\b(small|medium|large)\b' | head -1 | tr '[:upper:]' '[:lower:]')"
+case "$BAND" in small) CAP=2 ;; medium) CAP=4 ;; large) CAP=7 ;; *) CAP="" ;; esac
+SLICES="$(grep -cE '^### Slice [0-9]+' "$PRD" 2>/dev/null)"; SLICES=${SLICES:-0}
+```
+
+**Fail-open is load-bearing.** If `CAP` is empty (§6 states a non-band appetite such as `~3 days`, or the
+field is missing) or `SLICES` is 0 (no §8 to read), **do not recut** — log one line and fall through to
+Phase 2, where the sentinel remains the backstop. A gate that cannot read its input must never rewrite
+scope on a guess.
+
+- **`SLICES > CAP`** -> **over-appetite**. Log
+  `APPETITE GATE: <slug> - §8 has <SLICES> slices, §6 band is <BAND> (<=<CAP>) -> over by <n>` and go to
+  **Phase 2b (Senior-PM recut)** with reason `over-appetite`. The once-guard in Phase 2b still applies:
+  a run that is already a recut child does not re-recut.
+- **otherwise** -> log
+  `APPETITE GATE: <slug> - §8 has <SLICES> slices, §6 band is <BAND> (<=<CAP>) -> within appetite`
+  and continue to Phase 2 unchanged.
+
+This is a **router, never a blocker** — it can only send the run to a phase that already exists.
+
+---
+
 ## Phase 2 — `/saki-builder:prd-review`  (delegate the loop-to-green)
 
 Set `phase:"review"`. Invoke the `prd-review` skill on the PRD **WITHOUT `--review-only`** — its default
@@ -231,10 +269,13 @@ double-loop when `/saki-builder:pickup` runs.
 
 ---
 
-## Phase 2b — Scope recut (Senior PM)  (only on a SCOPE blocker; runs while `phase` stays `review`/`prd`)
+## Phase 2b — Scope recut (Senior PM)  (on a SCOPE signal, from either door; runs while `phase` stays `review`/`prd`)
 
-Entered from Phase 2 when the review dead-ends because the initiative is **too big for its appetite**
-(a scope problem), not because its premise is unproven. Acting as a Senior PM, you recut it into an MVP
+**Two doors, one phase.** Entered either from **Phase 1.5** — the appetite gate detected the PRD's slice
+count exceeds its §6 band, reason `over-appetite`, before any review round — or from **Phase 2**, when the
+review dead-ends because the initiative is **too big for its appetite** (a scope problem), not because its
+premise is unproven. The Phase-1.5 door is the earlier and cheaper of the two; the sentinel door remains
+the backstop for scope problems the slice count alone doesn't reveal. Acting as a Senior PM, you recut it into an MVP
 plus trigger-gated follow-on phases, register each on the roadmap, and drive **only the MVP** to green.
 
 **Recut at most once per pickup run — detected via the state file (the once-guard).** If the current run is
@@ -256,6 +297,7 @@ with no manual counter. You do **not** hand-bump `review.rounds` here anymore. J
 `recut.stage` + append to `recut.phases[]` at each transition (Steps 1/3/5).
 
 ### Step 0 — Confirm it is a scope blocker (classify `readiness: blocker`)
+- `over-appetite` (from Phase 1.5) → scope blocker, already quantified (slice count vs §6 band) → proceed.
 - `non-convergence` → scope blocker → proceed.
 - `readiness: blocker` → pass the blocker to the senior-pm (Step 1) and ask it to classify **first**: a
   **decomposable scope/sequencing** blocker (an in-initiative dependency that can be sequenced as its own
