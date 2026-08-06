@@ -39,17 +39,56 @@ say "▸ opencode    : $DEST"
 
 run mkdir -p "$DEST/skills" "$DEST/plugins" "$DEST/agent"
 
+# ── 0. Back up anything we are about to overwrite ──────────────────────────────
+# build-opencode.sh writes AGENTS.md / opencode.json / agent/ / commands/ with truncating
+# redirects. If the user already has an opencode setup, those are THEIR files — a model pin, MCP
+# servers, a theme, hand-written rules. Overwriting them silently is data loss, so take a timestamped
+# backup first and tell them where it went. Nothing here is destructive without a copy on disk.
+BACKUP=""
+for f in AGENTS.md opencode.json; do
+	if [[ -e "$DEST/$f" && ! -L "$DEST/$f" ]]; then
+		if [[ -z "$BACKUP" ]]; then
+			BACKUP="$DEST/.saki-backup-$(date +%Y%m%d-%H%M%S)"
+			run mkdir -p "$BACKUP"
+		fi
+		run cp -R "$DEST/$f" "$BACKUP/$f"
+	fi
+done
+for d in agent commands; do
+	if [[ -d "$DEST/$d" ]] && [[ -n "$(ls -A "$DEST/$d" 2>/dev/null)" ]]; then
+		if [[ -z "$BACKUP" ]]; then
+			BACKUP="$DEST/.saki-backup-$(date +%Y%m%d-%H%M%S)"
+			run mkdir -p "$BACKUP"
+		fi
+		run cp -R "$DEST/$d" "$BACKUP/$d"
+	fi
+done
+[[ -n "$BACKUP" ]] && ok "existing config backed up → $BACKUP"
+
 # ── 1. Skills → opencode's native skills dir ───────────────────────────────────
 # opencode also scans ~/.claude/skills, but that is the user's OWN skills dir and may already hold
 # unrelated entries — writing into opencode's own dir keeps the two from colliding.
+# Bridged skills are written as real COPIES, not symlinks, because step 3 rewrites them in place —
+# rewriting through a symlink would edit the plugin's own source. Only names that exist in the plugin
+# are touched; a user's own skills in this dir are left completely alone.
 n=0
+SAKI_NAMES=()
 for d in "$ROOT/config/skills"/*/; do
 	[[ -f "$d/SKILL.md" ]] || continue
 	name="$(basename "$d")"
-	run ln -sfn "${d%/}" "$DEST/skills/$name"
+	SAKI_NAMES+=("$name")
+	if [[ "$DRY" == "1" ]]; then
+		printf '  [dry] install skill %s\n' "$name"
+	else
+		rm -rf "$DEST/skills/$name"
+		cp -R "${d%/}" "$DEST/skills/$name" || {
+			warn "could not install skill $name — skipping"
+			continue
+		}
+	fi
 	n=$((n + 1))
 done
-ok "skills linked ($n)"
+ok "skills installed ($n)"
 
 # ── 2. Rules + config + agents (portable — never the owner's personal ~/.claude) ─
 if [[ -x "$ROOT/build-opencode.sh" ]] || [[ -f "$ROOT/build-opencode.sh" ]]; then
@@ -69,22 +108,19 @@ fi
 # Our skill bodies say `/saki-builder:rplan` (correct for Claude Code). opencode registers the same
 # skills under their bare name, so the namespaced form points at a command that does not exist there.
 # The symlinks above point at the plugin's real files, so rewrite through them onto real copies.
+# The rewrite runs unconditionally over the copies made above. The previous guard was
+# `... --dry | grep -qvE ' 0 refs '`, which is the house "never gate on piped grep -q" anti-pattern —
+# it was always true (the dry-run prints a blank line), and the check it guarded was always false
+# anyway because the stage held symlinks and `Dirent.isDirectory()` is false for those. Two bugs that
+# cancelled. Copies + an unconditional rewrite is simply correct, and `commands/` needs it too:
+# build-opencode.sh emits ~56 command files that carry the same namespaced refs.
 if [[ "$DRY" != "1" ]]; then
-	STAGE="$DEST/skills"
-	# Replace symlinks with real copies only if a rewrite is actually needed, so an already-bare
-	# install stays a cheap set of symlinks.
-	if node "$ROOT/bin/namespace-refs.js" --reverse --dir "$STAGE" --dry 2>/dev/null | grep -qvE ' 0 refs '; then
-		for l in "$STAGE"/*; do
-			[[ -L "$l" ]] || continue
-			tgt="$(readlink "$l")"
-			rm "$l"
-			cp -R "$tgt" "$l"
-		done
-		node "$ROOT/bin/namespace-refs.js" --reverse --dir "$STAGE" >/dev/null
-		ok "skill refs de-namespaced (/saki-builder:x → /x)"
-	else
-		ok "skill refs already bare"
-	fi
+	for stage in "$DEST/skills" "$DEST/commands"; do
+		[[ -d "$stage" ]] || continue
+		node "$ROOT/bin/namespace-refs.js" --reverse --dir "$stage" >/dev/null 2>&1 ||
+			warn "de-namespace pass failed for $stage — refs may still read /saki-builder:x"
+	done
+	ok "skill + command refs de-namespaced (/saki-builder:x → /x)"
 fi
 
 # ── 4. Plugins (safety gates + lifecycle state) ───────────────────────────────

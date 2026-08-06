@@ -33,7 +33,10 @@ const TERMINAL = new Set(['DONE', 'BLOCKED', 'NEEDS_INPUT', 'UNKNOWN'])
 
 // Line-anchored on purpose: the model narrates the same words mid-sentence ("...so I would emit
 // SAKI-RESULT: ..."), and an unanchored match would classify narration as a real result.
-const RESULT_RE = /^[ \t]*SAKI-RESULT:[ \t]*(\{.*\})[ \t]*$/m
+// /g so we can take the LAST match: agent-mode.md tells the model the result line comes last, and a
+// final message may legitimately quote the template earlier ("emit SAKI-RESULT: {...}") before
+// reporting the real outcome. Taking the first would let a recited example outrank the truth.
+const RESULT_RE = /^[ \t]*SAKI-RESULT:[ \t]*(\{.*\})[ \t]*$/gm
 
 const now = () => new Date().toISOString()
 
@@ -49,21 +52,30 @@ function readState (dir, sessionId) {
   }
 }
 
+// Atomic: write to a temp file then rename. A supervisor polls latest.json on a timer, and
+// writeFileSync truncates before it writes — without the rename it can read an empty or half-written
+// file and mistake it for a crash. rename(2) is atomic on the same filesystem.
 function writeState (dir, sessionId, state) {
   fs.mkdirSync(dir, { recursive: true })
   const body = JSON.stringify(state, null, 2)
-  fs.writeFileSync(path.join(dir, `${sessionId}.json`), body)
-  fs.writeFileSync(path.join(dir, 'latest.json'), body) // copy, not symlink — survives being read mid-write
+  for (const name of [`${sessionId}.json`, 'latest.json']) {
+    const dest = path.join(dir, name)
+    const tmp = `${dest}.${process.pid}.tmp`
+    fs.writeFileSync(tmp, body)
+    fs.renameSync(tmp, dest)
+  }
 }
 
 // Parse the model's result line. Returns null when there is no line-anchored sentinel.
 function parseResult (message) {
   if (typeof message !== 'string') return null
-  const m = RESULT_RE.exec(message)
-  if (!m) return null
+  RESULT_RE.lastIndex = 0
+  let m, last = null
+  while ((m = RESULT_RE.exec(message)) !== null) last = m   // take the LAST sentinel, not the first
+  if (!last) return null
   let parsed
   try {
-    parsed = JSON.parse(m[1])
+    parsed = JSON.parse(last[1])
   } catch (_e) {
     return null // a malformed sentinel is not a result — the caller falls back to UNKNOWN
   }
@@ -80,6 +92,14 @@ function parseResult (message) {
 }
 
 function onSessionStart (dir, sessionId, payload) {
+  // SessionStart fires again on `compact` (and `resume`), which is routine mid-run for a long
+  // autonomous build. Rewriting here would reset turns to 0, move started_at forward, and overwrite
+  // task with the literal source string — i.e. the progress record would rewind while the run works.
+  const prev = readState(dir, sessionId)
+  if (prev && prev.status === 'RUNNING') {
+    return writeState(dir, sessionId, { ...prev, heartbeat_ts: now() })
+  }
+
   const ts = now()
   writeState(dir, sessionId, {
     schema: SCHEMA,
@@ -98,7 +118,25 @@ function onSessionStart (dir, sessionId, payload) {
 
 function onHeartbeat (dir, sessionId, payload) {
   const prev = readState(dir, sessionId)
-  if (!prev || prev.status !== 'RUNNING') return // never resurrect a finished session
+  if (!prev) return
+  // A tool batch running AFTER a terminal Stop is proof the session did not actually end: one of the
+  // sibling completion gates (build/pickup/prd-review) returned decision:"block" and pushed the model
+  // back to work. Those gates run BEFORE us in the Stop array and we cannot see their verdict, so the
+  // terminal write we made was provisional. Resurrect it — otherwise the heartbeat dies exactly on the
+  // flagship `/build` run the gates exist for, and the supervisor reads a working run as finished.
+  // `final` is set only by SessionEnd, where the process really is gone; that is never resurrected.
+  if (prev.final) return
+  if (prev.status !== 'RUNNING') {
+    return writeState(dir, sessionId, {
+      ...prev,
+      status: 'RUNNING',
+      resumed_after_stop: (prev.resumed_after_stop || 0) + 1,
+      ended_at: null,
+      heartbeat_ts: now(),
+      turns: prev.turns + 1,
+      last_tool: payload.tool_name || prev.last_tool
+    })
+  }
 
   // Throttle so a long build doesn't thrash the disk — but never debounce the FIRST tick, or a
   // run whose batches are slower than the window would look like it never started working.
@@ -154,7 +192,10 @@ function onStop (dir, sessionId, payload) {
 function onSessionEnd (dir, sessionId, payload) {
   const prev = readState(dir, sessionId)
   if (!prev) return
-  if (prev.status !== 'RUNNING') return // Stop already wrote the real outcome — never overwrite it
+  if (prev.status !== 'RUNNING') {
+    // Stop already wrote the real outcome — keep it, but seal it so a stray later event can't reopen it.
+    return writeState(dir, sessionId, { ...prev, final: true, exit_reason: payload.exit_reason ?? null })
+  }
 
   const ts = now()
   writeState(dir, sessionId, {
@@ -163,6 +204,7 @@ function onSessionEnd (dir, sessionId, payload) {
     // one exit_reason that means "waiting on a human", not "lost".
     status: payload.exit_reason === 'prompt_input_exit' ? 'NEEDS_INPUT' : 'UNKNOWN',
     exit_reason: payload.exit_reason ?? null,
+    final: true,           // the process is gone — nothing may resurrect this
     ended_at: ts,
     heartbeat_ts: ts
   })

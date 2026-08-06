@@ -23,7 +23,7 @@
  */
 import type { Plugin } from "@opencode-ai/plugin"
 import { spawnSync } from "child_process"
-import { existsSync, readFileSync, readdirSync } from "fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs"
 import { resolve } from "path"
 import * as state from "./saki-state"
 
@@ -33,9 +33,30 @@ const REPO = process.env.SAKI_PLUGIN_ROOT ?? resolve(import.meta.dirname, "../..
 const HOOKS_DIR = resolve(REPO, "config/hooks")
 
 // Bounded so a re-prompt loop can never become the runaway it exists to prevent — same doctrine as
-// build-completion-gate.sh's circuit breaker. Counted per session, in memory.
+// build-completion-gate.sh's circuit breaker, and persisted to a sidecar for the same reason: an
+// in-memory counter resets on every plugin reload, which makes a "bounded" loop unbounded in exactly
+// the long-lived process the bound exists for.
 const MAX_CONTINUE = Number(process.env.SAKI_OC_MAX_CONTINUE ?? 5)
-const continues = new Map<string, number>()
+
+function continueCount(cwd: string, sid: string, bump = false): number {
+  const f = resolve(cwd, "tasks", ".saki", `${sid.replace(/[^A-Za-z0-9._-]/g, "")}.continues`)
+  let n = 0
+  try {
+    n = Number(readFileSync(f, "utf8").trim()) || 0
+  } catch {
+    n = 0
+  }
+  if (bump) {
+    try {
+      mkdirSync(resolve(cwd, "tasks", ".saki"), { recursive: true })
+      writeFileSync(f, String(n + 1))
+    } catch {
+      /* fail-open: if we cannot persist, do not continue — the safe direction is to stop */
+      return MAX_CONTINUE
+    }
+  }
+  return n
+}
 
 /** Remaining actionable slices in a /build manifest, or 0 when there is no live build. */
 function remainingSlices(cwd: string): number {
@@ -76,8 +97,18 @@ export const SafetyHooks: Plugin = async ({ client, directory, worktree }: any =
     // Mirrors config/hooks/agent-session.js so one supervisor poller serves both engines.
     // Every arm is best-effort; saki-state swallows its own errors.
     event: async ({ event }: any) => {
-      const sid = event?.properties?.sessionID ?? event?.properties?.info?.id ?? ""
+      // Opt-in, checked HERE and not only inside saki-state: the session.idle arm below can spend
+      // tokens and edit files via client.session.prompt(). Without this gate, an ORDINARY interactive
+      // opencode session in any repo that has ever run /build would get up to 5 unrequested
+      // "continue" prompts after the user stopped it. Matches the Claude side's strict `=== '1'`.
+      if (process.env.SAKI_AGENT_MODE !== "1") return
+
+      const info = event?.properties?.info
+      const sid = event?.properties?.sessionID ?? info?.id ?? ""
       if (!sid) return
+      // A child/sub session must never clobber its parent's state file — the Claude hook refuses on
+      // agent_id for the same reason.
+      if (info?.parentID) return
 
       switch (event?.type) {
         case "session.created":
@@ -92,11 +123,11 @@ export const SafetyHooks: Plugin = async ({ client, directory, worktree }: any =
         case "session.idle": {
           const left = remainingSlices(CWD)
           if (left > 0) {
-            const used = continues.get(sid) ?? 0
+            const used = continueCount(CWD, sid)
             // Log FIRST: the record must exist even if the re-prompt below is impossible.
             console.warn(`SAKI-INCOMPLETE: ${left} slice(s) remaining (continue ${used}/${MAX_CONTINUE})`)
             if (used < MAX_CONTINUE) {
-              continues.set(sid, used + 1)
+              continueCount(CWD, sid, true)
               try {
                 await client.session.prompt({
                   path: { id: sid },
@@ -108,7 +139,9 @@ export const SafetyHooks: Plugin = async ({ client, directory, worktree }: any =
               }
             }
           }
-          return state.finish(CWD, sid, { message: event?.properties?.info?.summary })
+          // `session.idle` may carry only { sessionID }. When there is no assistant text to parse,
+          // finish() falls through to UNKNOWN — which is the honest answer, not a silent DONE.
+          return state.finish(CWD, sid, { message: info?.summary ?? info?.title })
         }
 
         default:

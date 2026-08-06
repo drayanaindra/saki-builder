@@ -18,7 +18,7 @@
  * FAIL-OPEN: every export swallows its own errors. A visibility probe must never break the run
  * it is watching. Nothing here throws.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "fs"
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "fs"
 import { join } from "path"
 
 const SCHEMA = 1
@@ -26,7 +26,8 @@ const TERMINAL = new Set(["DONE", "BLOCKED", "NEEDS_INPUT", "UNKNOWN"])
 
 // Line-anchored, exactly as on the Claude side: the model narrates these words mid-sentence, and an
 // unanchored match would classify narration as a real result.
-const RESULT_RE = /^[ \t]*SAKI-RESULT:[ \t]*(\{.*\})[ \t]*$/m
+// /g + take the LAST match — a final message may quote the template before the real outcome.
+const RESULT_RE = /^[ \t]*SAKI-RESULT:[ \t]*(\{.*\})[ \t]*$/gm
 
 export type SakiState = {
   schema: number
@@ -65,8 +66,13 @@ export function write(cwd: string, sessionId: string, state: SakiState): void {
     const dir = dirFor(cwd)
     mkdirSync(dir, { recursive: true })
     const body = JSON.stringify(state, null, 2)
-    writeFileSync(join(dir, `${safeId(sessionId)}.json`), body)
-    writeFileSync(join(dir, "latest.json"), body) // copy, not symlink — safe to read mid-write
+    // Atomic: writeFileSync truncates first, so a polling supervisor can read a partial file.
+    for (const name of [`${safeId(sessionId)}.json`, "latest.json"]) {
+      const dest = join(dir, name)
+      const tmp = `${dest}.${process.pid}.tmp`
+      writeFileSync(tmp, body)
+      renameSync(tmp, dest)
+    }
   } catch {
     /* fail-open */
   }
@@ -114,10 +120,13 @@ export function heartbeat(cwd: string, sessionId: string, tool?: string): void {
 /** Parse the model's result line. Returns null when there is no line-anchored sentinel. */
 export function parseResult(message: unknown) {
   if (typeof message !== "string") return null
-  const m = RESULT_RE.exec(message)
-  if (!m) return null
+  RESULT_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  let last: RegExpExecArray | null = null
+  while ((m = RESULT_RE.exec(message)) !== null) last = m
+  if (!last) return null
   try {
-    const p = JSON.parse(m[1])
+    const p = JSON.parse(last[1])
     if (!p || typeof p !== "object") return null
     const status = String(p.status || "").toUpperCase()
     return {

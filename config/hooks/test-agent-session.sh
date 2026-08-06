@@ -157,5 +157,66 @@ check "13 garbage stdout empty" "" "$out"
 out="$(fire "$d" "$(payload Stop "$d" "\"last_assistant_message\":\"$MSG\"")")"
 check "13 stop stdout empty (never blocks)" "" "$out"
 
+# ── 14. REGRESSION (reviewer HIGH): a blocked Stop must NOT freeze the heartbeat ───
+#     build-completion-gate.sh returns decision:"block" and pushes the model back to work. It runs
+#     BEFORE us in the Stop array and we cannot see its verdict, so our terminal write is provisional.
+#     A tool batch arriving afterwards proves the run is alive and must resurrect it.
+d="$(fresh)"
+fire "$d" "$(payload SessionStart "$d")" >/dev/null
+fire "$d" "$(payload PostToolBatch "$d")" SAKI_HEARTBEAT_MS=0 >/dev/null
+fire "$d" "$(payload Stop "$d" '"last_assistant_message":"no sentinel here"')" >/dev/null
+check "14 stop went terminal" UNKNOWN "$(latest "$d" status)"
+fire "$d" "$(payload PostToolBatch "$d")" SAKI_HEARTBEAT_MS=0 >/dev/null
+check "14 heartbeat resurrects" RUNNING "$(latest "$d" status)"
+check "14 turns keep counting" 2 "$(latest "$d" turns)"
+check "14 resurrection recorded" 1 "$(latest "$d" resumed_after_stop)"
+fire "$d" "$(payload Stop "$d" "\"last_assistant_message\":\"$MSG\"")" >/dev/null
+check "14 second stop is terminal" DONE "$(latest "$d" status)"
+
+# ── 15. SessionEnd seals the record — nothing resurrects a dead process ───────────
+d="$(fresh)"
+fire "$d" "$(payload SessionStart "$d")" >/dev/null
+fire "$d" "$(payload SessionEnd "$d" '"exit_reason":"other"')" >/dev/null
+fire "$d" "$(payload PostToolBatch "$d")" SAKI_HEARTBEAT_MS=0 >/dev/null
+check "15 SessionEnd is final" UNKNOWN "$(latest "$d" status)"
+check "15 final flag set" true "$(latest "$d" final)"
+
+# ── 16. REGRESSION (reviewer MED): the LAST sentinel wins, not the first ──────────
+#     A final message may quote the template before reporting the real outcome; taking the first
+#     would let a recited "DONE" example outrank a real BLOCKED.
+d="$(fresh)"
+fire "$d" "$(payload SessionStart "$d")" >/dev/null
+TWO='For example you would emit:\nSAKI-RESULT: {\"status\":\"DONE\",\"task\":\"template example\"}\nBut the real outcome is:\nSAKI-RESULT: {\"status\":\"BLOCKED\",\"task\":\"real\",\"blocked_on\":\"missing credential\"}'
+fire "$d" "$(payload Stop "$d" "\"last_assistant_message\":\"$TWO\"")" >/dev/null
+check "16 last sentinel wins" BLOCKED "$(latest "$d" status)"
+check "16 last task wins" real "$(latest "$d" task)"
+
+# ── 17. REGRESSION (reviewer MED): compact re-fires SessionStart mid-run ─────────
+d="$(fresh)"
+fire "$d" "$(payload SessionStart "$d")" >/dev/null
+fire "$d" "$(payload PostToolBatch "$d")" SAKI_HEARTBEAT_MS=0 >/dev/null
+fire "$d" "$(payload PostToolBatch "$d")" SAKI_HEARTBEAT_MS=0 >/dev/null
+START0="$(latest "$d" started_at)"
+fire "$d" "$(payload SessionStart "$d" '"source":"compact"')" >/dev/null
+check "17 compact keeps turns" 2 "$(latest "$d" turns)"
+check "17 compact keeps started_at" "$START0" "$(latest "$d" started_at)"
+check "17 compact keeps RUNNING" RUNNING "$(latest "$d" status)"
+
+# ── 18. Atomic write — latest.json is never observed empty or partial ────────────
+#     writeFileSync truncates before writing; a polling supervisor could read a half file.
+d="$(fresh)"
+fire "$d" "$(payload SessionStart "$d")" >/dev/null
+( for i in $(seq 40); do fire "$d" "$(payload PostToolBatch "$d")" SAKI_HEARTBEAT_MS=0 >/dev/null; done ) &
+WRITER=$!
+bad=0
+for i in $(seq 60); do
+	if [ -f "$d/tasks/.saki/latest.json" ]; then
+		python3 -c "import json,sys;json.load(open(sys.argv[1]))" "$d/tasks/.saki/latest.json" 2>/dev/null || bad=$((bad + 1))
+	fi
+done
+wait $WRITER 2>/dev/null
+check "18 no torn reads under concurrent writes" 0 "$bad"
+check "18 no temp files left behind" 0 "$(find "$d/tasks/.saki" -name '*.tmp' | wc -l | tr -d ' ')"
+
 echo "agent-session: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

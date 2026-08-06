@@ -73,9 +73,16 @@ of the run. Poll it — that is the entire integration.
 from the stream-json `init` event, read that exact file; otherwise read `latest.json`. Two concurrent runs
 in one repo never lose each other's state.
 
-**`stop_hook_active`.** Terminal states also carry this flag. `true` means one of saki-builder's own
-completion gates (`/build`, `/pickup`, `/prd-review`) blocked a stop and pushed the session back to work
-at least once — so a `DONE` you see may be followed by more turns. Useful if you log run shapes.
+**A terminal status can go back to `RUNNING`.** saki-builder's own completion gates (`/build`,
+`/pickup`, `/prd-review`) can block a stop and push the session back to work. Those gates run before the
+state hook and it cannot see their verdict, so its terminal write is *provisional*: if a tool batch
+arrives afterwards, the status returns to `RUNNING` and `resumed_after_stop` increments. Only
+`SessionEnd` is truly final — it sets `"final": true`, and nothing reopens that.
+
+**So: do not tear down on the first terminal status if `final` is absent.** Either wait for
+`"final": true`, or confirm the status held for one poll interval. `stop_hook_active` is also present
+(`true` when a gate held that particular stop open), but it is `false` on the first blocked stop, so it
+is a logging signal, not a control signal.
 
 > `stopped_by` is present in the schema for forward compatibility but is **not** emitted by current
 > Claude Code builds, so a turn-limit exhaustion currently surfaces as `UNKNOWN`, not `NEEDS_INPUT`.
@@ -86,7 +93,7 @@ at least once — so a `DONE` you see may be followed by more turns. Useful if y
 | Hook event | Writes |
 |---|---|
 | `SessionStart` | `RUNNING`, `pid`, `started_at` — this is why *absence* is meaningful |
-| `PostToolBatch` | `heartbeat_ts`, `turns++`, `last_tool` (throttled — see `SAKI_HEARTBEAT_MS`) |
+| `PostToolBatch` | `heartbeat_ts`, `turns++`, `last_tool`. **`turns` counts heartbeat WRITES, not tool batches** — the `SAKI_HEARTBEAT_MS` throttle coalesces rapid batches, so treat it as a progress counter, not an exact tool count |
 | `Stop` | terminal status parsed from the model's `SAKI-RESULT:` line |
 | `SessionEnd` | closes a still-`RUNNING` state via `exit_reason`, so a killed run can't look alive forever |
 | `Notification` | opportunistic early `NEEDS_INPUT` — did not fire in a clean headless probe, so don't depend on it |
@@ -99,7 +106,7 @@ nothing can write a terminal status and the file stays `RUNNING` forever. That i
 So the supervisor owns the timeout. Pick a `SAKI_STALE_SECONDS` from your slowest legitimate tool call —
 **300s is a sane default** (a long test suite or install can legitimately run several minutes between tool
 batches; anything under ~120s will produce false kills). Treat `now - heartbeat_ts > SAKI_STALE_SECONDS`
-as dead. `pid` is in the file if you want to confirm with a liveness check before killing.
+as dead. `pid` is in the file, but note it is the hook's parent process — usually the `claude` process, though not guaranteed. Prefer the PID you spawned; use this one only as a cross-check.
 
 ---
 
@@ -182,28 +189,41 @@ rm -f "$STATE"
     claude -p "$TASK" --permission-mode acceptEdits \
     --output-format stream-json --verbose </dev/null >"$REPO/.saki-run.log" 2>&1 ) &
 RUN_PID=$!
+settled=0
 
 # Wait for the run to announce itself — absence past this point means it never started.
 for _ in $(seq 30); do [ -f "$STATE" ] && break; sleep 1; done
 [ -f "$STATE" ] || { echo "NEVER_STARTED"; kill $RUN_PID 2>/dev/null; exit 3; }
 
 while :; do
-  status=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['status'])" "$STATE" 2>/dev/null || echo READ_ERR)
+  # Read status + final together. A terminal status WITHOUT "final" is provisional — one of our own
+  # completion gates may have blocked the stop, in which case the run resumes and status returns to
+  # RUNNING. Only act on a terminal status once it is final (or has held for two polls).
+  read -r status final age <<<"$(python3 -c "
+import json,sys,datetime
+try: d=json.load(open(sys.argv[1]))
+except Exception: print('READ_ERR false 0'); raise SystemExit
+hb=datetime.datetime.fromisoformat(d.get('heartbeat_ts','').replace('Z','+00:00'))
+age=int((datetime.datetime.now(datetime.timezone.utc)-hb).total_seconds())
+print(d.get('status','READ_ERR'), str(bool(d.get('final'))).lower(), age)" "$STATE" 2>/dev/null || echo "READ_ERR false 0")"
+
   case "$status" in
     RUNNING|READ_ERR)
-      age=$(python3 -c "
-import json,sys,datetime
-d=json.load(open(sys.argv[1]))
-hb=datetime.datetime.fromisoformat(d['heartbeat_ts'].replace('Z','+00:00'))
-print(int((datetime.datetime.now(datetime.timezone.utc)-hb).total_seconds()))" "$STATE" 2>/dev/null || echo 0)
       if [ "$age" -gt "$STALE" ]; then
         echo "HUNG (no heartbeat for ${age}s) — killing"; kill -9 $RUN_PID 2>/dev/null; exit 4
       fi
-      sleep 5 ;;
-    DONE)        echo "DONE";        exit 0 ;;
-    BLOCKED)     echo "BLOCKED: $(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('blocked_on'))" "$STATE")"; exit 1 ;;
-    NEEDS_INPUT) echo "NEEDS_INPUT: $(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('blocked_on'))" "$STATE")"; exit 2 ;;
-    UNKNOWN)     echo "UNKNOWN — see .saki-run.log"; exit 5 ;;
+      settled=0; sleep 5 ;;
+    *)
+      # Terminal. Accept immediately if final; otherwise require it to survive one more poll.
+      if [ "$final" = "true" ] || [ "$settled" = "1" ]; then
+        case "$status" in
+          DONE)        echo "DONE"; exit 0 ;;
+          BLOCKED)     echo "BLOCKED: $(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('blocked_on'))" "$STATE")"; exit 1 ;;
+          NEEDS_INPUT) echo "NEEDS_INPUT: $(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('blocked_on'))" "$STATE")"; exit 2 ;;
+          UNKNOWN)     echo "UNKNOWN — see .saki-run.log"; exit 5 ;;
+        esac
+      fi
+      settled=1; sleep 5 ;;
   esac
 done
 ```
