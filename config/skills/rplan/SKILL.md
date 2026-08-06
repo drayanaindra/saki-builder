@@ -537,7 +537,7 @@ Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking i
   is build-driven): after writing the plan, run the **Init** snippet from
   `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` with `PLAN_FILE` = the plan just written and
   `ITEM` = the Step 0.6 id (or empty). It creates `tasks/.<slug>-state.json` and stamps `rplan=done` so the
-  manual chain (`/rplan → … → /wrap`) survives a context clear. Best-effort — skip silently on error.
+  manual chain (`/saki-builder:rplan → … → /saki-builder:wrap`) survives a context clear. Best-effort — skip silently on error.
 - Present plan summary in chat with:
   - Blocking count (0 = ready)
   - Risk level

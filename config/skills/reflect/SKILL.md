@@ -53,7 +53,7 @@ Review accumulated learnings and promote confirmed patterns.
 
 4. **Enforce the auto-load budget BEFORE you append** (team-baseline `patterns.md`, plus any `patterns-<topic>.md` / `patterns-personal.md` that is auto-loaded). These files are injected into every session, so they carry a hard ceiling of **40k chars** — measured in Unicode code points, NOT bytes (`→ × ≥ ≠` are 1 char but several bytes each). Measure with `python3 -c "import sys; print(len(open(sys.argv[1],encoding='utf-8').read()))" <file>`, never `wc -c`. Work to a **37k soft cap** so a routine promotion never trips the ceiling.
 
-   Promotion is **make room, then add** — `/reflect` is NOT append-only for these files. If adding the new entry would cross 37k, evict first, in this order until back under cap:
+   Promotion is **make room, then add** — `/saki-builder:reflect` is NOT append-only for these files. If adding the new entry would cross 37k, evict first, in this order until back under cap:
    1. **Delete** entries that fail the step-2 admission filter (generic best-practice; or a duplicate of another entry / a CLAUDE.md rule).
    2. **Move** stack-specific entries to the matching `patterns-<topic>.md` (not auto-loaded).
    3. **Demote** stale low-value entries — profile: `source: 1 project` AND `confidence: MED` AND `date` older than ~4 months AND never re-confirmed — to the personal overlay or a topic file.

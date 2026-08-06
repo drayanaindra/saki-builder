@@ -303,4 +303,4 @@ BLOCKED: n8n-<slug> — <reason: missing credential X / node type Y not on this 
 - **Secrets never in chat** — key + credential secrets from env, read in-command, never printed or requested.
 - **No ad-hoc execute endpoint** — trigger via the production webhook on an active workflow (n8n's public API has no run/execute route).
 - **Autonomous** — no "shall I proceed?" prompts; the only stops are missing env, unrecoverable auth/credential gaps, or an honest `BLOCKED:` after the safety budget.
-- **Reuse, don't rebuild** — `iterating-to-completion` for the loop discipline; `/prd`·`/proto` tone for elicitation.
+- **Reuse, don't rebuild** — `iterating-to-completion` for the loop discipline; `/saki-builder:prd`·`/saki-builder:proto` tone for elicitation.

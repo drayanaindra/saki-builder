@@ -1,6 +1,6 @@
 ---
 name: genesis
-description: Start a product FROM SCRATCH — the greenfield entry point that runs BEFORE the roadmap/pickup/prd/proto/build loop can work. On an empty repo the normal loop can't start (/proto hard-STOPs "NO DESIGN SYSTEM FOUND"; /prd has no stack or code to ground against; /pickup needs a product that already exists). `/genesis "<product idea>"` fills that gap by manufacturing the preconditions the loop assumes, in the order a real product is born: G0 MVP goal (the one end-to-end thing the product must let a user do) → G1 bounded "how to build this MVP" research → G2 a low-fidelity vision mock with mock data (how the end looks, BEFORE a design system exists) → G3 the foundations spec (stack · design system · architecture · initial schema) behind ONE human approval gate → G4 scaffold the foundations → G5 seed tasks/roadmap.md with the MVP epic and STOP. Then the existing loop runs at full fidelity: /pickup E1 → /prd → /proto (GATE 2 now PASSES) → /build. Does NOT fork or replace the loop — it only produces its inputs, then converges onto it. Slice 1: G4 is a printed checklist the human runs (auto-scaffold is Slice 2). Usage — /saki-builder:genesis "<one-line product idea>" [--restart].
+description: Start a product FROM SCRATCH — the greenfield entry point that runs BEFORE the roadmap/pickup/prd/proto/build loop can work. On an empty repo the normal loop can't start (/saki-builder:proto hard-STOPs "NO DESIGN SYSTEM FOUND"; /saki-builder:prd has no stack or code to ground against; /saki-builder:pickup needs a product that already exists). `/saki-builder:genesis "<product idea>"` fills that gap by manufacturing the preconditions the loop assumes, in the order a real product is born: G0 MVP goal (the one end-to-end thing the product must let a user do) → G1 bounded "how to build this MVP" research → G2 a low-fidelity vision mock with mock data (how the end looks, BEFORE a design system exists) → G3 the foundations spec (stack · design system · architecture · initial schema) behind ONE human approval gate → G4 scaffold the foundations → G5 seed tasks/roadmap.md with the MVP epic and STOP. Then the existing loop runs at full fidelity: /saki-builder:pickup E1 → /saki-builder:prd → /saki-builder:proto (GATE 2 now PASSES) → /saki-builder:build. Does NOT fork or replace the loop — it only produces its inputs, then converges onto it. Slice 1: G4 is a printed checklist the human runs (auto-scaffold is Slice 2). Usage — /saki-builder:genesis "<one-line product idea>" [--restart].
 ---
 
 # Genesis — from an empty repo to a product the disciplined loop can build
@@ -26,7 +26,7 @@ the loop — it produces the loop's inputs and converges onto it, exactly as `/s
    G0 MVP goal → G1 research → G2 vision mock → G3 foundations (⟵ human gate) → G4 scaffold → G5 seed roadmap
    │   produces: chosen stack · real design system + app shell · initial schema · design.md · foundations.md · seeded tasks/roadmap.md
    ▼
-[FOUNDATIONS EXIST]  ← the precise precondition /pickup, /prd, /proto already assume
+[FOUNDATIONS EXIST]  ← the precise precondition /saki-builder:pickup, /saki-builder:prd, /saki-builder:proto already assume
    │
    ▼  the EXISTING loop, untouched, now at full fidelity
    /saki-builder:pickup E1 → /saki-builder:prd → /saki-builder:proto (GATE 2 PASSES) → /saki-builder:build
@@ -256,7 +256,7 @@ Seed the disciplined loop's entry artifact and stop.
    init does not prompt (it only asks when no name is supplied; default the repo name).
 2. Register the **MVP as the first epic** via `/saki-builder:add --epic "<rich intent>"` — compose the rich
    intent from the G0 framing (goal · target user & job · the walking-skeleton flow · the success signal) as a
-   **complete PRD-track shape**. **Pass `--epic` explicitly**: with a complete shape it triggers `/add`'s
+   **complete PRD-track shape**. **Pass `--epic` explicitly**: with a complete shape it triggers `/saki-builder:add`'s
    autonomous-orchestrator fallback (recorded with **no prompt**) AND makes the id deterministic — on a
    just-initialized roadmap the MVP is always **E1**. Capture the id (it will be `E1`) and use it verbatim below.
 3. **Trigger-gate the follow-on scope** — anything the G0 "NOT in the MVP" list or G1 "defer" bucket

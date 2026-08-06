@@ -1,11 +1,11 @@
 ---
 name: pipeline
-description: RETIRED — the autonomous /pipeline has been replaced by the item-anchored stepwise flow. Use /saki-builder:roadmap → /saki-builder:add → /saki-builder:pickup <id> → /saki-builder:proto <id> → /saki-builder:build <id> (PRD-track) — or /saki-builder:add → /saki-builder:rplan (Plan-track) — instead. This tombstone only redirects; the full former pipeline is recoverable from git history.
+description: RETIRED — the autonomous /saki-builder:pipeline has been replaced by the item-anchored stepwise flow. Use /saki-builder:roadmap → /saki-builder:add → /saki-builder:pickup <id> → /saki-builder:proto <id> → /saki-builder:build <id> (PRD-track) — or /saki-builder:add → /saki-builder:rplan (Plan-track) — instead. This tombstone only redirects; the full former pipeline is recoverable from git history.
 ---
 
-# /pipeline — retired
+# /saki-builder:pipeline — retired
 
-The autonomous two-gate `/pipeline` has been **retired** in favour of the disciplined **stepwise flow**,
+The autonomous two-gate `/saki-builder:pipeline` has been **retired** in favour of the disciplined **stepwise flow**,
 where every piece of work traces to an item on the roadmap and each command boundary is a natural review gate.
 
 ## Use this instead
@@ -15,7 +15,7 @@ where every piece of work traces to an item on the roadmap and each command boun
 /saki-builder:add               # add + categorize an item (Epic·Feature·Improvement·Bug), route it  [Planned]
 
 # PRD-track (Epic E<n> / Feature F<n>):
-/saki-builder:pickup <id>       # seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY)  [In-progress]
+/saki-builder:pickup <id>       # seed /saki-builder:prd, loop /saki-builder:prd ↔ /saki-builder:prd-review to green (SHIP·READY)  [In-progress]
 /saki-builder:proto  <id>       # UI preview — running it IS your PRD approval
 /saki-builder:build  <id>       # autonomous slice-by-slice build → Shipped
 

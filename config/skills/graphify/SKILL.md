@@ -1,6 +1,6 @@
 ---
 name: graphify
-description: Build or query a knowledge graph of the current project. Self-contained — works without the global /graphify skill. Auto-installs graphifyy if missing. Enriches rplan research and arch-check with god nodes, community clusters, and path traces. Usage — /saki-builder:graphify [path|url|query] [flags]
+description: Build or query a knowledge graph of the current project. Self-contained — works without the global `graphify` skill (~/.claude/skills/graphify). Auto-installs graphifyy if missing. Enriches rplan research and arch-check with god nodes, community clusters, and path traces. Usage — /saki-builder:graphify [path|url|query] [flags]
 type: analysis
 user-invocable: true
 ---
@@ -8,7 +8,7 @@ user-invocable: true
 # /saki-builder:graphify
 
 Turns any project into a queryable knowledge graph. Self-contained: runs the graphify CLI
-directly after install — does NOT require the global `/graphify` skill.
+directly after install — does NOT require the global `graphify` skill (~/.claude/skills/graphify).
 
 ---
 
@@ -121,10 +121,10 @@ CLI's sequential mode. Check and delegate:
 ```bash
 GLOBAL_SKILL="$HOME/.claude/skills/graphify/SKILL.md"
 if [ -f "$GLOBAL_SKILL" ]; then
-    echo "Global /graphify skill found — using it for richer semantic extraction."
-    # Signal to the model: invoke the global /graphify skill with all user args
+    echo "Global graphify skill (~/.claude/skills/graphify) found — using it for richer semantic extraction."
+    # Signal to the model: invoke the global `graphify` skill (~/.claude/skills/graphify) with all user args
 else
-    echo "Global /graphify skill not found — using CLI (good for code repos; install the Graphify global skill for doc/paper/image corpora)."
+    echo "Global graphify skill (~/.claude/skills/graphify) not found — using CLI (good for code repos; install the Graphify global skill for doc/paper/image corpora)."
     # Continue with CLI path above
 fi
 ```
@@ -149,7 +149,7 @@ This does two things (idempotent — safe to re-run):
    call — Claude sees: *"graphify: Knowledge graph exists. Read GRAPH_REPORT.md for god nodes
    and community structure before searching raw files."*
 
-From this point, every `/rplan`, `/prd`, `/prd-review`, `/rplan-review`, and `/arch-check`
+From this point, every `/saki-builder:rplan`, `/saki-builder:prd`, `/saki-builder:prd-review`, `/saki-builder:rplan-review`, and `/saki-builder:arch-check`
 invocation picks up the graph automatically — no explicit steps needed.
 
 ---
@@ -162,7 +162,7 @@ After the pipeline, tell the user:
 Graph complete. Outputs in graphify-out/
   graph.html         open in browser
   GRAPH_REPORT.md    audit report (god nodes, communities, suggested questions)
-  graph.json         raw graph data (queried by /rplan and /arch-check)
+  graph.json         raw graph data (queried by /saki-builder:rplan and /saki-builder:arch-check)
 ```
 
 Then paste the **God Nodes**, **Surprising Connections**, and **Suggested Questions** sections
@@ -175,14 +175,14 @@ Offer the saki-builder-specific follow-up:
 
 ## saki-builder Integration (how other skills use this)
 
-### Called by `/rplan` (research enrichment)
+### Called by `/saki-builder:rplan` (research enrichment)
 ```bash
-# /rplan checks this before file reads:
+# /saki-builder:rplan checks this before file reads:
 [ -f graphify-out/.graphify_python ] && [ -f graphify-out/graph.json ] || exit 0
 graphify query "<task scope in one sentence>"
 ```
 
-### Called by `/arch-check` (Step 2.5)
+### Called by `/saki-builder:arch-check` (Step 2.5)
 ```bash
 # God nodes + community clusters — read from the report, or query the CLI directly.
 # Never parse graph.json by hand: the real schema (networkx node-link export) stores edges
