@@ -119,7 +119,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
 | 6 | 6b | `preview.html`, `preview-bundle.html` **and** `index.md` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis); **`index.md` carries its `## Fidelity reductions` section** (an empty list is valid — a MISSING section means the producer spec never ran, so this checkpoint is NOT DONE). **On resume, do NOT write an empty list to satisfy this:** the section is *accumulated* across 5b/5c/6a/6c, which are in-context judgments with no other durable artifact, so a fresh context cannot reconstruct what an earlier run noted. Write `- (earlier reductions not recoverable — run resumed at 6b)` instead, so a silently-empty list can never read as "nothing was reduced" — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
 | 7 | 8 | `proto-<slug>/notes.md` exists | non-empty |
-| 8 | 8.5 | the PRD carries `<!-- prd-locked: … -->` | marker present |
+| 8 | 8.5 | `proto-<slug>/.prd-locked` exists (and the PRD carries `<!-- prd-locked: … -->` when the PRD file exists) | marker present |
 
 4. **In-context-only phases never block resume.** The gap analysis (2.5), state map (Step 3), and mock-data
    reasoning (Step 4) are chat reasoning whose OUTPUT already lives in the artifacts above (2.5 → the codified
@@ -1656,20 +1656,27 @@ locks here after approval; a no-UI PRD (GATE 1 branch) jumps straight here on th
 Do **not** lock a `PARTIAL` (`--slice=N`) run — a partial preview hasn't approved the whole journey; print
 `Not locking — PARTIAL run (--slice). Re-run /saki-builder:proto with no --slice to lock.` and skip this step.
 
-Write the lock into the PRD file (the one loaded in GATE 1):
-1. **Header marker** — add, in the PRD's top comment block, on its own line:
+Write the approval into **two** artifacts. `<@approver>` = the PRD header `Owner` if set, else
+`@<git config user.name>`, else `unassigned`; `<YYYY-MM-DD>` = `date +%F`. Never emit either before the
+human has approved (Step 7 / the no-UI confirm) — the marker IS the approval record.
+
+1. **Gallery marker (always)** — write `tasks/proto-<slug>/.prd-locked` containing one line:
+   `<@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/`  (`ui:none` for a no-UI PRD).
+   This is the artifact that exists in **both** pipeline orders. The gallery is proto's own output, so it
+   is always present at Step 8.5 — whereas the PRD file is only guaranteed in PRD-first order.
+2. **Header marker (when the PRD file exists)** — add, in the PRD's top comment block, on its own line:
    `<!-- prd-locked: <@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/ -->`  (`ui:none` for a no-UI PRD).
-   `<@approver>` = the PRD header `Owner` if set, else `@<git config user.name>`, else `unassigned`;
-   `<YYYY-MM-DD>` = `date +%F`. The **absence** of this marker is what `/saki-builder:build` blocks on, so writing
-   it is what unblocks the build — never emit it before the human has approved (Step 7 / the no-UI confirm).
-2. **Header Status** — set the header field to `**Status:** Locked`.
-3. **§15 reference** — in §15 Screens & UI Reference, append `**UI approved:** tasks/proto-<slug>/ · <date>`
+   Skip this and items 3–4 if there is no PRD file yet (a proto-before-PRD run) — the gallery marker
+   already records the approval, and `/saki-builder:build` GATE 1.5 accepts either. Do **not** create a
+   PRD here; writing requirements is `/saki-builder:prd`'s job.
+3. **Header Status** — set the header field to `**Status:** Locked`.
+4. **§15 reference** — in §15 Screens & UI Reference, append `**UI approved:** tasks/proto-<slug>/ · <date>`
    so the locked artifact points at this approved gallery. If §15 is absent on a UI PRD (an older PRD that
-   didn't persist its screens), create it from the Screen Manifest first. Skip step 3 for a no-UI PRD.
+   didn't persist its screens), create it from the Screen Manifest first. Skip item 4 for a no-UI PRD.
 
 Then announce it plainly:
 ```
-🔒 PRD LOCKED — requirements frozen (Status: Locked · ui:tasks/proto-<slug>/).
+🔒 APPROVAL LOCKED — requirements frozen (tasks/proto-<slug>/.prd-locked · Status: Locked · ui:tasks/proto-<slug>/).
    /saki-builder:build tasks/prd-<slug>.md can now proceed (it refuses an unlocked PRD).
 ```
 The lock is `/saki-builder:proto`'s one write-back into the PRD — it **never** edits scope, criteria, or rules

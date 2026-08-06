@@ -543,6 +543,7 @@ The PRD phase (`/saki-builder:prd` → `/saki-builder:prd-review` → `/saki-bui
 the requirements are frozen before any slice reaches `/saki-builder:rplan`. The lock is a header machine-marker:
 
 `<!-- prd-locked: <@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/ | none -->`  +  header `Status: Locked`
+(and, always, the gallery-resident twin `tasks/proto-<slug>/.prd-locked` — the artifact that exists in both pipeline orders)
 
 - **Written by `/saki-builder:proto`, not `/saki-builder:prd`.** The lock is the terminal act of the last pre-build
   layer: `/saki-builder:proto` designs the UI/UX, gets it approved, then freezes the spec by writing the marker.
@@ -550,7 +551,8 @@ the requirements are frozen before any slice reaches `/saki-builder:rplan`. The 
   no-UI PRD, `/saki-builder:proto` is still the explicit freeze step (it renders nothing and writes `ui:none`).
 - **Approved vs Locked.** *Approved* = sound + review-green + human sign-off (soundness). *Locked* = Approved
   AND its UI/UX designed/approved AND requirements frozen (build-ready). A Locked PRD is by definition Approved;
-  `prd-locked` is the single flag `/saki-builder:build` reads — it **hard-refuses to start until the lock is present**
+  the lock is what `/saki-builder:build` reads — from **either** the PRD marker or `tasks/proto-<slug>/.prd-locked`;
+  it **hard-refuses to start until one of them is present**
   (a GATE before `/saki-builder:rplan`). This is the "lock Product Requirement before hand off to rplan" gate.
 - `ui:` points at the approved proto gallery (`tasks/proto-<slug>/`), so the locked artifact references its
   design; §15 carries the same reference in prose. On a no-UI PRD the value is `none`.
@@ -666,7 +668,7 @@ Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s j
 | A slice that silently assumes hidden build work (migration/index/flag/backfill) | State it in the slice's `Assumes:` line (or promote it to its own slice) — else `/saki-builder:rplan` rediscovers it mid-build; review Judge 3 prescribes it |
 | A `baseline N→M` basis that just restates the target | Cite the source of the starting number N, or tag the row `aspirational` — a basis must ground, not echo |
 | Approving a bet without flagging it | If DISCOVERY-RISK, the Step 8 "⚠ Worth checking first" callout is mandatory |
-| Handing a PRD to `/saki-builder:build` (or `/saki-builder:rplan`) that isn't **Locked** | Requirements aren't frozen — `/saki-builder:proto`'s approval writes `Status: Locked` + `<!-- prd-locked -->`; build hard-refuses until it's present. `/saki-builder:prd` never writes the lock (absence = not-yet-frozen) |
+| Handing a PRD to `/saki-builder:build` (or `/saki-builder:rplan`) that isn't **Locked** | Requirements aren't frozen — `/saki-builder:proto`'s approval writes `tasks/proto-<slug>/.prd-locked` (always) and `Status: Locked` + `<!-- prd-locked -->` (when the PRD exists); build hard-refuses until one is present. `/saki-builder:prd` never writes the lock (absence = not-yet-frozen) |
 | A UI feature whose screens live only in the Step 8 human view | Persist them to §15 of the saved PRD — the artifact must name its UI, not compute-and-discard it |
 | §16 Technical Contract written with column/field names or full request/response payloads | Shape only — entity/endpoint-purpose/one-arch-decision; the schema depth is `/saki-builder:rplan`'s lane |
 | A §16 row that cites no code and isn't tagged `NEW`, or serves no §8/§5 ref | Ground it from the Tier-1 scan (REUSE / CHANGE `path:line` / NEW) and name its slice·outcome, or cut it (YAGNI) |
