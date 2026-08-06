@@ -12,10 +12,21 @@
 //
 // FAIL-OPEN: any error → exit 0 with no output; a hook must never block a session.
 // Disable with SAKI_CORE_DISABLE=1.
+//
+// AGENT MODE: when SAKI_AGENT_MODE=1 (session spawned by a runner — Hermes, OpenClaw, CI — via
+// `claude -p` / `opencode run`, no human at the keyboard), instructions/agent-mode.md is layered
+// LAST so its overrides win by position as well as by explicit statement. Opt-in by env only:
+// sniffing (TTY absence, CI, --print) would misfire, because command hooks already run without a
+// controlling terminal in ordinary interactive sessions.
 
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
+
+// Strict equality — an unset var, "0", "true", or "" all mean interactive.
+function agentMode () {
+  return process.env.SAKI_AGENT_MODE === '1'
+}
 
 function main () {
   if (process.env.SAKI_CORE_DISABLE === '1') return ''
@@ -34,6 +45,9 @@ function main () {
 
   read(path.join(root, 'instructions', 'core.md'))
   read(path.join(os.homedir(), '.claude', 'memory', 'patterns-personal.md'), 'personal overlay (this machine)')
+  if (agentMode()) {
+    read(path.join(root, 'instructions', 'agent-mode.md'), 'agent mode (autonomous runner)')
+  }
 
   return parts.join('\n')
 }
