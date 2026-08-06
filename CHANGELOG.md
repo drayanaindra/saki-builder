@@ -2,6 +2,61 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.27.0 — 2026-08-07
+
+**Four items and one measurement, all of which 0.26.0 shipped without.** The plugin loads a
+version-pinned snapshot, so everything below was on `main` but unreachable by any installed user
+until this bump.
+
+**The runtime instructions now name commands that exist** (items I9, I10). 0.26.0 shipped with 187
+bare internal references — `/rplan`, `/wrap`, `/build` — spread across skills, the completion-gate
+hooks, and the on-demand docs. Under the `saki-builder` namespace none of those resolve, so every one
+of them told the model to run something unavailable. The 18 worst sat inside strings the Stop gates
+**inject straight into the model's context**: a build pushed back to work was instructed to take the
+next slice "through rplan -> approved -> qa -> reviewer", naming four commands that do not exist.
+
+Two classes were deliberately left bare, and the distinction is the interesting part.
+`config/antigravity-skills/` (71 refs) installs into a **Gemini/Antigravity** runtime where the
+`saki-builder:` namespace has never existed — rewriting those would point them at a command that
+engine cannot resolve. Same for the five `/graphify` references that denote the **separate global
+skill** at `~/.claude/skills/graphify`, where a rewrite would invert "invoke the global skill" into
+"invoke yourself". `bin/namespace-refs.js` gained `--exclude` to make that boundary explicit and
+repeatable rather than something a future contributor has to remember — and it **fails loud** when an
+exclude matches nothing, because a guard that silently protects nothing is worse than no guard.
+
+**The approval proof no longer lives only inside the PRD** (item I6). `/saki-builder:proto` wrote the
+freeze marker into the PRD file, which assumes the PRD already exists when proto runs. It now writes
+`tasks/proto-<slug>/.prd-locked` **always** — the gallery is proto's own output, so it exists in both
+pipeline orders — and the PRD marker when the file is there; `/saki-builder:build` GATE 1.5 accepts
+either. This widens *where* approval can be proven, never *whether* it must be: a run with neither
+marker still hard-stops, and a `--slice` PARTIAL run still writes neither. The marker names the PRD it
+froze so one gallery's approval cannot be inherited by another file deriving the same slug, and
+`/saki-builder:prd` now **voids** it when it rewrites an existing PRD's scope — which is what keeps
+"absence = not-yet-frozen" true now that the proof can outlive the file.
+
+**The scope recut fires on the scope signal** (item I7). `/saki-builder:pickup` entered its Senior-PM
+recut only when `/saki-builder:prd-review` returned `non-convergence` — binding a *scope* gate to a
+*review* stage. New Phase 1.5 compares the §8 slice count against the §6 appetite band the moment the
+PRD is written, reading the machine-readable `<!-- slices: N -->` / `<!-- appetite: X -->` markers the
+PRD template already emits. Fail-open is load-bearing and tested: an unreadable band falls through to
+the sentinel rather than recutting on a guess.
+
+**The revision-pass baseline is now measurable.** `/saki-builder:prd-review` stamps a durable
+`<!-- revision-passes: N -->` counter into the PRD header on every round it applies fixes — the state
+file it already kept lives under gitignored `tasks/` and rotates per run, so it could never be read
+back. `bin/revision-baseline.js` aggregates across runs and **refuses to emit a number** from
+non-converged runs rather than a flattering one; that refusal is the load-bearing rule and it is
+pinned by a test.
+
+Every one of the four items was reviewed in a fresh context and every review returned REQUEST CHANGES
+before it passed — including a regression this release introduced and caught (namespacing
+`config/CLAUDE.md` leaked 15 unresolvable refs into opencode's generated `AGENTS.md`), an appetite
+gate that was simultaneously **inert on all four real PRDs and false-positive-prone on three
+constructible inputs**, and a lock marker that outlived the PRD it certified.
+
+Tests: 14 suites green (was 11). New: `test-lock-resolution.sh` (8), `test-appetite-gate.sh` (14),
+`test-revision-baseline.sh` (11); `test-namespace-refs.sh` grew 17 → 28.
+
 ## 0.26.0 — 2026-08-06
 
 **A supervising agent can now see a saki-builder run while it is still running** (item I8).
