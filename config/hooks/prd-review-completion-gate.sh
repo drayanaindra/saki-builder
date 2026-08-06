@@ -182,7 +182,7 @@ if raw_rounds >= hard_cap:
 else:
     slug = sanitize(state.get("slug", "the run"))
     reason = (
-        "PRD-REVIEW INCOMPLETE — do not stop yet. The autonomous /prd-review state file (%s) is in the "
+        "PRD-REVIEW INCOMPLETE — do not stop yet. The autonomous /saki-builder:prd-review state file (%s) is in the "
         "\"reviewing\" phase. Continue the loop-to-green: run the review core, and if the PRD is not green "
         "(Verdict SHIP AND Readiness READY), apply the prescribed fixes to the PRD and re-review — until "
         "green or a hard blocker (DISCOVERY-FIRST / structural NOT READY / non-convergence). Cap at 3 "

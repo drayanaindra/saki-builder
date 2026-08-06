@@ -186,10 +186,12 @@ todo = "; ".join(sanitize("slice %s: %s" % (s.get("n", "?"), s.get("title", ""))
                  for s in remaining[:8])
 prd = sanitize(state.get("prd", "the PRD"))
 reason = (
-    "BUILD INCOMPLETE — do not stop yet. The /build state manifest (%s) still has unfinished "
-    "slices: %s. Per /build, run to completion: take the next unfinished slice through "
-    "rplan -> approved -> qa -> reviewer until /qa is green and /reviewer is clean, update the "
-    "state manifest (set the slice status to \"done\" only after qa AND reviewer pass), then "
+    "BUILD INCOMPLETE — do not stop yet. The /saki-builder:build state manifest (%s) still has unfinished "
+    "slices: %s. Per /saki-builder:build, run to completion: take the next unfinished slice through "
+    "/saki-builder:rplan -> /saki-builder:approved -> /saki-builder:qa -> /saki-builder:reviewer until "
+    "/saki-builder:qa is green and /saki-builder:reviewer is clean, update the "
+    "state manifest (set the slice status to \"done\" only after /saki-builder:qa AND "
+    "/saki-builder:reviewer pass), then "
     "continue. Only stop when every slice is done, e2e passes, and you have emitted the build-"
     "complete sentinel. If a slice genuinely cannot be made green, set its status to \"blocked\" "
     "in the manifest and report it; this gate will then let you stop. (Manifest: %s)"

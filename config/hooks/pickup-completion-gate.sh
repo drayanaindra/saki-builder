@@ -209,17 +209,17 @@ if np > max_np:
 # ── Block the stop and tell the model to continue the front half ───────────────
 slug = sanitize(state.get("slug", "the run"))
 nextmap = {
-    "prd":    "run /prd (seeded by the item), then advance to /prd-review",
-    "review": "run /prd-review and loop until green (verdict SHIP AND readiness READY), then set "
-              "phase to proto-ready and emit the PICKUP_READY sentinel — do NOT run /proto yet "
-              "(running /proto is the human''s approval), and never mark the item Shipped from here",
+    "prd":    "run /saki-builder:prd (seeded by the item), then advance to /saki-builder:prd-review",
+    "review": "run /saki-builder:prd-review and loop until green (verdict SHIP AND readiness READY), then set "
+              "phase to proto-ready and emit the PICKUP_READY sentinel — do NOT run /saki-builder:proto yet "
+              "(running /saki-builder:proto is the human''s approval), and never mark the item Shipped from here",
 }
 reason = (
-    "PICKUP INCOMPLETE — do not stop yet. The /pickup state file (%s) is in the \"%s\" phase. "
-    "Per /pickup, continue the front half: %s. Update tasks/.pickup-%s-state.json after the stage "
+    "PICKUP INCOMPLETE — do not stop yet. The /saki-builder:pickup state file (%s) is in the \"%s\" phase. "
+    "Per /saki-builder:pickup, continue the front half: %s. Update tasks/.pickup-%s-state.json after the stage "
     "transition. The sanctioned end of the front half is phase \"proto-ready\" (the PRD is green, "
-    "SHIP·READY, and the human runs /proto next) or \"blocked\" (the review can''t reach green); set "
-    "the right one and this gate will release. Never run /proto before the user asks — running it is "
+    "SHIP·READY, and the human runs /saki-builder:proto next) or \"blocked\" (the review can''t reach green); set "
+    "the right one and this gate will release. Never run /saki-builder:proto before the user asks — running it is "
     "their approval."
     % (os.path.relpath(path, cwd), phase, nextmap.get(phase, "continue the current stage"), slug)
 )

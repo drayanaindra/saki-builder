@@ -13,9 +13,9 @@ Aesop-restrained? Good — now what in YOUR product's world gives that restraint
 is what makes it specific; the archetype only names the neighbourhood.
 
 **How the skills use it**
-- `/genesis` Part 0 Step 1 — **only if** the world-questions stall: offer a pick-1 axis via
+- `/saki-builder:genesis` Part 0 Step 1 — **only if** the world-questions stall: offer a pick-1 axis via
   `AskUserQuestion`, then redirect to an own-world anchor. Feed that anchor (not the archetype) to Step 2.
-- `/proto` — inherits the pinned own-world reference from `design.md`; the reference-judge grades
+- `/saki-builder:proto` — inherits the pinned own-world reference from `design.md`; the reference-judge grades
   output against **Part F tells + the pinned reference**, not against a menu row.
 - **Calibration axes, not a paint-by-numbers:** use a row to locate warm↔cool · dense↔airy · quiet↔loud,
   then leave. Blends are fine as *starting* coordinates ("Stripe structure + Duolingo warmth").

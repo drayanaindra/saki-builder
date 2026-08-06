@@ -117,13 +117,13 @@ Question:  [the ONE thing only a human can answer]
 ```
 
 A pause is not a give-up: no `BLOCKED:`, no abandonment — work resumes the moment the human answers.
-`/build` automates this via its `NEEDS_DECISION:` sentinel (see `/build` step 0a); an attended session
+`/saki-builder:build` automates this via its `NEEDS_DECISION:` sentinel (see `/saki-builder:build` step 0a); an attended session
 just asks in chat.
 
 **Never probe around a refusal.** A denied permission, a missing credential, and interactive auth are
 genuine human handoffs — re-routing a denied tool call through Bash is circumvention, not resolution.
 
-Reference implementation: `/build` step 0b.
+Reference implementation: `/saki-builder:build` step 0b.
 
 ### Risk Tiers
 
@@ -142,10 +142,10 @@ Reference implementation: `/build` step 0b.
 
 ## Phase 6: LEARN (session end)
 
-- Run `/retro` before ending long sessions
+- Run `/saki-builder:retro` before ending long sessions
 - Captures: corrections made, assumptions that were wrong, patterns that worked
 - Writes to project memory (`lessons-learned.md`)
-- Periodically run `/reflect` to promote confirmed patterns to global config
+- Periodically run `/saki-builder:reflect` to promote confirmed patterns to global config
 
 ---
 
@@ -153,17 +153,17 @@ Reference implementation: `/build` step 0b.
 
 | Command     | Purpose                                     | When to Use                                                                                                                               |
 | ----------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `/rplan`    | Structured planning with an evidence-based readiness gate | Before any non-trivial task (2+ files, new feature, API change, architecture decision)                                       |
-| `/retro`    | Session retrospective, capture learnings    | End of substantial sessions. Auto-reminded by Stop hook. Run when: corrections happened, non-obvious discovery, or session > 30min coding |
-| `/reflect`  | Cross-project pattern promotion             | Weekly (Friday), or when lessons-learned.md has 5+ unreviewed entries                                                                     |
-| `/init-env` | Scaffold environment for new project        | First time in a project with no `.claude/agents/` or `.claude/settings.json`                                                              |
+| `/saki-builder:rplan`    | Structured planning with an evidence-based readiness gate | Before any non-trivial task (2+ files, new feature, API change, architecture decision)                                       |
+| `/saki-builder:retro`    | Session retrospective, capture learnings    | End of substantial sessions. Auto-reminded by Stop hook. Run when: corrections happened, non-obvious discovery, or session > 30min coding |
+| `/saki-builder:reflect`  | Cross-project pattern promotion             | Weekly (Friday), or when lessons-learned.md has 5+ unreviewed entries                                                                     |
+| `/saki-builder:init-env` | Scaffold environment for new project        | First time in a project with no `.claude/agents/` or `.claude/settings.json`                                                              |
 
 ## Session Flow
 
 ```
 START SESSION
 |
-+-- New project? ---------- /init-env "project description"
++-- New project? ---------- /saki-builder:init-env "project description"
 |
 +-- Trivial task ---------- Just do it. No /plan needed.
 |   (typo, 1-line fix)
@@ -176,23 +176,23 @@ START SESSION
 |   |-- Branch point? ----- Decide (reversible) / Pause, ONE question (intent) / BLOCKED (guardrail)
 |   +-- Verify (tests, reviewer subagent, human review)
 |
-+-- End of session -------- /retro (Stop hook reminds you)
++-- End of session -------- /saki-builder:retro (Stop hook reminds you)
 |
-+-- Weekly ---------------- /reflect
++-- Weekly ---------------- /saki-builder:reflect
 ```
 
 ## Decision Matrix
 
 | Situation                                            | Command               | Skip?                                           |
 | ---------------------------------------------------- | --------------------- | ----------------------------------------------- |
-| Multi-file feature                                   | `/rplan`              | Never skip                                      |
+| Multi-file feature                                   | `/saki-builder:rplan`              | Never skip                                      |
 | Single typo/color fix                                | none                  | Always skip                                     |
-| Add model field (model + migration + API + frontend) | `/rplan`              | No — 4 files                                    |
+| Add model field (model + migration + API + frontend) | `/saki-builder:rplan`              | No — 4 files                                    |
 | Question about code                                  | none                  | No implementation                               |
-| Refactor cross-cutting concern                       | `/rplan`              | Never skip                                      |
-| Session had corrections                              | `/retro`              | Never skip — corrections = high-value learnings |
-| Quick 5-min Q&A session                              | skip `/retro`         | No implementation happened                      |
-| Any HIGH risk (DB, auth, delete, push)               | `/rplan` + human gate | Never skip                                      |
+| Refactor cross-cutting concern                       | `/saki-builder:rplan`              | Never skip                                      |
+| Session had corrections                              | `/saki-builder:retro`              | Never skip — corrections = high-value learnings |
+| Quick 5-min Q&A session                              | skip `/saki-builder:retro`         | No implementation happened                      |
+| Any HIGH risk (DB, auth, delete, push)               | `/saki-builder:rplan` + human gate | Never skip                                      |
 
 ## XP Session Lifecycle
 
@@ -203,15 +203,15 @@ XP practices are embedded into the workflow skills. This section describes how t
 ```
 START SESSION
 |
-+-- Trivial task ---------- Just do it. No /rplan, no TDD needed.
++-- Trivial task ---------- Just do it. No /saki-builder:rplan, no TDD needed.
 |   (typo, 1-line fix)
 |
-+-- Non-trivial task ------ /rplan (XP-enhanced)
++-- Non-trivial task ------ /saki-builder:rplan (XP-enhanced)
 |   |
 |   |-- Research (read-only, spike subagents for unknowns)
 |   |-- Plan (each step: Test field, Committable flag, YAGNI check)
 |   |-- Annotate (human reviews, 1-6 cycles)
-|   |-- /approved (XP implementation mode):
+|   |-- /saki-builder:approved (XP implementation mode):
 |   |   |
 |   |   FOR EACH STEP:
 |   |   |-- SPEC   → Read step + determine TDD mode
@@ -221,13 +221,13 @@ START SESSION
 |   |   |-- COMMIT → Run full suite + commit step
 |   |   +-- NEXT
 |   |
-|   |-- /qa (acceptance criteria verification — mandatory)
-|   |-- /reviewer (fresh-context code review)
+|   |-- /saki-builder:qa (acceptance criteria verification — mandatory)
+|   |-- /saki-builder:reviewer (fresh-context code review)
 |   +-- Verify (human final review)
 |
-+-- End of session -------- /retro (captures XP metrics: tests first, YAGNI catches, refactors)
++-- End of session -------- /saki-builder:retro (captures XP metrics: tests first, YAGNI catches, refactors)
 |
-+-- Weekly ---------------- /reflect
++-- Weekly ---------------- /saki-builder:reflect
 ```
 
 ### TDD Mode Decision Matrix
@@ -278,11 +278,11 @@ Rule: Never refactor untested code. Write characterization tests first.
 
 ## Quick Rules
 
-- 2+ files touched = `/rplan`
-- Any HIGH risk = `/rplan` + human gate ALWAYS
-- Got corrected = `/retro` before ending
-- New project = `/init-env` once
-- Weekly = `/reflect` once
+- 2+ files touched = `/saki-builder:rplan`
+- Any HIGH risk = `/saki-builder:rplan` + human gate ALWAYS
+- Got corrected = `/saki-builder:retro` before ending
+- New project = `/saki-builder:init-env` once
+- Weekly = `/saki-builder:reflect` once
 
 ---
 
@@ -297,7 +297,7 @@ Completed: [1-line summary of what was done]
 Next actions:
 > [most logical next step based on what just happened]
 > [alternative if user wants to shift focus]
-> /retro (if session was substantial)
+> /saki-builder:retro (if session was substantial)
 ```
 
 ### Rules for Next Actions
@@ -307,7 +307,7 @@ Next actions:
 3. If task was part of a plan, show the next uncompleted step from the plan
 4. If task revealed a new issue, suggest addressing it
 5. If nothing obvious follows, suggest: verify/test, commit, or start next task
-6. If session has been long (5+ tasks or 30+ min), include `/retro` as an option
+6. If session has been long (5+ tasks or 30+ min), include `/saki-builder:retro` as an option
 
 ### Examples
 
@@ -353,5 +353,5 @@ Completed: All 5 plan steps implemented and tested
 Next actions:
 > Use reviewer subagent for fresh-context code review
 > Commit and create PR
-> /retro to capture session learnings
+> /saki-builder:retro to capture session learnings
 ```
