@@ -23,6 +23,10 @@ Start a new session. Done. Every command is available as `/saki-builder:<name>`.
 
 > The plugin auto-detects when you're behind and nudges you at session start.
 
+**Driving it from an agent runner?** Hermes Agent, OpenClaw, or CI spawning `claude -p` in the
+background: set `SAKI_AGENT_MODE=1` and poll `tasks/.saki/latest.json` to see whether a run is alive,
+hung, or finished. Full contract + supervisor loop: **[docs/AGENT-RUNNERS.md](docs/AGENT-RUNNERS.md)**.
+
 ---
 
 ## Your first session

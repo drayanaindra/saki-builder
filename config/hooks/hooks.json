@@ -17,6 +17,11 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/check-plugin-update.js\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 10
           }
         ]
       }
@@ -58,8 +63,47 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/prd-review-completion-gate.sh\"",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 10
           }
         ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 5
+          }
+        ],
+        "matcher": "agent_needs_input|idle_prompt"
       }
     ]
   }

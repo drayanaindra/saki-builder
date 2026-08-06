@@ -2,6 +2,94 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.26.0 — 2026-08-06
+
+**A supervising agent can now see a saki-builder run while it is still running** (item I8).
+
+Hermes Agent and OpenClaw both drive coding sessions the same way: spawn `claude -p` (or
+`opencode run`) as a background subprocess and read what comes back. Running both headless under
+Hermes, the operator hit the wall that shape has — *"the agent can't [be] aware when process running
+in background."* Everything saki-builder emitted was **terminal**: an `--- DONE ---` block in prose,
+written once, at the end. `git grep -- "--- DONE ---" --include=*.sh --include=*.js` returned zero
+code hits at 0.25.1 — nothing parsed it, because it was never meant to be parsed. So a supervisor
+polling for progress saw exactly one thing — nothing — whether the run was working, hung, crashed,
+or had never started at all. Four states, one observation, no way to tell them apart.
+
+A terminal signal cannot fix that no matter how well-formed it is. It answers *what happened*; the
+question is *is it still alive*. The fix is a state file that exists for the **whole lifetime** of
+the run, published by hooks rather than by the model:
+
+| Event | Writes | Why it matters |
+|---|---|---|
+| `SessionStart` | `RUNNING`, `pid`, `started_at` | makes **absence** meaningful — no file now means "never started" |
+| `PostToolBatch` | `heartbeat_ts`, `turns++`, `last_tool` | makes **liveness** observable while the run is in flight |
+| `Stop` | terminal status from the model's `SAKI-RESULT:` line | the outcome |
+| `SessionEnd` | closes a still-`RUNNING` state via `exit_reason` | a killed run can never leave a stale `RUNNING` |
+
+All four verified to fire in headless `claude -p` before any of this was designed (`SessionStart` ×1,
+`PostToolUse` ×2, `PostToolBatch` ×1, `Stop` ×1, `SessionEnd` ×1). `Notification` is registered too
+but fired **zero** times in a clean run, so nothing depends on it.
+
+The supervisor polls one path — `tasks/.saki/latest.json` — and reads four states off it: absent =
+never started · `RUNNING` with `heartbeat_ts` advancing = alive · `RUNNING` with `heartbeat_ts` stale
+= hung · terminal = done. `status` is one of `RUNNING · DONE · BLOCKED · NEEDS_INPUT · UNKNOWN`.
+Concurrent runs each get `tasks/.saki/<session_id>.json`; `latest.json` is the last writer.
+
+**A terminal status is provisional until `final`.** The three completion gates run *before* the state
+hook in the `Stop` array and can block the stop to push the model back to work — and the hook cannot
+see their verdict. So a tool batch arriving after a terminal write resurrects the run to `RUNNING`
+(`resumed_after_stop` increments); only `SessionEnd` sets `"final": true`. A supervisor should wait for
+`final`, or for a terminal status to hold across two polls, before tearing down. Caught in review: the
+first cut froze the heartbeat permanently on exactly the `/build` runs the gates exist for.
+
+**Staleness is the supervisor's judgement, and that is not a shortcut.** No hook survives `kill -9`.
+A SIGKILLed session leaves `RUNNING` on disk forever and nothing in-process can change that, so
+`docs/AGENT-RUNNERS.md` hands the timeout to the caller (`SAKI_STALE_SECONDS`, ~300s) instead of
+pretending the run can report its own death.
+
+**Agent mode** (`SAKI_AGENT_MODE=1`) layers `instructions/agent-mode.md` over the always-on core:
+the Readiness Gate's "human approves" clause is void, Branch Points §2 (the AUTO-RESOLVED ladder)
+becomes the default for every reversible fork, and the interactive Next Actions block is replaced by
+the result contract. Two things still stop a run rather than hang it — a HIGH-tier irreversible
+action and a genuine intent question — both emitting `NEEDS_INPUT` with one specific question.
+Guardrails are untouched: a Non-Goal or `🔒 INVARIANT` is still a real `BLOCKED`.
+
+Opt-in is by env var **only**. Sniffing was rejected on evidence, not taste: Claude Code runs command
+hooks without a controlling terminal in ordinary interactive sessions, so TTY detection would have
+flipped *every* session into agent mode. `instructions/core.md` is unchanged — it is injected into
+every session and stays lean; the overlay is a separate file read only when the flag is set.
+
+**opencode gets the identical schema**, so one supervisor loop serves both engines:
+`session.created` → `RUNNING`, `tool.execute.after` → heartbeat, `session.error` → `BLOCKED`,
+`session.idle` → terminal. One difference is stated rather than smoothed over: opencode has **no
+Stop-gate equivalent**. `session.idle` is an event, not a gate, so it cannot force a run to
+completion the way Claude's `Stop` hook can. The plugin logs `SAKI-INCOMPLETE: <n> slices remaining`
+and attempts a bounded re-prompt (`SAKI_OC_MAX_CONTINUE`, default 5); if that is not reachable, the
+run ends with an accurate INCOMPLETE record. Work that must be *forced* to completion belongs on
+headless Claude, and the docs say so.
+
+`bin/opencode-bridge.sh` installs from the **installed plugin root**, so using saki-builder under
+opencode no longer requires cloning this repo. `build-opencode.sh --from-plugin` generates
+`AGENTS.md` from `instructions/core.md` instead of the owner's personal `~/.claude/CLAUDE.md` —
+verified to leak zero `/Users/` paths — and falls back to the plugin's own permission posture rather
+than an empty block that would make opencode prompt for everything. `namespace-refs.js --reverse`
+strips the `/saki-builder:` prefix from bridged skills, since opencode registers them bare.
+
+Two findings from live payloads, recorded because both contradict the published docs:
+`stopped_by` is documented for `Stop` but is **absent** from the actual payload, so a turn-limit stop
+honestly reports `UNKNOWN` rather than being mislabelled; `stop_hook_active` **is** present and is
+now published, telling a supervisor that one of our own completion gates held the stop open.
+
+Nothing here can gate a run. `PostToolBatch` and `Stop` both support `decision:"block"` and the state
+hook never emits it — a liveness probe that can halt the run it measures is a new failure mode, not a
+feature. Every registration short-circuits in the shell before node starts, so an interactive session
+pays ~7ms per tool batch instead of a ~40ms process spawn, and every error path exits 0.
+
+New: `config/hooks/agent-session.js`, `instructions/agent-mode.md`, `bin/agent-setup.sh`,
+`bin/opencode-bridge.sh`, `opencode/plugins/saki-state.ts`, `docs/AGENT-RUNNERS.md`.
+Tests: 48 new assertions across three suites, including the two traps — a mid-sentence `BLOCKED:`
+must not classify (line-anchored matching), and `SessionEnd` must never overwrite a terminal status.
+
 ## 0.25.0 — 2026-07-29
 
 **`docs/project-context.md` gets a scope, a reader, and a writer** (item I5).
