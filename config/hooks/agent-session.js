@@ -85,6 +85,7 @@ function onSessionStart (dir, sessionId, payload) {
     schema: SCHEMA,
     status: 'RUNNING',
     session_id: sessionId,
+    engine: 'claude',      // opencode writes 'opencode' into the same schema — one poller, both engines
     pid: process.ppid,
     started_at: ts,
     heartbeat_ts: ts,
