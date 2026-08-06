@@ -95,6 +95,13 @@ fire "$d" "$(payload Stop "$d" "\"last_assistant_message\":\"$MSG\",\"stopped_by
 check "5 Stop status" DONE "$(latest "$d" status)"
 check "5 Stop artifacts[1]" b.go "$(latest "$d" artifacts.1)"
 [ "$(latest "$d" ended_at)" != NULL ] && check "5 ended_at set" ok ok || check "5 ended_at set" ok missing
+check "5 stop_hook_active defaults false" false "$(latest "$d" stop_hook_active)"
+
+# ── 5b. a gate held the stop open → stop_hook_active surfaced to the supervisor ─
+d="$(fresh)"
+fire "$d" "$(payload SessionStart "$d")" >/dev/null
+fire "$d" "$(payload Stop "$d" "\"last_assistant_message\":\"$MSG\",\"stop_hook_active\":true")" >/dev/null
+check "5b stop_hook_active surfaced" true "$(latest "$d" stop_hook_active)"
 
 # ── 6. Stop without any sentinel → UNKNOWN ────────────────────────────────────
 d="$(fresh)"

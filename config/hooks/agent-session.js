@@ -124,6 +124,10 @@ function onStop (dir, sessionId, payload) {
 
   // No parseable sentinel is genuinely UNKNOWN — except a turn-limit exhaustion, which is the one
   // no-sentinel case we CAN name: the run was cut off mid-work and wants another turn.
+  // NOTE: `stopped_by` is documented for Stop but is ABSENT from the live payload on current builds
+  // (observed keys: cwd, effort, hook_event_name, last_assistant_message, permission_mode, prompt_id,
+  // session_id, stop_hook_active, transcript_path). The branch is kept because it is forward-compatible
+  // and costs nothing — when the field is missing we simply fall through to UNKNOWN, which is honest.
   let status = result ? result.status : 'UNKNOWN'
   if (!result && payload.stopped_by === 'turn_limit') status = 'NEEDS_INPUT'
 
@@ -137,6 +141,10 @@ function onStop (dir, sessionId, payload) {
     auto_resolved: (result && result.auto_resolved) || [],
     next: (result && result.next) ?? null,
     stopped_by: payload.stopped_by ?? null,
+    // TRUE when a sibling Stop gate (build/pickup/prd-review completion) blocked this stop and pushed
+    // the session back to work. A supervisor seeing a terminal status with this set knows the run was
+    // held open at least once — i.e. "finished" here may still be followed by more turns.
+    stop_hook_active: payload.stop_hook_active === true,
     ended_at: ts,
     heartbeat_ts: ts
   })
