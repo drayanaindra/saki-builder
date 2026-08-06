@@ -8,8 +8,8 @@ user-invocable: true
 
 # Resume — manual-chain orientation
 
-Thin, **read-only** reader for the manual chain (`/rplan → /rplan-review → /approved → /qa → /reviewer →
-/wrap`). After a `/clear` or an interruption it answers *"where was I, what's next"* from the resume manifest
+Thin, **read-only** reader for the manual chain (`/saki-builder:rplan → /saki-builder:rplan-review → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer →
+/saki-builder:wrap`). After a `/clear` or an interruption it answers *"where was I, what's next"* from the resume manifest
 that those skills stamp — see `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` for the schema and
 the canonical protocol this skill runs. It **never stamps or writes** anything.
 
@@ -85,7 +85,7 @@ Then relay the table + the `NEXT:` line to the user. Per the manifest doc's rule
 
 ## Rules
 
-- **Read-only.** Never stamp, edit, or create a manifest — that is the chain skills' job. `/resume` only reports.
+- **Read-only.** Never stamp, edit, or create a manifest — that is the chain skills' job. `/saki-builder:resume` only reports.
 - **Best-effort.** No manifest (or unreadable) → say so and point at `/saki-builder:rplan`; never error out.
 - **`config/docs/manual-chain-resume.md` is the source of truth** for the schema, step order, and protocol —
   this skill just runs it on demand and maps the next step to its command.

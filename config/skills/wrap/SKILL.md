@@ -1,24 +1,24 @@
 ---
 name: wrap
-description: Full Definition of Done gate + converge-to-clean. Runs build, tests, coverage (≥80%), security scan, migration integrity, and SonarQube quality gate BEFORE committing/pushing. Only proceeds to git cleanup when all DoD gates pass. Run as the LAST step of any task. Pass `--heal` for autonomous mode (auto-fix + re-run each failing gate instead of stopping; used by /build).
+description: Full Definition of Done gate + converge-to-clean. Runs build, tests, coverage (≥80%), security scan, migration integrity, and SonarQube quality gate BEFORE committing/pushing. Only proceeds to git cleanup when all DoD gates pass. Run as the LAST step of any task. Pass `--heal` for autonomous mode (auto-fix + re-run each failing gate instead of stopping; used by /saki-builder:build).
 ---
 
 # Wrap — Definition of Done → converge to clean
 
-`/wrap` has two jobs, in this order:
+`/saki-builder:wrap` has two jobs, in this order:
 
 1. **Definition of Done gate** — verify the work is actually done before it touches git
 2. **Converge to clean** — commit WIP, push, remove worktrees, switch to main
 
 **Order is law.** If ANY DoD gate fails, stop immediately. Do not commit, do not push, do not switch to main. Report what failed and the exact command to fix it.
 
-**Two modes.** Default (manual) = fail-stop, as above. **`--heal`** (autonomous — how `/build` calls it) = a failing DoD gate is *auto-fixed and re-run* instead of stopping, under a 3-strike honesty backstop. See the **Autonomous heal mode** section below. Everything else — Phase 0 and Phases 2–6 — is identical in both modes.
+**Two modes.** Default (manual) = fail-stop, as above. **`--heal`** (autonomous — how `/saki-builder:build` calls it) = a failing DoD gate is *auto-fixed and re-run* instead of stopping, under a 3-strike honesty backstop. See the **Autonomous heal mode** section below. Everything else — Phase 0 and Phases 2–6 — is identical in both modes.
 
 ---
 
 ## The invariant you must reach
 
-After `/wrap` returns success, ALL of these hold:
+After `/saki-builder:wrap` returns success, ALL of these hold:
 
 1. **DoD gates all passed** — build, tests, coverage, security, migrations, quality gate
 2. **No uncommitted work** — `git status --porcelain` is empty in primary checkout and every worktree
@@ -43,7 +43,7 @@ git fetch origin --prune
 
 Detect:
 - **Mode**: `--heal` present in the invocation → run in **Autonomous heal mode** (Phase-1 failures route + re-run, see the section below); otherwise default fail-stop.
-- **Primary checkout** path **and its current branch** (may be a non-default feature branch with commits to push — the common `/build` case)
+- **Primary checkout** path **and its current branch** (may be a non-default feature branch with commits to push — the common `/saki-builder:build` case)
 - **Default branch** (`git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`, fallback `main`)
 - Every **linked worktree** (path + branch)
 - Which trees are **dirty**
@@ -55,21 +55,21 @@ If there is no `origin`, skip all push steps — still run DoD gates, commit, re
 
 ## Autonomous heal mode (`--heal`)
 
-`/build` (and any TRUST-MODE caller) invokes `/wrap --heal`. In this mode a **Phase-1 DoD gate failure does not stop the run** — it is routed to the *shallowest* skill that fixes it, then the **full Phase-1 gate is re-run from the top** (a fix can ripple into another gate — new tests shift coverage, a dep bump breaks the build, a Sonar fix touches a tested line). This mirrors `/build`'s step-5.5 "re-run the tail until all clean" depth routing. Phase 0 and Phases 2–6 are unchanged: once every gate is green, the same commit → push → remove-worktrees → switch-to-main convergence runs.
+`/saki-builder:build` (and any TRUST-MODE caller) invokes `/saki-builder:wrap --heal`. In this mode a **Phase-1 DoD gate failure does not stop the run** — it is routed to the *shallowest* skill that fixes it, then the **full Phase-1 gate is re-run from the top** (a fix can ripple into another gate — new tests shift coverage, a dep bump breaks the build, a Sonar fix touches a tested line). This mirrors `/saki-builder:build`'s step-5.5 "re-run the tail until all clean" depth routing. Phase 0 and Phases 2–6 are unchanged: once every gate is green, the same commit → push → remove-worktrees → switch-to-main convergence runs.
 
 **Heal routing — DoD gate → shallowest fix:**
 
 | Failing gate | Auto-heal route |
 | --- | --- |
-| 1a Build (compile error) | `/approved` — fix in place (a TDD red) |
-| 1b Tests (failing test) | trace the failure to its slice → `/approved` → re-run 1b |
-| 1c Coverage < floor | `/qa` on the files 1c already listed as below floor → add tests → re-run 1c |
+| 1a Build (compile error) | `/saki-builder:approved` — fix in place (a TDD red) |
+| 1b Tests (failing test) | trace the failure to its slice → `/saki-builder:approved` → re-run 1b |
+| 1c Coverage < floor | `/saki-builder:qa` on the files 1c already listed as below floor → add tests → re-run 1c |
 | 1d-i Deps CVE (critical/high) | bump/replace the package in place; if unfixable here, log it — the Sonar dep-risk gate at push is the backstop |
-| 1e Migration unpaired | write the missing `.down.sql` via `/approved` → re-run 1e |
+| 1e Migration unpaired | write the missing `.down.sql` via `/saki-builder:approved` → re-run 1e |
 | 1f SonarQube FAILED | `/sonarqube:sonar-list-issues` → `/sonarqube:sonar-fix-issue` per issue → re-analyze → re-run 1f |
 | 1d-ii **Secret in diff** | **Never auto-continue a real credential.** A placeholder / test / dummy value → scrub to an env var and continue. A value that looks like a live secret → **hard-stop** (`BLOCKED: DoD/secret`): an agent can't rotate a leaked credential or scrub history, and must never route it through chat. This is the one gate that stops even under `--heal`. |
 
-**3-strike honesty backstop (same as `/build`'s loop guard).** If the *same* gate fails the *same* way ~3 times, stop healing it. Do **not** weaken the test, suppress the finding, or converge. Emit one line and end:
+**3-strike honesty backstop (same as `/saki-builder:build`'s loop guard).** If the *same* gate fails the *same* way ~3 times, stop healing it. Do **not** weaken the test, suppress the finding, or converge. Emit one line and end:
 
 ```
 BLOCKED: DoD/<gate> — <reason> (survived 3 heal attempts)
@@ -377,7 +377,7 @@ gate's scope — keep it to prose and `path:line` citations, never a credential 
 ## Phase 3 — Land each branch and push
 
 Push **every checkout that has commits to land** — this is the fix for the most common case: a
-feature branch created **in place** (`/build`'s `git checkout -b feature/<x>`, no worktree). Build the
+feature branch created **in place** (`/saki-builder:build`'s `git checkout -b feature/<x>`, no worktree). Build the
 push list:
 
 - The **primary checkout** when its current branch `B` is **not** the default branch and has unpushed
@@ -441,7 +441,7 @@ Prune only **local** branches already merged into `origin/<default>`. Leave remo
 
 **Resume manifest (best-effort):** if a manual-chain manifest exists (the newest `tasks/.<slug>-state.json`
 carrying a top-level `steps` object — not `/saki-builder:build`'s `.build-*`), stamp `wrap=done`, the
-terminal marker, using the `/wrap` manifest-resolution + stamp snippet in
+terminal marker, using the `/saki-builder:wrap` manifest-resolution + stamp snippet in
 `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md`. Absent or error → skip silently; it never
 affects convergence.
 

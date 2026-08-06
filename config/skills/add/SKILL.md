@@ -1,6 +1,6 @@
 ---
 name: add
-description: Add a work item to the product roadmap and route it. `/add` categorizes the item into Epic · Feature · Improvement · Bug (auto-proposed, or forced with --epic/--feature/--improvement/--bug), stamps its Type + Track flags, assigns the next id (E/F/I/B<n>), and appends it to tasks/roadmap.md. PRD-track (Epic, Feature) → next is /saki-builder:pickup <id> (writes & reviews the PRD). Plan-track (Improvement, Bug) → skip the PRD, next is /saki-builder:rplan. `--list` shows the portfolio. Usage — /saki-builder:add "<intent>" [--<type>]  |  /saki-builder:add --list.
+description: Add a work item to the product roadmap and route it. `/saki-builder:add` categorizes the item into Epic · Feature · Improvement · Bug (auto-proposed, or forced with --epic/--feature/--improvement/--bug), stamps its Type + Track flags, assigns the next id (E/F/I/B<n>), and appends it to tasks/roadmap.md. PRD-track (Epic, Feature) → next is /saki-builder:pickup <id> (writes & reviews the PRD). Plan-track (Improvement, Bug) → skip the PRD, next is /saki-builder:rplan. `--list` shows the portfolio. Usage — /saki-builder:add "<intent>" [--<type>]  |  /saki-builder:add --list.
 ---
 
 # Add a work item — the universal intake
@@ -16,7 +16,7 @@ Like the roadmap it writes to, `/saki-builder:add` only **records + points**. It
 
 ## The model — two tracks, four types
 
-| Type | Id | When | **Track** | Next after `/add` |
+| Type | Id | When | **Track** | Next after `/saki-builder:add` |
 |------|----|------|-----------|-------------------|
 | **Epic** | `E<n>` | large outcome, multiple journeys/surfaces, would span >~7 slices / multiple PRDs | **PRD** | `/saki-builder:pickup E<n>` → prd → proto → build |
 | **Feature** | `F<n>` | one new user-facing capability / journey, ≤ a few slices | **PRD** | `/saki-builder:pickup F<n>` → prd → proto → build |
@@ -57,7 +57,7 @@ the template, ask once for the product name — default the repo/directory name)
 (no `foundations.md`, no stack file, no code) — a brand-new product from scratch — print once:
 `New product from scratch? /saki-builder:genesis sets up the foundations (MVP goal, stack, design system, schema) first, then seeds this roadmap.`
 Then continue normally — do **not** block. A user may add items directly, and `/saki-builder:genesis` G5
-calls `/add` only **after** it has created the roadmap, so this hint never fires mid-genesis.
+calls `/saki-builder:add` only **after** it has created the roadmap, so this hint never fires mid-genesis.
 
 ## Step 1 — Categorize (propose Type + Track, confirm)
 
