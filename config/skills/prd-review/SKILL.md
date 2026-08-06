@@ -530,6 +530,23 @@ the loop alive across turns. Get timestamps with `date +%s`. Schema:
    blocker), bump `review.rounds`, add to `review.blockers_fixed`, and re-run the core from step 1. **Cap at
    3 rounds.**
 
+   **Also stamp the pass into the PRD header** — this is the durable counter, and the state file is not:
+   `tasks/` is gitignored and a state file is deleted/rotated per run, so a count that lives only there
+   cannot be read back later. Add or increment, in the PRD's top comment block, on its own line:
+
+   ```
+   <!-- revision-passes: N -->
+   ```
+
+   `N` = the number of rounds in which this skill **applied fixes to the PRD**. Increment it here, in the
+   same step that applies them — never on a round that only re-read and found nothing to change, and never
+   on the `blocked` escape (step 4), which applies no fixes. A PRD that reached green on the first review
+   with no fixes therefore carries no marker at all, which reads as 0.
+
+   This is the counter `/saki-builder:build`'s E1 metric 5.1 names ("stamp a **Revision passes:** counter
+   into the PRD header, incremented by /saki-builder:prd-review each time it applies fixes"). It is what
+   makes a revision-pass baseline measurable across runs; `bin/revision-baseline.js` aggregates it.
+
 4. **Blocked — escape to the human, do NOT loop forever, do NOT fabricate grounding** — when the review
    can't be authored to green:
    - **`Verdict DISCOVERY-FIRST`** (a load-bearing unknown needs discovery), OR
