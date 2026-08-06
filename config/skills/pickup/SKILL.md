@@ -196,29 +196,41 @@ runs. Binding the recut only to prd-review's `non-convergence` sentinel makes a 
 *review* stage: in any order where the render happens before the review, an over-appetite initiative gets
 its whole journey built and approved before a scope gate can fire.
 
-Read the PRD Phase 1 just wrote (`$PRD` = `tasks/prd-<slug>.md`):
+Read the two **machine-readable markers** `/saki-builder:prd` emits at the top of every PRD
+(`config/skills/prd/SKILL.md:483-484`) — never scrape the prose:
 
 ```bash
-# The caps are OWNED by config/skills/prd/SKILL.md (Appetite section: small <=2 / medium <=4 / large <=7).
-# Cite them; never restate them here as a second source of truth.
-BAND="$(grep -oiE '\*\*Appetite:?\*\*[^|]*\b(small|medium|large)\b' "$PRD" 2>/dev/null \
-        | grep -oiE '\b(small|medium|large)\b' | head -1 | tr '[:upper:]' '[:lower:]')"
+# The PRD template emits both of these; they are the canonical, unambiguous source.
+# Do NOT count "### Slice N" headings: real PRDs render slices as bullets or numbered lists, and
+# §9 (Acceptance Criteria per Slice) repeats the same headings — a prose count is both inert on
+# the real corpus and prone to double-counting §8+§9 into a false recut.
+BAND="$(grep -oE '^<!-- appetite: *(small|medium|large) *-->' "$PRD" 2>/dev/null \
+        | grep -oE '(small|medium|large)' | head -1)"
+SLICES="$(grep -oE '^<!-- slices: *[0-9]+ *-->' "$PRD" 2>/dev/null \
+        | grep -oE '[0-9]+' | head -1)"
 case "$BAND" in small) CAP=2 ;; medium) CAP=4 ;; large) CAP=7 ;; *) CAP="" ;; esac
-SLICES="$(grep -cE '^### Slice [0-9]+' "$PRD" 2>/dev/null)"; SLICES=${SLICES:-0}
 ```
 
-**Fail-open is load-bearing.** If `CAP` is empty (§6 states a non-band appetite such as `~3 days`, or the
-field is missing) or `SLICES` is 0 (no §8 to read), **do not recut** — log one line and fall through to
-Phase 2, where the sentinel remains the backstop. A gate that cannot read its input must never rewrite
-scope on a guess.
+Both patterns are **anchored to line start** and matched against the marker's exact shape, so a band
+word appearing in prose, inside a fenced example, or in a table cell cannot be mistaken for the real
+field.
+
+**Fail-open is load-bearing.** If `CAP` is empty (no `appetite:` marker, or a value outside the three
+bands) or `SLICES` is empty (no `slices:` marker — an older PRD predating the template), **do not
+recut** — log one line and fall through to Phase 2, where the sentinel remains the backstop. A gate
+that cannot read its input must never rewrite scope on a guess.
 
 - **`SLICES > CAP`** -> **over-appetite**. Log
-  `APPETITE GATE: <slug> - §8 has <SLICES> slices, §6 band is <BAND> (<=<CAP>) -> over by <n>` and go to
-  **Phase 2b (Senior-PM recut)** with reason `over-appetite`. The once-guard in Phase 2b still applies:
-  a run that is already a recut child does not re-recut.
+  `APPETITE GATE: <slug> - <SLICES> slices vs <BAND> band (<=<CAP>) -> over by <n>` and go to
+  **Phase 2b (Senior-PM recut)** with reason `over-appetite`.
 - **otherwise** -> log
-  `APPETITE GATE: <slug> - §8 has <SLICES> slices, §6 band is <BAND> (<=<CAP>) -> within appetite`
+  `APPETITE GATE: <slug> - <SLICES> slices vs <BAND> band (<=<CAP>) -> within appetite`
   and continue to Phase 2 unchanged.
+
+**Run this BEFORE Phase 1 step 6 sets `phase:"review"`.** Phase 1.5 has no state field of its own, and
+GATE 0 maps `phase == "review"` to "resume at Phase 2" — so checking after the flip would let any resume
+silently skip the gate. Running it inside Phase 1's block makes `phase:"review"` mean "Phase 1 *and* the
+appetite gate completed", which is what the resume logic already assumes.
 
 This is a **router, never a blocker** — it can only send the run to a phase that already exists.
 
@@ -310,7 +322,7 @@ with no manual counter. You do **not** hand-bump `review.rounds` here anymore. J
 **First write `recut = {parent:<id>, stage:"phasing", phases:[], registered:0}` to the state file** (this
 marks the run as a recut so GATE 0 resumes it correctly, and starts crediting the gate). Then spawn the
 `senior-pm` agent (Agent tool) with: the **item seed**, the non-converged PRD (`tasks/prd-<slug>.md`), and
-the **review ledger** (`tasks/prd-<slug>-review.md`). Ask for its **`MVP-Phasing Decision`** artifact
+the **review ledger** (`tasks/prd-<slug>-review.md`) **when it exists** — on the Phase-1.5 door prd-review has not run, so there is no ledger; pass the appetite figures (`<SLICES> slices vs <BAND> band, cap <CAP>`) as the scope evidence instead. Ask for its **`MVP-Phasing Decision`** artifact
 (`config/agents/senior-pm.md`), and **embed the exact output template verbatim in the spawn prompt**
 (belt-and-suspenders, so autonomy holds even if the agent file drifts) — instruct it to **decide, not ask**,
 and to return the shape **inline**. The decision is an **MVP phasing**:
@@ -417,8 +429,8 @@ ALLOWS the stop at `phase:"proto-ready"` — ending the turn here is correct and
 - **One human gate, at proto.** `/saki-builder:pickup` never advances into proto; running `/saki-builder:proto E<n>`
   designs the UI/UX and **locks** the PRD (the freeze before build). Never auto-run `/saki-builder:proto` from here.
 - **Never fabricate grounding, never infinite-loop.** The stops are: green (`proto-ready`), a **scope**
-  block (`non-convergence`, or a decomposable `readiness` blocker) → **Phase 2b recut** (then the MVP
-  loops to green), or a non-scope block (`DISCOVERY-FIRST` / unaccepted bet / unresolved DISCOVERY-RISK)
+  block (`over-appetite` from Phase 1.5, or `non-convergence` / a decomposable `readiness` blocker from
+  Phase 2) → **Phase 2b recut** (then the MVP loops to green), or a non-scope block (`DISCOVERY-FIRST` / unaccepted bet / unresolved DISCOVERY-RISK)
   → `blocked`.
 - **Recut only on a scope blocker, and only once.** A scope block routes to Phase 2b (Senior-PM recut);
   `DISCOVERY-FIRST` and bet/discovery readiness blockers **never** recut — you cannot phase past an
