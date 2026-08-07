@@ -2,7 +2,7 @@
 description: "Update the installed saki-builder plugin to the latest marketplace version. Reports installed vs latest and the exact /plugin upgrade commands. Pull-based — a newer version doesn't reach you until you pull it."
 ---
 
-# /saki-builder:update — update the plugin to the latest version
+# /update — update the plugin to the latest version
 
 Updating is **pull-based**: a newer version in the marketplace doesn't reach your install until you
 pull it. Claude Code keeps the plugin in a **managed cache** it updates via the `/plugin` manager —
@@ -41,4 +41,4 @@ so this reports where you stand and gives you the exact commands. A SessionStart
 - Never claim "up to date" you couldn't verify (no git fetch + no `GITLAB_TOKEN` → say "couldn't confirm").
 - Use the marketplace/plugin names `saketek` / `saki-builder@saketek`.
 
-> The legacy `/saki-builder:rupdate` pulls a symlink-install repo (owner-only). For the plugin, this is the path.
+> The legacy `/rupdate` pulls a symlink-install repo (owner-only). For the plugin, this is the path.

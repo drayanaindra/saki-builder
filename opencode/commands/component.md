@@ -23,7 +23,7 @@ definition of done; this skill only carries the per-component *delta*.
 - **Read Part A first** — the repo's `design.md` holds the project's tokens + the
   **GOLD-STANDARD COMPONENT** path. New components are built *"the way the gold-standard is built."*
   If `design.md` / a gold-standard component doesn't exist yet, this project hasn't run Part 0 — stop
-  and route to `/saki-builder:genesis` (it runs the bootstrap).
+  and route to `/genesis` (it runs the bootstrap).
 - **Write the Part D intake** (a few lines) — the only per-component input:
   ```
   COMPONENT: {{input.name}} — <its one job>

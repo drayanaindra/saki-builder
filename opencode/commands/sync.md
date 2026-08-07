@@ -1,5 +1,5 @@
 ---
-description: "Sync saki-builder TEAM-BASELINE changes (memory/patterns + skills/hooks) to the repo via a review MR. Your personal overlay is never synced. Run after /saki-builder:reflect promotes something to the team baseline."
+description: "Sync saki-builder TEAM-BASELINE changes (memory/patterns + skills/hooks) to the repo via a review MR. Your personal overlay is never synced. Run after /reflect promotes something to the team baseline."
 ---
 
 # Sync saki-builder team baseline
@@ -30,7 +30,7 @@ baseline curated (the split's whole point — one reviewer's noise doesn't land 
 
 ## When to use
 
-- After `/saki-builder:reflect` promotes a pattern to the **team baseline** (not for personal-overlay writes)
+- After `/reflect` promotes a pattern to the **team baseline** (not for personal-overlay writes)
 - After editing a shipped skill/hook/`instructions/core.md` that everyone should get
 - Before publishing a new plugin version (bump `.claude-plugin/plugin.json` + `CHANGELOG.md` first; the validator + pre-push hook gate the push)
 

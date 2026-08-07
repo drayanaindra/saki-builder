@@ -19,7 +19,7 @@ print('Model set to opus (alias -> latest Opus)')
 
 Then confirm with: `Model: OPUS | Status: Reading`
 
-> This pins the model to Opus for PRD authoring and does **not** auto-restore afterward — `/saki-builder:rplan` keeps it on Opus for planning, and `/saki-builder:approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+> This pins the model to Opus for PRD authoring and does **not** auto-restore afterward — `/rplan` keeps it on Opus for planning, and `/approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
 
 ---
 
@@ -27,7 +27,7 @@ Then confirm with: `Model: OPUS | Status: Reading`
 
 You are acting as a product analyst for project {{project_name}} ({{project_type}}). Stack: {{stack}}.
 
-The PRD bridges the human's intent to the build pipeline (`/saki-builder:rplan` → `/saki-builder:approved` → `/saki-builder:qa`).
+The PRD bridges the human's intent to the build pipeline (`/rplan` → `/approved` → `/qa`).
 
 **Philosophy:** The human sets the expectation. You apply the discipline. The deliverable must be
 readable without you.
@@ -74,7 +74,7 @@ not a design. Keep it short; accept 1–2 word answers.
 Do not propose a solution yet.
 
 **(b) Appetite** — set the time-box *with the human*. This is Shape Up's load-bearing lever (fixed
-time, variable scope) and it is what `/saki-builder:prd-review` and `/saki-builder:rplan` inherit downstream —
+time, variable scope) and it is what `/prd-review` and `/rplan` inherit downstream —
 so it is never optional. Offer:
 
 ```
@@ -99,11 +99,11 @@ is not a decision.
 **(e) Rabbit holes & no-gos** — name 1–2 places this could sink time, and 1–2 things explicitly out
 of bounds. Seed §12 (rabbit holes) and §11 (non-goals).
 
-**Autonomous fallback (`/saki-builder:pickup` / `--yes` / "you decide"):** do not stall for input. Auto-select
+**Autonomous fallback (`/pickup` / `--yes` / "you decide"):** do not stall for input. Auto-select
 the recommended shape, derive appetite from the intent's scope (small/medium/large), state the defaults
-in one line, and continue. When invoked by `/saki-builder:pickup <id>` (E<n>/F<n>), the **item seed** grounds
+in one line, and continue. When invoked by `/pickup <id>` (E<n>/F<n>), the **item seed** grounds
 this: the item's Goal → problem (a), its Success signal → appetite hint, its User flow → the recommended shape. This
-preserves the workflow's single human gate at proto — running `/saki-builder:proto` designs the UI and **locks**
+preserves the workflow's single human gate at proto — running `/proto` designs the UI and **locks**
 the PRD — so the shape phase adds **no** new gate.
 
 ---
@@ -118,7 +118,7 @@ In scratch (not the file), verify:
 3. **Verdict** — proceed / recut / stop.
 
 **If (1) is `assumed` AND two failure reasons stand unrebutted — auto-spike before stopping.** Do not
-go straight to the human with a suggestion; run the spike yourself, reusing `/saki-builder:rplan`'s
+go straight to the human with a suggestion; run the spike yourself, reusing `/rplan`'s
 Spike Protocol (same contract, applied to the one load-bearing assumption instead of a code unknown):
 
 1. Spawn a subagent, 15-minute timebox, question = the load-bearing assumption. Route by the unknown's
@@ -129,7 +129,7 @@ Spike Protocol (same contract, applied to the one load-bearing assumption instea
 3. **Spike grounds it** → retag `observed`/`validated`, cite the source in §2, and continue — do NOT stop.
 4. **Spike can't ground it** (no reachable data, or it's a judgment call no search resolves) → keep
    `assumed`, but record what was tried. A spike that ran and came back inconclusive is what
-   `/saki-builder:prd-review` counts as a **named spike**; an `assumed` tag with no attempt does not count.
+   `/prd-review` counts as a **named spike**; an `assumed` tag with no attempt does not count.
 
 Only if the spike itself cannot even be attempted (no viable route to check it at all) skip straight to:
 STOP, tell the human in plain English: *"Before we write a spec, we need to answer [X] first — I tried a
@@ -141,7 +141,7 @@ saved **§2** as a stated + tagged line (Step 7): `**Load-bearing assumption:** 
 **If a spike ran, add the line directly beneath it:**
 `**Spike:** <question> → <finding, or "inconclusive — <why>"> (source: <cite, or "none found">)`.
 This holds in BOTH cases — a bet (`assumed`, also carried in the DISCOVERY-RISK banner) and a grounded
-PRD (`observed`/`validated` with its citation). It is what `/saki-builder:prd-review` Phase-1 items 1
+PRD (`observed`/`validated` with its citation). It is what `/prd-review` Phase-1 items 1
 and 3 (evidence floor) read; leaving it scratch-only breaks both consumers.
 
 ---
@@ -180,7 +180,7 @@ graphify query "<feature name and what it does>"
 graphify path "ProposedModule" "ExistingModule"   # confirm coupling the PRD assumes
 ```
 
-If absent: skip. ≥20 files → note once: *"Consider `/saki-builder:graphify .` for richer §16."*
+If absent: skip. ≥20 files → note once: *"Consider `/graphify .` for richer §16."*
 
 **Non-derivable context (pairs with the graph — run in the same breath):**
 
@@ -197,7 +197,7 @@ boundary even when the two are genuinely coupled), the invariants that must hold
 deliberately absent. A cross-boundary edge it names is a §16 surface the graph cannot show you;
 an invariant it names is a constraint a slice must not break. Cite it like any other anchor
 (`docs/project-context.md § Topology`). Absent → skip silently; it is written by
-`/saki-builder:init-env` and refreshed by `/saki-builder:wrap`.
+`/init-env` and refreshed by `/wrap`.
 Contract: `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
 
 Grep/read the codebase to verify every technical claim before writing anything:
@@ -236,7 +236,7 @@ Two primary jobs = two PRDs. Related jobs: 0–3 max.
 are `J2`, `J3`, … in §4 order. Every slice's `Serves: J<n>` tag (Step 3) and every §5 `JTBD` value
 (Step 2) MUST name one of these IDs — **except the counter-metric row, whose `JTBD` cell names the
 metric(s) it guards (`guards 5.x`), not a job**. A `Jn` with no matching job in §3/§4 is a dangling
-reference (the gate and `/saki-builder:prd-review` both fail it).
+reference (the gate and `/prd-review` both fail it).
 **Resolution is bidirectional.** The mirror also holds: every related job in §4 MUST itself be served
 by ≥1 §5 outcome or §8 slice. A `J2`/`J3`… that nothing references is an **orphan job** — cut it (it
 isn't really part of what you're building) or add the outcome/slice that serves it. A dangling
@@ -247,7 +247,7 @@ scope theater (a job you listed but aren't building) — lower severity, deducte
 
 1 primary + 2–3 secondary + 1 counter-metric.
 Emit §5 as a table with an explicit **Basis** column — without a column for it the basis tag
-gets dropped at write time (the exact leak `/saki-builder:prd-review` hard-fails on):
+gets dropped at write time (the exact leak `/prd-review` hard-fails on):
 
 `| # | Outcome (Minimize/Maximize [metric] when [context]) | Target | Basis | Method | JTBD |`
 
@@ -266,9 +266,9 @@ Classify every row's Method as exactly one of:
 - `event` — the metric counts a user/system **action that nothing currently records**. Method MUST name
   the event and its trigger: `event: emit <event_name> when <trigger>` (e.g.
   `event: emit checkout_completed when checkout succeeds`). This is the **instrumentation target**
-  `/saki-builder:rplan` ingests into a build step + a firing criterion — an `event` Method with no named
-  event is undefined build work (`/saki-builder:prd-review` flags it). **Default the emit to a GA4 event**
-  for product-usage metrics (GA4 is the house analytics default, wired by `/saki-builder:genesis`
+  `/rplan` ingests into a build step + a firing criterion — an `event` Method with no named
+  event is undefined build work (`/prd-review` flags it). **Default the emit to a GA4 event**
+  for product-usage metrics (GA4 is the house analytics default, wired by `/genesis`
   foundations) and back it with a §9 `observability` acceptance criterion asserting the event fires —
   that is how the default GA4 instrumentation actually reaches the build.
 - `external` — read outside our code (payment dashboard, survey, third-party analytics). Method reads
@@ -289,24 +289,24 @@ Number them. Each slice must pass all five:
 5. Fits ~30 min agent iteration (≤5 acceptance criteria)
 
 Each slice states **`Serves: J<n> · 5.<x>`** — the JTBD and the primary outcome it advances (this
-is what `/saki-builder:prd-review` item 8 checks; a slice with no `Serves` line reads as an orphan).
+is what `/prd-review` item 8 checks; a slice with no `Serves` line reads as an orphan).
 
 A slice **MAY** carry an optional **`Assumes:`** line naming the hidden build work its behavior silently
 requires but the acceptance criteria don't state — migration/backfill of existing rows · a feature flag ·
 a new permission/role · an index the metric query needs · seed data · a rollback path. Keep it
 **category-level and one line** (`Assumes: a backfill of existing orders; a pending-payout index`) — NOT
-file-level task breakdown (which migration file / which column is `/saki-builder:rplan`'s job). If the
+file-level task breakdown (which migration file / which column is `/rplan`'s job). If the
 hidden work is a load-bearing capability in its own right (its own testable behavior), **promote it to its
-own slice** instead of an `Assumes:` line. This is the line `/saki-builder:rplan` Step 1 ingests so the work
-reaches the plan instead of being rediscovered mid-build; `/saki-builder:prd-review` Judge 3 prescribes it
+own slice** instead of an `Assumes:` line. This is the line `/rplan` Step 1 ingests so the work
+reaches the plan instead of being rediscovered mid-build; `/prd-review` Judge 3 prescribes it
 when a state-changing slice omits it.
 
 Cap: ≤7 slices (>7 = split into multiple epics, each its own PRD). Slice 1 = vertical walking skeleton.
 
 ### 4. Acceptance criteria per slice
 
-Each criterion must be **observable and executable** — this is the `/saki-builder:prd-review` item 9
-contract (and what `/saki-builder:qa` runs). Write each as **Given / When / Then** with a **checkable
+Each criterion must be **observable and executable** — this is the `/prd-review` item 9
+contract (and what `/qa` runs). Write each as **Given / When / Then** with a **checkable
 signal**, and tag it **`[auto]`** or **`[manual]`**:
 
 ```
@@ -330,13 +330,13 @@ Tag money/stock/tenant rules `🔒 INVARIANT`. Link each rule to ≥1 acceptance
 `🔒 INVARIANT` MUST be tested by a criterion that exercises its **failure/edge path**, not only the
 happy path (over-limit · empty/zero · concurrent/double-submit · unauthorized/wrong-tenant ·
 duplicate/idempotency-on-retry · … — apply the paths the rule's stated behavior implies). A
-happy-path-only test of an invariant is exactly what `/saki-builder:prd-review` Phase 1 hard-fails.
+happy-path-only test of an invariant is exactly what `/prd-review` Phase 1 hard-fails.
 
 ### 6. Technical Contract (thin — evidence-grounded)
 
 Author the **§16 Technical Contract** (saved in Step 7) — the load-bearing DB/API/architecture **shape**
-the slices can't work without, and nothing more. This is the surface `/saki-builder:prd-review` verifies
-and `/saki-builder:rplan` hardens into full design. It is **shape, not design**.
+the slices can't work without, and nothing more. This is the surface `/prd-review` verifies
+and `/rplan` hardens into full design. It is **shape, not design**.
 
 **Omit-if-none:** if the feature adds **or changes** no data/API/architecture surface (pure UI/copy change), skip §16 —
 a feature that only *modifies* existing surfaces adds none, but it is exactly the compat case §16 exists to
@@ -351,7 +351,7 @@ re-scan and do not invent. Every row is one of:
   a signature, a status, a config key, an event payload). Cite it `path:line` like a REUSE row, **and add a
   `↳ Breaks:` sub-line naming what currently depends on the present shape** — or `↳ Breaks: none (additive)`
   when the change only adds. A CHANGE row is by definition a **compatibility surface**: it is what
-  `/saki-builder:rplan` turns into a Compatibility & Consumers entry, so an unstated blast radius here is
+  `/rplan` turns into a Compatibility & Consumers entry, so an unstated blast radius here is
   a breakage discovered mid-build. Prefer CHANGE over REUSE whenever in doubt — a modification tagged
   REUSE is the exact failure this tag exists to catch.
 - **NEW** — it does not exist yet; tag `NEW` (no citation, but it must serve a slice).
@@ -362,10 +362,10 @@ A row that cites nothing and isn't tagged `NEW` is fabricated — cut it or grou
 **YAGNI rule.** Every row MUST name the slice · outcome it serves (`8.x · 5.x`). A surface that serves no
 §8 slice / §5 outcome is speculative — cut it. The contract carries only what the slices imply.
 
-**Thin rule (altitude — this is `/saki-builder:rplan`'s boundary).** Entities name the *thing*, not its
+**Thin rule (altitude — this is `/rplan`'s boundary).** Entities name the *thing*, not its
 columns. Endpoints name *method + path + purpose*, not request/response field lists. The architecture line
 is *one* load-bearing decision, not a component diagram. No migration files, no indexes, no schemas — those
-are `/saki-builder:rplan`. If you're writing field names, you've crossed the line. **A `CHANGE` row keeps the
+are `/rplan`. If you're writing field names, you've crossed the line. **A `CHANGE` row keeps the
 same altitude:** name *what kind* of change (a field's meaning, a response shape, a signature, a status set)
 and, in `↳ Breaks:`, *who depends on the present shape* — never the new column type or the new payload. A
 field name appearing inside a `↳ Breaks:` note is compat evidence, not design, and does not cross the line.
@@ -440,18 +440,18 @@ not in this table stays Advisory and never gates.
 If any Blocking predicate is unresolved → fix the cited gaps and re-check. Do NOT present with a non-empty Blocking Set.
 
 **Phase-1 structural blockers (always Blocking, listed for lockstep).** A PRD with ANY of the following
-fails `/saki-builder:prd-review` Phase 1 and must be fixed before presenting: a `🔒 INVARIANT` with no
+fails `/prd-review` Phase 1 and must be fixed before presenting: a `🔒 INVARIANT` with no
 failure/edge criterion; a §5 target with no basis tag; a dangling `Jn` (a `Serves`/`JTBD` ref resolving
 to no §3/§4 job); missing or effort-only Kill Criteria; <2 Non-Goals; an absent Decision Log (§7); or a
 slice with no `Serves` tag. Under the strict gate these are Blocking like every other row — called out
-here so `/saki-builder:prd` and `/saki-builder:prd-review` stay in lockstep on what Phase 1 rejects.
+here so `/prd` and `/prd-review` stay in lockstep on what Phase 1 rejects.
 
 ---
 
 ## Step 7 — Save the full PRD (for downstream skill consumption)
 
 Save to `tasks/prd-{{input.feature | slugify}}.md` with ALL sections in this exact order
-so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can parse them:
+so `/rplan`, `/proto`, and `/qa` can parse them:
 
 ```
 <!-- prd-blocking: 0 -->
@@ -483,9 +483,9 @@ so `/saki-builder:rplan`, `/saki-builder:proto`, and `/saki-builder:qa` can pars
 **§15 Screens & UI Reference** is the PRD's UI/UX footprint in the *saved artifact*. Populate it from the
 **same screen list you present in Step 8** (the plain-English "Screens") — persist it here so the PRD names
 its user-visible screens (one line each), instead of the list being computed for the human view and thrown
-away. This is the product-level screen inventory, NOT a design (the visual design is `/saki-builder:proto`'s job).
+away. This is the product-level screen inventory, NOT a design (the visual design is `/proto`'s job).
 When the feature has no user-visible screens, **omit §15 entirely** (a backend PRD has no UI footprint — the
-same "omit if none" rule as §13/§14). `/saki-builder:proto` writes the **approved-design reference** into §15 at lock
+same "omit if none" rule as §13/§14). `/proto` writes the **approved-design reference** into §15 at lock
 time (`UI approved: tasks/proto-<slug>/ · <date>`), so the locked artifact points at its design.
 
 **§16 Technical Contract (thin)** is the PRD's **DB/API/architecture shape** in the saved artifact — the
@@ -494,12 +494,12 @@ load-bearing surfaces the slices imply, authored in Step 6 from the Step 0.7 Tie
 existing surface this feature *modifies*, i.e. a compatibility surface), or NEW, and names the `8.x · 5.x`
 slice/outcome it serves. It is **shape, not
 design** — entities not columns, endpoint purposes not payloads, one architecture decision not a diagram; the
-full schema/req-resp/migrations are `/saki-builder:rplan`'s job. `/saki-builder:prd-review` **verifies** §16
-(present · cited · compat-declared · slice-coherent) then flags any residual gap; `/saki-builder:rplan` **ingests** §16 as the
+full schema/req-resp/migrations are `/rplan`'s job. `/prd-review` **verifies** §16
+(present · cited · compat-declared · slice-coherent) then flags any residual gap; `/rplan` **ingests** §16 as the
 shape to harden. When the feature adds no backend surface, **omit §16** (write `No backend surface — UI-only
 change.`) — same "omit if none" rule as §13/§14/§15.
 
-**Section numbers §1–§16 are a hard contract** — `/saki-builder:proto` and `/saki-builder:prd-review` reference
+**Section numbers §1–§16 are a hard contract** — `/proto` and `/prd-review` reference
 §5/§8/§9/§10/§11/§16 **by number**. Never renumber; add new content as subsections (the Decision Log lives *inside*
 §7) or in the header, never by inserting a numbered section mid-document. **§15 and §16 are tail appends** (after
 §14) — they shift no existing number, so they are contract-safe; keep new sections at the tail, never inserted
@@ -507,26 +507,33 @@ between existing ones.
 
 The **shareable header** (Owner/Status/Updated/Appetite/Item) is team-facing metadata — a solo builder can
 leave `Owner: unassigned` and ignore it; a team uses it to own, review, and date the PRD. `Status`
-advances **Draft → In Review → Approved → Locked** as the PRD moves through `/saki-builder:prd-review`, human
-sign-off, and the `/saki-builder:proto` lock (below).
+advances **Draft → In Review → Approved → Locked** as the PRD moves through `/prd-review`, human
+sign-off, and the `/proto` lock (below).
 **Item:** carries the PRD-track item id (`E<n>` or `F<n>`) this PRD serves when it was started by
-`/saki-builder:pickup <id>` — the traceability link back to `tasks/roadmap.md`; a standalone PRD leaves it `—`.
+`/pickup <id>` — the traceability link back to `tasks/roadmap.md`; a standalone PRD leaves it `—`.
 
 ### The lock — the explicit freeze before build (`Status: Locked`)
 
-The PRD phase (`/saki-builder:prd` → `/saki-builder:prd-review` → `/saki-builder:proto`) ends with an **explicit lock**:
-the requirements are frozen before any slice reaches `/saki-builder:rplan`. The lock is a header machine-marker:
+The PRD phase (`/prd` → `/prd-review` → `/proto`) ends with an **explicit lock**:
+the requirements are frozen before any slice reaches `/rplan`. The lock is a header machine-marker:
 
 `<!-- prd-locked: <@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/ | none -->`  +  header `Status: Locked`
+(and, always, the gallery-resident twin `tasks/proto-<slug>/.prd-locked` — the artifact that exists in both pipeline orders)
 
-- **Written by `/saki-builder:proto`, not `/saki-builder:prd`.** The lock is the terminal act of the last pre-build
-  layer: `/saki-builder:proto` designs the UI/UX, gets it approved, then freezes the spec by writing the marker.
-  `/saki-builder:prd` **never** writes it — the *absence* of the marker is the correct default (not-yet-frozen). For a
-  no-UI PRD, `/saki-builder:proto` is still the explicit freeze step (it renders nothing and writes `ui:none`).
+- **Written by `/proto`, not `/prd`.** The lock is the terminal act of the last pre-build
+  layer: `/proto` designs the UI/UX, gets it approved, then freezes the spec by writing the marker.
+  `/prd` **never** writes it — the *absence* of the marker is the correct default (not-yet-frozen). For a
+  no-UI PRD, `/proto` is still the explicit freeze step (it renders nothing and writes `ui:none`).
 - **Approved vs Locked.** *Approved* = sound + review-green + human sign-off (soundness). *Locked* = Approved
   AND its UI/UX designed/approved AND requirements frozen (build-ready). A Locked PRD is by definition Approved;
-  `prd-locked` is the single flag `/saki-builder:build` reads — it **hard-refuses to start until the lock is present**
-  (a GATE before `/saki-builder:rplan`). This is the "lock Product Requirement before hand off to rplan" gate.
+  the lock is what `/build` reads — from **either** the PRD marker or `tasks/proto-<slug>/.prd-locked`;
+  it **hard-refuses to start until one of them is present**
+  **Changing requirements voids a prior approval.** When this skill REWRITES an existing PRD's scope,
+  slices, criteria, or rules, delete `tasks/proto-<slug>/.prd-locked` (and any `<!-- prd-locked: … -->`
+  line) — the human approved the previous journey, not this one, so the gate must fire again. Writing
+  the FIRST PRD for an already-approved gallery (proto-first order) is not a rewrite: leave the marker.
+  This is what keeps "absence = not-yet-frozen" true now that the proof can live outside the file.
+  (a GATE before `/rplan`). This is the "lock Product Requirement before hand off to rplan" gate.
 - `ui:` points at the approved proto gallery (`tasks/proto-<slug>/`), so the locked artifact references its
   design; §15 carries the same reference in prose. On a no-UI PRD the value is `none`.
 
@@ -534,9 +541,9 @@ Include a `⚠ DISCOVERY-RISK` banner below the machine-readable header if the e
 is 100% `assumed`, OR the **§2 load-bearing assumption is `assumed`**, OR **any assumption that gates a
 committed §5 metric is `assumed`** (e.g. an adoption/willingness claim the primary or secondary outcome
 depends on) — a single un-grounded load-bearing/gating row is a bet even when the rest of the table is
-grounded. This is a signal for `/saki-builder:rplan` to surface it as a plan-level UNKNOWN, and it MUST
+grounded. This is a signal for `/rplan` to surface it as a plan-level UNKNOWN, and it MUST
 also be surfaced to the human in Step 8 (the bet line), not left file-only. It is also what
-`/saki-builder:prd-review` Readiness DoR #4 keys off — leaving it unset lets a bet pass as READY.
+`/prd-review` Readiness DoR #4 keys off — leaving it unset lets a bet pass as READY.
 
 ---
 
@@ -603,20 +610,20 @@ Then ask: *"Does this match what you had in mind — or should we adjust before 
 
 Advance the saved header `Status: Draft → In Review`, then suggest next steps in plain English:
 
-- Recommended: *"Run `/saki-builder:prd-review tasks/prd-[slug].md` to pressure-test the spec before we build."*
-- Then: *"Run `/saki-builder:proto tasks/prd-[slug].md` to see what it'll look like — and, on your approval,
-  that **locks** the requirements (freezes the spec) for build."* (A no-UI PRD still runs `/saki-builder:proto`
+- Recommended: *"Run `/prd-review tasks/prd-[slug].md` to pressure-test the spec before we build."*
+- Then: *"Run `/proto tasks/prd-[slug].md` to see what it'll look like — and, on your approval,
+  that **locks** the requirements (freezes the spec) for build."* (A no-UI PRD still runs `/proto`
   as the explicit freeze step.)
-- Then (only once **Locked**): *"Run `/saki-builder:build tasks/prd-[slug].md` — it plans each slice with
-  `/saki-builder:rplan` and ships it. `/saki-builder:build` won't start until the PRD is Locked."*
+- Then (only once **Locked**): *"Run `/build tasks/prd-[slug].md` — it plans each slice with
+  `/rplan` and ships it. `/build` won't start until the PRD is Locked."*
 
-> When this PRD is on the roadmap (`Item:` set), `/saki-builder:proto` and `/saki-builder:build` also accept
+> When this PRD is on the roadmap (`Item:` set), `/proto` and `/build` also accept
 > the **item id** — `proto E3` and `proto tasks/prd-[slug].md` are equivalent (the id resolves via the
-> roadmap `Child PRD:` link). Prefer the id form to match `/saki-builder:pickup`'s handoff; the path form is
+> roadmap `Child PRD:` link). Prefer the id form to match `/pickup`'s handoff; the path form is
 > the standalone (no-item) fallback.
 
-Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s job. The disciplined path is
-`/saki-builder:pickup <id>` → `/saki-builder:proto <id>` (locks) → `/saki-builder:build <id>` (`<id>` = E<n>/F<n>).
+Do NOT produce file-level tasks in the PRD — that is `/rplan`'s job. The disciplined path is
+`/pickup <id>` → `/proto <id>` (locks) → `/build <id>` (`<id>` = E<n>/F<n>).
 
 ---
 
@@ -638,12 +645,12 @@ Do NOT produce file-level tasks in the PRD — that is `/saki-builder:rplan`'s j
 | A related job (§4) that no §5 outcome or §8 slice serves | Orphan job — cut it (YAGNI) or add the outcome/slice that serves it; resolution is bidirectional, not just ref→job |
 | Inserting a new numbered section (renumbering §5/§8/§9/§10/§11) | Hard contract — add subsections (Decision Log lives in §7) or use the header |
 | A `🔒 INVARIANT` tested only on the happy path | Add a failure/edge criterion (over-limit · concurrent · duplicate/idempotency · unauthorized) — review Phase 1 hard-fails a happy-path-only invariant |
-| A slice that silently assumes hidden build work (migration/index/flag/backfill) | State it in the slice's `Assumes:` line (or promote it to its own slice) — else `/saki-builder:rplan` rediscovers it mid-build; review Judge 3 prescribes it |
+| A slice that silently assumes hidden build work (migration/index/flag/backfill) | State it in the slice's `Assumes:` line (or promote it to its own slice) — else `/rplan` rediscovers it mid-build; review Judge 3 prescribes it |
 | A `baseline N→M` basis that just restates the target | Cite the source of the starting number N, or tag the row `aspirational` — a basis must ground, not echo |
 | Approving a bet without flagging it | If DISCOVERY-RISK, the Step 8 "⚠ Worth checking first" callout is mandatory |
-| Handing a PRD to `/saki-builder:build` (or `/saki-builder:rplan`) that isn't **Locked** | Requirements aren't frozen — `/saki-builder:proto`'s approval writes `Status: Locked` + `<!-- prd-locked -->`; build hard-refuses until it's present. `/saki-builder:prd` never writes the lock (absence = not-yet-frozen) |
+| Handing a PRD to `/build` (or `/rplan`) that isn't **Locked** | Requirements aren't frozen — `/proto`'s approval writes `tasks/proto-<slug>/.prd-locked` (always) and `Status: Locked` + `<!-- prd-locked -->` (when the PRD exists); build hard-refuses until one is present. `/prd` never writes the lock (absence = not-yet-frozen) |
 | A UI feature whose screens live only in the Step 8 human view | Persist them to §15 of the saved PRD — the artifact must name its UI, not compute-and-discard it |
-| §16 Technical Contract written with column/field names or full request/response payloads | Shape only — entity/endpoint-purpose/one-arch-decision; the schema depth is `/saki-builder:rplan`'s lane |
+| §16 Technical Contract written with column/field names or full request/response payloads | Shape only — entity/endpoint-purpose/one-arch-decision; the schema depth is `/rplan`'s lane |
 | A §16 row that cites no code and isn't tagged `NEW`, or serves no §8/§5 ref | Ground it from the Tier-1 scan (REUSE / CHANGE `path:line` / NEW) and name its slice·outcome, or cut it (YAGNI) |
 | A §16 row tagged `REUSE` for a surface the feature actually **modifies** | Tag it `CHANGE` + add `↳ Breaks:` — a modification wearing a reuse tag is an invisible compat surface, the exact break this tag exists to catch |
 | A `CHANGE` row with no `↳ Breaks:` note | Name what depends on the present shape (or `none (additive)`) — a compat surface with an unstated blast radius is rediscovered mid-build |

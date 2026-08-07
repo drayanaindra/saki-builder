@@ -1,5 +1,5 @@
 ---
-description: "Read-only \"where was I\" reader for the manual chain. Runs the orientation protocol from config/docs/manual-chain-resume.md against a task's resume manifest (tasks/.<slug>-state.json) and reports each step's status plus the next skill to run. Never writes — pure orientation after a context clear. Usage — /saki-builder:resume [<slug>|<plan-path>]."
+description: "Read-only \"where was I\" reader for the manual chain. Runs the orientation protocol from config/docs/manual-chain-resume.md against a task's resume manifest (tasks/.<slug>-state.json) and reports each step's status plus the next skill to run. Never writes — pure orientation after a context clear. Usage — /resume [<slug>|<plan-path>]."
 ---
 
 # Resume — manual-chain orientation
@@ -13,7 +13,7 @@ the canonical protocol this skill runs. It **never stamps or writes** anything.
 
 1. **Resolve the manifest.** With an argument (a `<slug>`, a `tasks/<slug>-plan.md` path, or a
    `.<slug>-state.json` path) → `tasks/.<slug>-state.json`. With no argument → the **newest** manual-chain
-   manifest (top-level `steps`, not `/saki-builder:build`'s `.build-*` with `slices`).
+   manifest (top-level `steps`, not `/build`'s `.build-*` with `slices`).
 2. **Run the orientation protocol** → print each step's status in canonical order and compute the next
    uncompleted step (absent optional `rplan-review`/`security` count as satisfied; a `red` / `not-ready` /
    `changes-requested` / `in-progress` step is re-entered).
@@ -23,15 +23,15 @@ the canonical protocol this skill runs. It **never stamps or writes** anything.
 
 ```bash
 ARG="${1:-}"   # optional: a slug, a plan path, or a manifest path
-python3 - "$ARG" <<'PY' 2>/dev/null || echo "resume: no readable manual-chain manifest — start with /saki-builder:rplan"
+python3 - "$ARG" <<'PY' 2>/dev/null || echo "resume: no readable manual-chain manifest — start with /rplan"
 import json, glob, os, sys
 arg=(sys.argv[1] if len(sys.argv)>1 else "").strip()
 order=["rplan","rplan-review","approved","qa","reviewer","security","wrap"]
 optional={"rplan-review","security"}
 fail={"not-ready","red","changes-requested","in-progress"}
-cmd={"rplan":"/saki-builder:rplan","rplan-review":"/saki-builder:rplan-review",
-     "approved":"/saki-builder:approved","qa":"/saki-builder:qa","reviewer":"/saki-builder:reviewer",
-     "security":"/security-review","wrap":"/saki-builder:wrap"}
+cmd={"rplan":"/rplan","rplan-review":"/rplan-review",
+     "approved":"/approved","qa":"/qa","reviewer":"/reviewer",
+     "security":"/security-review","wrap":"/wrap"}
 
 def manual(f):
     try: d=json.load(open(f))
@@ -54,7 +54,7 @@ else:
 
 if not cands:
     print("no manual-chain manifest found."+miss)
-    print("NEXT: /saki-builder:rplan  — start the chain")
+    print("NEXT: /rplan  — start the chain")
     raise SystemExit
 
 path=cands[0]; d=manual(path); steps=d.get("steps",{})
@@ -82,8 +82,8 @@ Then relay the table + the `NEXT:` line to the user. Per the manifest doc's rule
 ## Rules
 
 - **Read-only.** Never stamp, edit, or create a manifest — that is the chain skills' job. `/resume` only reports.
-- **Best-effort.** No manifest (or unreadable) → say so and point at `/saki-builder:rplan`; never error out.
+- **Best-effort.** No manifest (or unreadable) → say so and point at `/rplan`; never error out.
 - **`config/docs/manual-chain-resume.md` is the source of truth** for the schema, step order, and protocol —
   this skill just runs it on demand and maps the next step to its command.
-- Ignores `/saki-builder:build`'s `.build-*-state.json` (that's the autonomous chain; it resumes via its own
+- Ignores `/build`'s `.build-*-state.json` (that's the autonomous chain; it resumes via its own
   Gate 2, not here).

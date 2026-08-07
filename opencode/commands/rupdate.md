@@ -1,8 +1,8 @@
 ---
-description: "(Legacy, owner symlink-install only) Pull latest skills/patterns/config from the remote saki-builder repo checkout. For the plugin, use /saki-builder:update instead."
+description: "(Legacy, owner symlink-install only) Pull latest skills/patterns/config from the remote saki-builder repo checkout. For the plugin, use /update instead."
 ---
 
-# Update saki-builder from Remote (legacy symlink pull — plugin users: /saki-builder:update)
+# Update saki-builder from Remote (legacy symlink pull — plugin users: /update)
 
 Pull the latest skills, patterns, and config from the remote repo.
 
@@ -21,10 +21,10 @@ Report the output:
 ## When to use
 
 - After the repo owner pushes new or updated skills
-- After `/saki-builder:sync` runs on another machine and you want the latest on this one
+- After `/sync` runs on another machine and you want the latest on this one
 - First thing in a new session on a machine that hasn't pulled recently
 
 ## Related
 
-- `/saki-builder:sync` — push your learnings to remote (opposite direction)
+- `/sync` — push your learnings to remote (opposite direction)
 - After pulling, restart Claude Code to pick up skill changes

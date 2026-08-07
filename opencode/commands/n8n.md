@@ -1,5 +1,5 @@
 ---
-description: "Autonomously build an n8n workflow automation end-to-end against a LIVE n8n instance. Understands the expectation (a one-line goal → elicit → spec, OR an existing spec/PRD file → build directly), authors the workflow JSON, deploys it via the n8n REST API, triggers a real execution, reads the execution result, and self-corrects (\"auto resolve\") until a real run passes the spec's criteria — then stops. Safety is built in: exponential backoff, a progress-gated circuit-breaker, a hard attempt budget, and search-by-name idempotency so re-runs update the same workflow instead of duplicating it. Faithful (builds exactly the spec, nothing more) and concise. Requires N8N_BASE_URL + N8N_API_KEY in env (the key is a secret — never passed through chat). Usage — /saki-builder:n8n \"<automation goal>\"  |  /saki-builder:n8n <spec-file.md>."
+description: "Autonomously build an n8n workflow automation end-to-end against a LIVE n8n instance. Understands the expectation (a one-line goal → elicit → spec, OR an existing spec/PRD file → build directly), authors the workflow JSON, deploys it via the n8n REST API, triggers a real execution, reads the execution result, and self-corrects (\"auto resolve\") until a real run passes the spec's criteria — then stops. Safety is built in: exponential backoff, a progress-gated circuit-breaker, a hard attempt budget, and search-by-name idempotency so re-runs update the same workflow instead of duplicating it. Faithful (builds exactly the spec, nothing more) and concise. Requires N8N_BASE_URL + N8N_API_KEY in env (the key is a secret — never passed through chat). Usage — /n8n \"<automation goal>\"  |  /n8n <spec-file.md>."
 ---
 
 # Autonomous n8n Automation Builder
@@ -9,14 +9,14 @@ instance** — author → deploy → trigger → read the real execution → sel
 **exactly** what the spec asks (faithful), report tersely (concise), and never fake success: "done"
 means a real execution returned `status: success` and satisfied the acceptance criteria.
 
-You are operating autonomously (like `/saki-builder:build`): make the call, log one line, continue.
+You are operating autonomously (like `/build`): make the call, log one line, continue.
 The **only** hard stops are — missing env (Phase 0), an unrecoverable auth/credential gap, or a run
 that cannot be made green within the safety budget (reported honestly as `BLOCKED:`).
 
 **Reuse, don't rebuild.** This skill orchestrates existing discipline — it does not re-implement it:
 - **`iterating-to-completion`** — completion promise, scratchpad, loop detection, iteration limit.
   Follow it verbatim; the completion signal for this skill is `N8N_AUTOMATION_COMPLETE`.
-- **Elicitation tone** from `/saki-builder:prd` and `/saki-builder:proto` — fill gaps with a few
+- **Elicitation tone** from `/prd` and `/proto` — fill gaps with a few
   sharp questions, then write the spec down before building.
 
 ---
@@ -34,13 +34,13 @@ that cannot be made green within the safety budget (reported honestly as `BLOCKE
 
 ## Input
 
-Usage: `/saki-builder:n8n "<automation goal>"` **or** `/saki-builder:n8n <spec-file.md>` (filler words fine).
+Usage: `/n8n "<automation goal>"` **or** `/n8n <spec-file.md>` (filler words fine).
 
 - Argument ends in `.md` or resolves to a readable file → **spec mode** (build directly against it).
 - Otherwise → **goal mode** (elicit the gaps, write a spec, then build).
 
 Optional: append a short feedback note on a re-run to amend an existing automation
-(`/saki-builder:n8n <spec.md> — also return the greeting uppercased`). Feedback is folded into the
+(`/n8n <spec.md> — also return the greeting uppercased`). Feedback is folded into the
 spec and applied via the **same** workflow id (idempotent update, Phase 3), never a new workflow.
 
 ---
@@ -269,7 +269,7 @@ Never weaken or drop an acceptance criterion to force green — a criterion that
 
 **On success** (a real execution passed every buildable criterion):
 ```
---- /saki-builder:n8n COMPLETE ---
+--- /n8n COMPLETE ---
 Workflow: <id>  (active)
 Webhook:  <base>/webhook/<path>
 Passing execution: <exec id> (success)
@@ -279,7 +279,7 @@ N8N_AUTOMATION_COMPLETE
 
 Next actions:
 > Trigger it:  curl -X POST <base>/webhook/<path> -d '<payload>'
-> Amend it:    /saki-builder:n8n tasks/n8n-<slug>-spec.md — <feedback>   (updates the same workflow, no duplicate)
+> Amend it:    /n8n tasks/n8n-<slug>-spec.md — <feedback>   (updates the same workflow, no duplicate)
 > Deactivate:  POST /api/v1/workflows/<id>/deactivate  (if you don't want it live yet)
 ```
 Print `N8N_AUTOMATION_COMPLETE` **only** when a real run met the criteria — never before, never on a BLOCKED path.

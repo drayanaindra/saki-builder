@@ -1,15 +1,15 @@
 ---
-description: "Add a work item to the product roadmap and route it. `/add` categorizes the item into Epic · Feature · Improvement · Bug (auto-proposed, or forced with --epic/--feature/--improvement/--bug), stamps its Type + Track flags, assigns the next id (E/F/I/B<n>), and appends it to tasks/roadmap.md. PRD-track (Epic, Feature) → next is /saki-builder:pickup <id> (writes & reviews the PRD). Plan-track (Improvement, Bug) → skip the PRD, next is /saki-builder:rplan. `--list` shows the portfolio. Usage — /saki-builder:add \"<intent>\" [--<type>]  |  /saki-builder:add --list."
+description: "Add a work item to the product roadmap and route it. `/add` categorizes the item into Epic · Feature · Improvement · Bug (auto-proposed, or forced with --epic/--feature/--improvement/--bug), stamps its Type + Track flags, assigns the next id (E/F/I/B<n>), and appends it to tasks/roadmap.md. PRD-track (Epic, Feature) → next is /pickup <id> (writes & reviews the PRD). Plan-track (Improvement, Bug) → skip the PRD, next is /rplan. `--list` shows the portfolio. Usage — /add \"<intent>\" [--<type>]  |  /add --list."
 ---
 
 # Add a work item — the universal intake
 
-`/saki-builder:add` is the **one front door** for any new piece of work. It **categorizes** the item,
+`/add` is the **one front door** for any new piece of work. It **categorizes** the item,
 **flags** it with a Type + Track, records it on the roadmap (`tasks/roadmap.md`), and **routes** it to
 the right next command — a PRD, or straight to a plan. It replaces the old epic-only `/epic`.
 
-Like the roadmap it writes to, `/saki-builder:add` only **records + points**. It never drives
-`/saki-builder:prd` or `/saki-builder:rplan` — those are the next step, run by the human.
+Like the roadmap it writes to, `/add` only **records + points**. It never drives
+`/prd` or `/rplan` — those are the next step, run by the human.
 
 ---
 
@@ -17,10 +17,10 @@ Like the roadmap it writes to, `/saki-builder:add` only **records + points**. It
 
 | Type | Id | When | **Track** | Next after `/add` |
 |------|----|------|-----------|-------------------|
-| **Epic** | `E<n>` | large outcome, multiple journeys/surfaces, would span >~7 slices / multiple PRDs | **PRD** | `/saki-builder:pickup E<n>` → prd → proto → build |
-| **Feature** | `F<n>` | one new user-facing capability / journey, ≤ a few slices | **PRD** | `/saki-builder:pickup F<n>` → prd → proto → build |
-| **Improvement** | `I<n>` | enhancement to existing behavior — single surface, no new journey | **Plan** | `/saki-builder:rplan` → approved → qa (or `/saki-builder:build I<n>` to run it all autonomously) |
-| **Bug** | `B<n>` | defect / regression in existing behavior | **Plan** | `/saki-builder:rplan` (or fix directly if trivial) → qa (or `/saki-builder:build B<n>` autonomously) |
+| **Epic** | `E<n>` | large outcome, multiple journeys/surfaces, would span >~7 slices / multiple PRDs | **PRD** | `/pickup E<n>` → prd → proto → build |
+| **Feature** | `F<n>` | one new user-facing capability / journey, ≤ a few slices | **PRD** | `/pickup F<n>` → prd → proto → build |
+| **Improvement** | `I<n>` | enhancement to existing behavior — single surface, no new journey | **Plan** | `/rplan` → approved → qa (or `/build I<n>` to run it all autonomously) |
+| **Bug** | `B<n>` | defect / regression in existing behavior | **Plan** | `/rplan` (or fix directly if trivial) → qa (or `/build B<n>` autonomously) |
 
 **The routing rule** (why a Track): *a new user journey / UI that must be designed and approved ⇒
 **PRD**-track — proto is its lock gate. A change or fix to existing behavior ⇒ **Plan**-track — skip the
@@ -34,28 +34,28 @@ the caller can force the categorization with a CLI flag (`--epic` / `--feature` 
 
 ## Usage
 
-- `/saki-builder:add "<intent>"` — auto-categorize (propose Type + Track), **confirm**, then record + route.
-- `/saki-builder:add --<type> "<intent>"` — force the type (`--epic|--feature|--improvement|--bug`); skip
+- `/add "<intent>"` — auto-categorize (propose Type + Track), **confirm**, then record + route.
+- `/add --<type> "<intent>"` — force the type (`--epic|--feature|--improvement|--bug`); skip
   the propose step, still confirm the shape.
-- `/saki-builder:add --<type> --autonomous "<full shape>"` — **orchestrator-internal** (used by
-  `/saki-builder:pickup`'s Phase-2b recut): skip BOTH the propose step AND the shape confirmation — record
+- `/add --<type> --autonomous "<full shape>"` — **orchestrator-internal** (used by
+  `/pickup`'s Phase-2b recut): skip BOTH the propose step AND the shape confirmation — record
   without any prompt. Preserves every other invariant (status always `Planned`, append-only ids). The caller
   passes a complete shape; each field is **sanitized before templating** (see Step 3) so it can't forge a
   roadmap block.
-- `/saki-builder:add --list` — print the portfolio grouped by Status with Type shown inline (thin alias of
-  `/saki-builder:roadmap`).
+- `/add --list` — print the portfolio grouped by Status with Type shown inline (thin alias of
+  `/roadmap`).
 
 ---
 
 ## Step 0 — Ensure the roadmap exists
 
-Read `tasks/roadmap.md`. If missing, scaffold it via `/saki-builder:roadmap init` (`mkdir -p tasks`, write
+Read `tasks/roadmap.md`. If missing, scaffold it via `/roadmap init` (`mkdir -p tasks`, write
 the template, ask once for the product name — default the repo/directory name). Then continue.
 
 **Greenfield hint (non-blocking).** If the roadmap was missing AND the repo has no product foundations yet
 (no `foundations.md`, no stack file, no code) — a brand-new product from scratch — print once:
-`New product from scratch? /saki-builder:genesis sets up the foundations (MVP goal, stack, design system, schema) first, then seeds this roadmap.`
-Then continue normally — do **not** block. A user may add items directly, and `/saki-builder:genesis` G5
+`New product from scratch? /genesis sets up the foundations (MVP goal, stack, design system, schema) first, then seeds this roadmap.`
+Then continue normally — do **not** block. A user may add items directly, and `/genesis` G5
 calls `/add` only **after** it has created the roadmap, so this hint never fires mid-genesis.
 
 ## Step 1 — Categorize (propose Type + Track, confirm)
@@ -82,7 +82,7 @@ a shipped/deleted item's number is not recycled, and existing `E<n>` roadmaps st
 
 Accept terse answers; the human may answer all at once. Keep it lean — this is intake, not a PRD/plan.
 
-An **orchestrator caller** (e.g. `/saki-builder:pickup`'s Phase-2b recut) passes a **complete shape**
+An **orchestrator caller** (e.g. `/pickup`'s Phase-2b recut) passes a **complete shape**
 (all fields) with the **`--autonomous`** flag → record without ANY prompt (the deterministic no-prompt path;
 `--autonomous` is what keys it, not a soft judgement about whether the shape "looks complete").
 
@@ -102,7 +102,7 @@ regardless of how the downstream status/track parser is anchored. The item's `**
    "…so that *what* changes for the user?").
 3. **Target user & Job (JTBD)** — `As a <user>, when <situation>, I want <motivation> so I can <outcome>.`
 4. **User flow (happy path)** — arrow-separated main-path steps.
-5. **Success signal** — one measurable signal (or `TBD — define before /saki-builder:pickup`).
+5. **Success signal** — one measurable signal (or `TBD — define before /pickup`).
 
 **Plan-track (Improvement / Bug)** — the lean shape (no JTBD / user flow / proto):
 1. **Title** — a short noun phrase.
@@ -114,7 +114,7 @@ explicitly so they can correct.
 
 ## Step 4 — Append the item block
 
-Append **exactly** the matching **item block template** from `/saki-builder:roadmap` to the `## Items`
+Append **exactly** the matching **item block template** from `/roadmap` to the `## Items`
 section, filled in (older roadmaps use `## Epics` — append under whichever heading exists). Both
 templates prepend a `**Type:** … · **Track:** …` pair to the metadata line.
 
@@ -125,7 +125,7 @@ templates prepend a `**Type:** … · **Track:** …` pair to the metadata line.
 **Goal:** <the OUTCOME we want, not the solution>
 **Target user & Job (JTBD):** As a <user>, when <situation>, I want <motivation> so I can <outcome>.
 **User flow:** <step → step → step>
-**Success signal:** <one measurable signal | TBD — define before /saki-builder:pickup>
+**Success signal:** <one measurable signal | TBD — define before /pickup>
 **Child PRD:** —
 ```
 
@@ -151,16 +151,16 @@ Added <id> · <title>   (<Type> · Track: <PRD|Plan> · Planned)
 Next: <route>
 ```
 
-- **PRD-track** → `Next: /saki-builder:pickup <id>   — writes the PRD and reviews it to green (then /saki-builder:proto)`
-- **Plan-track** → `Next: /saki-builder:rplan   — plan this directly (no PRD/proto), or /saki-builder:build <id> to run the whole chain (rplan → … → wrap) autonomously. Trivial one-liner? Just fix it.`
+- **PRD-track** → `Next: /pickup <id>   — writes the PRD and reviews it to green (then /proto)`
+- **Plan-track** → `Next: /rplan   — plan this directly (no PRD/proto), or /build <id> to run the whole chain (rplan → … → wrap) autonomously. Trivial one-liner? Just fix it.`
 
 ---
 
 ## `--list` mode
 
 Read `tasks/roadmap.md`, print each item as `<id> · <title> · <Type> · <Status>` grouped by Status
-(same as `/saki-builder:roadmap`). If the roadmap is missing →
-`No roadmap yet — run /saki-builder:add to create your first item.`
+(same as `/roadmap`). If the roadmap is missing →
+`No roadmap yet — run /add to create your first item.`
 
 ---
 
@@ -172,12 +172,12 @@ Read `tasks/roadmap.md`, print each item as `<id> · <title> · <Type> · <Statu
   doubt between a big Feature and a small Epic, prefer Feature and split later; between Improvement and
   Bug, "is it broken?" → Bug, "is it fine but could be better?" → Improvement.
 - **Keep it lean.** PRD-track walks 5 shape prompts, Plan-track walks 3. No PRD/plan-depth questions here
-  — that's `/saki-builder:prd` (PRD-track) or `/saki-builder:rplan` (Plan-track).
+  — that's `/prd` (PRD-track) or `/rplan` (Plan-track).
 - **Strategy + backlog, not coordination.** Never add scheduling / assignee-as-schedule / velocity / due
   dates to an item block (that stays out of the roadmap's scope).
 - **Numbering is per-prefix and append-only.** Never renumber or recycle; only ever append with the next
   `<prefix><n>`.
 - **Never set any status other than `Planned`** — the workflow verbs own every later transition
-  (`/saki-builder:pickup`, `/saki-builder:rplan`, `/saki-builder:build`).
-- **Record + point only.** `/saki-builder:add` does not run `/saki-builder:prd` or `/saki-builder:rplan`; it
+  (`/pickup`, `/rplan`, `/build`).
+- **Record + point only.** `/add` does not run `/prd` or `/rplan`; it
   hands off to them.

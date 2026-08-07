@@ -1,5 +1,5 @@
 ---
-description: "RETIRED — the autonomous /pipeline has been replaced by the item-anchored stepwise flow. Use /saki-builder:roadmap → /saki-builder:add → /saki-builder:pickup <id> → /saki-builder:proto <id> → /saki-builder:build <id> (PRD-track) — or /saki-builder:add → /saki-builder:rplan (Plan-track) — instead. This tombstone only redirects; the full former pipeline is recoverable from git history."
+description: "RETIRED — the autonomous /pipeline has been replaced by the item-anchored stepwise flow. Use /roadmap → /add → /pickup <id> → /proto <id> → /build <id> (PRD-track) — or /add → /rplan (Plan-track) — instead. This tombstone only redirects; the full former pipeline is recoverable from git history."
 ---
 
 # /pipeline — retired
@@ -10,19 +10,19 @@ where every piece of work traces to an item on the roadmap and each command boun
 ## Use this instead
 
 ```
-/saki-builder:roadmap init      # scaffold the portfolio (once per project)
-/saki-builder:add               # add + categorize an item (Epic·Feature·Improvement·Bug), route it  [Planned]
+/roadmap init      # scaffold the portfolio (once per project)
+/add               # add + categorize an item (Epic·Feature·Improvement·Bug), route it  [Planned]
 
 # PRD-track (Epic E<n> / Feature F<n>):
-/saki-builder:pickup <id>       # seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY)  [In-progress]
-/saki-builder:proto  <id>       # UI preview — running it IS your PRD approval
-/saki-builder:build  <id>       # autonomous slice-by-slice build → Shipped
+/pickup <id>       # seed /prd, loop /prd ↔ /prd-review to green (SHIP·READY)  [In-progress]
+/proto  <id>       # UI preview — running it IS your PRD approval
+/build  <id>       # autonomous slice-by-slice build → Shipped
 
 # Plan-track (Improvement I<n> / Bug B<n>):
-/saki-builder:rplan             # plan directly — no PRD, no proto
+/rplan             # plan directly — no PRD, no proto
 ```
 
-Why: the stepwise flow makes the discipline **structural** — `/saki-builder:add` is the one front door that
+Why: the stepwise flow makes the discipline **structural** — `/add` is the one front door that
 categorizes every item and routes it, so there is no cold-intent path — while keeping the same single human
 gate (at proto) for PRD-track work, without a self-surviving mega-run.
 
@@ -35,5 +35,5 @@ preserved in git history:
 git show <sha>:config/skills/pipeline/SKILL.md      # see: chore(saki-builder): finalize two-gate pipeline before retirement
 ```
 
-Its front half now lives in `/saki-builder:pickup`; its build half is the standalone `/saki-builder:build`;
+Its front half now lives in `/pickup`; its build half is the standalone `/build`;
 its front-half Stop hook was renamed to `config/hooks/pickup-completion-gate.sh`.

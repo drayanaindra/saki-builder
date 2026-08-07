@@ -1,5 +1,5 @@
 ---
-description: "Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Leads on implementation reality (each step's failure paths + the build work it implies but omits), grounds every finding to a cited step and verifies blockers against the code before they count, and requires experts to prescribe the exact plan edit. Gates on failure-surface completeness. Blocks on missing sections. Run after /saki-builder:rplan before /saki-builder:approved."
+description: "Adversarial plan review — structural completeness scan, then parallel domain expert agents, then synthesis. Leads on implementation reality (each step's failure paths + the build work it implies but omits), grounds every finding to a cited step and verifies blockers against the code before they count, and requires experts to prescribe the exact plan edit. Gates on failure-surface completeness. Blocks on missing sections. Run after /rplan before /approved."
 ---
 
 # Plan Review — Structural Scan + Parallel Expert Review
@@ -14,7 +14,7 @@ There are 4 phases. Phase 1 is a hard gate — failure stops the review entirely
 
 ## Step 0: Load the active plan
 
-**If the caller (e.g. `/saki-builder:build`) passed a specific plan-file path, use that exact file** — it pins the review to the intended slice, not whichever `*-plan.md` is newest (a multi-slice build keeps several plans in `tasks/`; mtime-based "newest-wins" selection would otherwise bind the review to the wrong slice's plan). Otherwise find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
+**If the caller (e.g. `/build`) passed a specific plan-file path, use that exact file** — it pins the review to the intended slice, not whichever `*-plan.md` is newest (a multi-slice build keeps several plans in `tasks/`; mtime-based "newest-wins" selection would otherwise bind the review to the wrong slice's plan). Otherwise find the most recent `*-plan.md` in `tasks/` (workflow artifacts live under `tasks/`, not the project root). Read it fully.
 
 Also read the Phase 1 attempt counter — `<!-- rplan-review-phase1-attempts: K -->` anywhere in the plan
 file (absent → `K=0`). It bounds the Phase 1 self-route loop below and must be read here, before any
@@ -69,9 +69,9 @@ counter is cleared; it must happen here, on the path that actually runs. A count
 increments would make the next legitimate review start at a stale `K` and emit a false `BLOCKED`.
 
 **If ANY ❌ — route, don't terminate.** The gate is right; the *addressee* depends on who called you.
-A structural gap is `/saki-builder:rplan`'s to fix (never fix it here — see the Phase 1.5 rule below:
+A structural gap is `/rplan`'s to fix (never fix it here — see the Phase 1.5 rule below:
 rewriting in two places drifts). But "the plan author must rewrite" is a human-shaped instruction, and
-inside `/saki-builder:build` the plan author IS the agent — so hand back to `/saki-builder:rplan` and
+inside `/build` the plan author IS the agent — so hand back to `/rplan` and
 re-review rather than stopping the chain.
 
 **If a caller passed a plan-file path (Step 0) — self-route, bounded.**
@@ -103,9 +103,9 @@ route, not after.** Then check the bound:
   Missing/incomplete:
     ❌ [section]: [specific gap]
 
-  Routing back to /saki-builder:rplan with the cited gaps → will re-review.
+  Routing back to /rplan with the cited gaps → will re-review.
   ```
-  Re-run `/saki-builder:rplan` on the same plan file, passing every cited gap, then re-run Phase 1.
+  Re-run `/rplan` on the same plan file, passing every cited gap, then re-run Phase 1.
 
 **The budget resets on a Phase 1 PASS, and only there** (above). A partial human fix that still fails
 Phase 1 does NOT restore it — this is deliberate: a hard budget that "made progress" cannot reset is the
@@ -116,7 +116,7 @@ output so it is actionable, never a dead end.
 **Exception — the one gap that must NOT be self-routed.** If the gap is **intent-shaped** (not derivable
 from any file), pause instead: a missing/placeholder `Concrete Example Output` is the canonical case —
 `config/skills/rplan/SKILL.md:350` already blocks on it and must keep blocking. Never fabricate it, never
-route it back to `/saki-builder:rplan` expecting the agent to invent it. Ask the user for the example.
+route it back to `/rplan` expecting the agent to invent it. Ask the user for the example.
 
 **If NO caller passed a path (human-invoked review) — stop and report.** Do **not** touch the attempt
 counter here — no routing happens on this path, so it spends no budget. This report is always reachable,
@@ -129,7 +129,7 @@ The plan author must rewrite the plan. These gaps cannot be resolved by answerin
 Missing/incomplete:
   ❌ [section]: [specific gap]
 
-Action: Fill missing sections → re-run /saki-builder:rplan-review
+Action: Fill missing sections → re-run /rplan-review
 
 REVIEW STOPPED.
 ```
@@ -140,7 +140,7 @@ Do NOT proceed to Phase 2 if Phase 1 failed.
 
 ## Phase 1.5: Verify Criteria Hardening (no rewriting)
 
-**`/saki-builder:rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
+**`/rplan` Step 6d performs criteria hardening. This phase only verifies it was done.**
 
 Read the Success Criteria section. For each criterion, check it has ALL THREE:
 1. **Actor + Action** — who does what
@@ -149,21 +149,21 @@ Read the Success Criteria section. For each criterion, check it has ALL THREE:
 
 **If every criterion has all three (or is explicitly `🔲 MANUAL` with numbered steps + Playwright stub):**
 ```
-PHASE 1.5 PASSED — criteria already hardened by /saki-builder:rplan 6d
+PHASE 1.5 PASSED — criteria already hardened by /rplan 6d
 ```
 
 **If any criterion is missing fields:**
 ```
 PHASE 1.5 FAILED — criteria not hardened
 
-The plan must run /saki-builder:rplan Step 6d hardening before review.
+The plan must run /rplan Step 6d hardening before review.
 Unhardened: [list of criterion IDs and what's missing]
 
-Action: Re-run /saki-builder:rplan to harden criteria → re-run /saki-builder:rplan-review
+Action: Re-run /rplan to harden criteria → re-run /rplan-review
 REVIEW STOPPED.
 ```
 
-Do NOT rewrite criteria here. That is `/saki-builder:rplan`'s job; rewriting in two places drifts.
+Do NOT rewrite criteria here. That is `/rplan`'s job; rewriting in two places drifts.
 
 ---
 
@@ -425,10 +425,10 @@ Merge all expert findings:
 
    If absent: read cited `path:line` directly as before.
 3. **Deduplicate** — same issue flagged by multiple experts counts once
-4. **Classify** — Blocker (must fix before /saki-builder:approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
+4. **Classify** — Blocker (must fix before /approved) vs Warning (should fix, not blocking). A state-changing or 🔒 step whose failure path is untested, or that omits implied build work (backfill/index/authz/rollback), is a **Blocker**, never a warning.
 5. **Extend the Evidence Ledger — add verified blockers to the Blocking table.**
 
-   For each verified blocker, append a new **Blocking** row to the plan file using the format from `/saki-builder:rplan` Step 4:
+   For each verified blocker, append a new **Blocking** row to the plan file using the format from `/rplan` Step 4:
    - Cite evidence (`path:line`, the expert that found it, the step number it ties to)
    - Classify Blocking vs Advisory by the step's risk (§4b/§4c) — a state-changing/🔒 step's untested failure path or omitted implied work is **Blocking**
    - A verified blocker on a state-changing step is always Blocking, never Advisory
@@ -437,7 +437,7 @@ Merge all expert findings:
 
    **The verdict is the Blocking table being empty** — there is no score to recompute. Each finding is a Blocking or Advisory row; there are no per-expert `+/-N%` adjustments.
 
-   If the plan has no Evidence Ledger, state: "PHASE 3 ABORTED — plan has no Evidence Ledger. Re-run /saki-builder:rplan to build the ledger first."
+   If the plan has no Evidence Ledger, state: "PHASE 3 ABORTED — plan has no Evidence Ledger. Re-run /rplan to build the ledger first."
 
 Print synthesis:
 
@@ -448,7 +448,7 @@ Domains reviewed: [Backend / Frontend / UI/UX / Database / Security / Architectu
 Uncited findings discarded: [N]  ·  Blockers verified against code: [N kept / N dropped]
 Failure-surface: [N]/[M] state-changing steps with failure path covered · [K] implied-work gaps found
 
-Blockers (must fix before /saki-builder:approved — each cites a step # and prescribes the fix):
+Blockers (must fix before /approved — each cites a step # and prescribes the fix):
   ❌ [B1] [domain] §step: [description] → FIX: [exact plan edit: step + file + function/criterion]
   ❌ [B2] [domain] §step: [description] → FIX: [...]
 
@@ -461,7 +461,7 @@ Blocking: [initial N] → [final N]
 **If the Blocking Set is non-empty:**
 ```
 PHASE 3 FAILED — Blocking Set non-empty
-Fix all ❌ blocking items in the plan file, then re-run /saki-builder:rplan-review.
+Fix all ❌ blocking items in the plan file, then re-run /rplan-review.
 ```
 
 **If the Blocking Set is empty:**
@@ -509,7 +509,7 @@ Advisory items found: [N]
 Verdict:
   ✅ APPROVED FOR IMPLEMENTATION
      All phases passed. Blocking Set empty.
-     Next: /saki-builder:approved
+     Next: /approved
 
   OR
 
@@ -517,7 +517,7 @@ Verdict:
      [Phase N] failed:
      - [blocking item 1]
      - [blocking item 2]
-     Next: Fix blocking items → re-run /saki-builder:rplan-review
+     Next: Fix blocking items → re-run /rplan-review
 ```
 
 ---
@@ -555,4 +555,4 @@ This is the **general version**. For project-specific domain experts (language, 
 .claude/skills/rplan-review/SKILL.md
 ```
 That file overrides this one and should contain agents tuned to the project's stack and conventions.
-Run `/saki-builder:init-env` to scaffold the project-specific override automatically.
+Run `/init-env` to scaffold the project-specific override automatically.

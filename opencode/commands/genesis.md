@@ -1,41 +1,41 @@
 ---
-description: "Start a product FROM SCRATCH — the greenfield entry point that runs BEFORE the roadmap/pickup/prd/proto/build loop can work. On an empty repo the normal loop can't start (/proto hard-STOPs \"NO DESIGN SYSTEM FOUND\"; /prd has no stack or code to ground against; /pickup needs a product that already exists). `/genesis \"<product idea>\"` fills that gap by manufacturing the preconditions the loop assumes, in the order a real product is born: G0 MVP goal (the one end-to-end thing the product must let a user do) → G1 bounded \"how to build this MVP\" research → G2 a low-fidelity vision mock with mock data (how the end looks, BEFORE a design system exists) → G3 the foundations spec (stack · design system · architecture · initial schema) behind ONE human approval gate → G4 scaffold the foundations → G5 seed tasks/roadmap.md with the MVP epic and STOP. Then the existing loop runs at full fidelity: /pickup E1 → /prd → /proto (GATE 2 now PASSES) → /build. Does NOT fork or replace the loop — it only produces its inputs, then converges onto it. Slice 1: G4 is a printed checklist the human runs (auto-scaffold is Slice 2). Usage — /saki-builder:genesis \"<one-line product idea>\" [--restart]."
+description: "Start a product FROM SCRATCH — the greenfield entry point that runs BEFORE the roadmap/pickup/prd/proto/build loop can work. On an empty repo the normal loop can't start (/proto hard-STOPs \"NO DESIGN SYSTEM FOUND\"; /prd has no stack or code to ground against; /pickup needs a product that already exists). `/genesis \"<product idea>\"` fills that gap by manufacturing the preconditions the loop assumes, in the order a real product is born: G0 MVP goal (the one end-to-end thing the product must let a user do) → G1 bounded \"how to build this MVP\" research → G2 a low-fidelity vision mock with mock data (how the end looks, BEFORE a design system exists) → G3 the foundations spec (stack · design system · architecture · initial schema) behind ONE human approval gate → G4 scaffold the foundations → G5 seed tasks/roadmap.md with the MVP epic and STOP. Then the existing loop runs at full fidelity: /pickup E1 → /prd → /proto (GATE 2 now PASSES) → /build. Does NOT fork or replace the loop — it only produces its inputs, then converges onto it. Slice 1: G4 is a printed checklist the human runs (auto-scaffold is Slice 2). Usage — /genesis \"<one-line product idea>\" [--restart]."
 ---
 
 # Genesis — from an empty repo to a product the disciplined loop can build
 
-`/saki-builder:genesis` is the **Phase 0** of the workflow: the from-scratch entry point that runs
-**once, at product birth**. Everything downstream (`/saki-builder:pickup` → `/saki-builder:prd` →
-`/saki-builder:proto` → `/saki-builder:build`) assumes a product that **already exists** — a chosen
+`/genesis` is the **Phase 0** of the workflow: the from-scratch entry point that runs
+**once, at product birth**. Everything downstream (`/pickup` → `/prd` →
+`/proto` → `/build`) assumes a product that **already exists** — a chosen
 stack, real code to ground against, and a real design system + app shell. On a brand-new repo none of
 that exists, so the loop cannot start:
 
-- `/saki-builder:proto` **hard-STOPs** at GATE 2 — *"NO DESIGN SYSTEM FOUND — a faithful preview is impossible."*
-- `/saki-builder:prd` grounds §16 by grepping the codebase and its context is `Stack: {{stack}}` — both empty.
-- `/saki-builder:pickup` requires a roadmap item and seeds a **stack-less** PRD; there is no cold-intent path.
+- `/proto` **hard-STOPs** at GATE 2 — *"NO DESIGN SYSTEM FOUND — a faithful preview is impossible."*
+- `/prd` grounds §16 by grepping the codebase and its context is `Stack: {{stack}}` — both empty.
+- `/pickup` requires a roadmap item and seeds a **stack-less** PRD; there is no cold-intent path.
 
 Genesis **manufactures those preconditions** and then hands off. It does **not** re-implement or fork
-the loop — it produces the loop's inputs and converges onto it, exactly as `/saki-builder:pickup` and
-`/saki-builder:build` *orchestrate* existing skills rather than duplicate them.
+the loop — it produces the loop's inputs and converges onto it, exactly as `/pickup` and
+`/build` *orchestrate* existing skills rather than duplicate them.
 
 ```
 [EMPTY REPO]
    │
-   ▼  /saki-builder:genesis "<product idea>"
+   ▼  /genesis "<product idea>"
    G0 MVP goal → G1 research → G2 vision mock → G3 foundations (⟵ human gate) → G4 scaffold → G5 seed roadmap
    │   produces: chosen stack · real design system + app shell · initial schema · design.md · foundations.md · seeded tasks/roadmap.md
    ▼
 [FOUNDATIONS EXIST]  ← the precise precondition /pickup, /prd, /proto already assume
    │
    ▼  the EXISTING loop, untouched, now at full fidelity
-   /saki-builder:pickup E1 → /saki-builder:prd → /saki-builder:proto (GATE 2 PASSES) → /saki-builder:build
+   /pickup E1 → /prd → /proto (GATE 2 PASSES) → /build
 ```
 
 **One human gate — at G3 (foundations approval).** Choosing the stack (incl. the backend language),
 architecture, and schema is the load-bearing, hard-to-reverse decision; the human approves it before
 anything is written to the repo as foundations. G0 has a lean present-and-confirm; every other phase is
-autonomous. This mirrors the workflow's single-gate discipline (`/saki-builder:pickup`'s single gate at
-proto, `/saki-builder:build`'s no-prompt autonomy).
+autonomous. This mirrors the workflow's single-gate discipline (`/pickup`'s single gate at
+proto, `/build`'s no-prompt autonomy).
 
 **Slice 1 scope (this file).** G0–G3 run fully; G4 is a **printed checklist the human runs** (not
 auto-scaffold — G4 is the irreversible file-creation step, automated in Slice 2); G5 seeds the roadmap
@@ -45,8 +45,8 @@ and hands off. See "Roadmap for this skill" at the end.
 
 ## Usage
 
-- `/saki-builder:genesis "<one-line product idea>"` — start (or resume) genesis for a from-scratch product. Filler words are fine.
-- `/saki-builder:genesis` with no idea and an empty repo → ask once, plainly: *"One line: what is the product, and who is it for?"* Never invent a product.
+- `/genesis "<one-line product idea>"` — start (or resume) genesis for a from-scratch product. Filler words are fine.
+- `/genesis` with no idea and an empty repo → ask once, plainly: *"One line: what is the product, and who is it for?"* Never invent a product.
 - `--restart` — force a clean run from G0, ignoring any resume state.
 
 ---
@@ -85,7 +85,7 @@ fi
 
 - **`GREENFIELD`** (no stack, no roadmap, no code, no `foundations.md`) → proceed to G0.
 - **`PRODUCT_EXISTS` via a stack or code** (`package.json`/`go.mod`/…/`src`/`app`/`components`) → STOP:
-  `This repo already has a product. Genesis is for from-scratch products only. To add to an existing product: /saki-builder:add "<intent>" → /saki-builder:pickup, or /saki-builder:init-env if the Claude env isn't set up.`
+  `This repo already has a product. Genesis is for from-scratch products only. To add to an existing product: /add "<intent>" → /pickup, or /init-env if the Claude env isn't set up.`
 - **`PRODUCT_EXISTS` via `foundations.md`** → a prior genesis ran → resume via GATE 0 (don't restart);
   `PRODUCT_EXISTS` via only `tasks/roadmap.md` (roadmap seeded, no scaffold yet) → resume at G4/G5 via GATE 0.
 
@@ -93,7 +93,7 @@ fi
 
 ## Phase G0 — MVP goal (human-facing, lean — the product's walking skeleton)
 
-Frame the **whole product's** thinnest end-to-end value — not a feature. Borrow `/saki-builder:prd`
+Frame the **whole product's** thinnest end-to-end value — not a feature. Borrow `/prd`
 Step 0/0.5 shaping, applied at product scale. Keep it short; accept 1–2 word answers. Establish:
 
 - **The one thing** the MVP must let a user do, end-to-end (the *walking skeleton* — ships user-visible
@@ -133,15 +133,15 @@ exists. This is deliberately low-fidelity and **throwaway**; its job is to set t
 - Render as a **single self-contained HTML file** (inline CSS, mock data) to `tasks/genesis/vision.html`
   — no framework, no design system, no backend. Honest mock density (long strings, many rows, an empty
   state) so it doesn't lie about layout.
-- This is the genesis analogue of `/saki-builder:proto`'s directional-mock option, **promoted to a
-  first-class artifact**. Full-fidelity design-with-mock-data stays in `/saki-builder:proto` *after* G4
+- This is the genesis analogue of `/proto`'s directional-mock option, **promoted to a
+  first-class artifact**. Full-fidelity design-with-mock-data stays in `/proto` *after* G4
   scaffolds the real system — genesis does not duplicate it.
 - **Part F tell-check on the rendered mock (BLOCKING — it anchors G3).** Before showing the human, grade
   `vision.html` against the Design System Contract **Part F tell-list** (gradient hero · emoji-as-icons ·
   equal-weight grid / no hierarchy · everything-centered · cream+serif+terracotta · near-black+acid ·
   generic copy). No DIRECTIONAL REFERENCE exists yet (it's pinned in G3 Part 0 Step 1), so this is the
   **checklist half only** — it stops an obvious AI-default look from anchoring a sloppy G3 choice; the full
-  reference-judge runs later on the real screens (`/saki-builder:proto` Step 6.5). A tell → re-render the
+  reference-judge runs later on the real screens (`/proto` Step 6.5). A tell → re-render the
   mock; never let a default look set the product's direction.
 
 State plainly: *"This is a throwaway vision of the end-state to align on look + inform the foundations —
@@ -150,7 +150,7 @@ the real design system gets scaffolded next."*
 ## Phase G3 — Foundations spec  ⟵ **THE human gate** (approve before anything is written)
 
 Set `phase:"foundations"`. Decide the **detailed requirements of what to build**. Each decision is
-recorded with a **cited rationale + the rejected alternative** (`/saki-builder:prd` §7 Decision-Log
+recorded with a **cited rationale + the rejected alternative** (`/prd` §7 Decision-Log
 discipline). Ground every choice in G1 research + the G2 vision + the MVP goal.
 
 **⛔ HARD RULE — frontend/backend separation (from scratch, NON-NEGOTIABLE).** Every genesis product is
@@ -163,7 +163,7 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
 
 | Layer | Default (auto-applied) | How chosen |
 |-------|------------------------|-----------|
-| **Frontend** (`frontend/`) | **Next.js + Tailwind + shadcn/ui** | House default, scaffolded into the `frontend/` folder — matches `/saki-builder:proto` GATE 2's shadcn/Tailwind path, so proto recognizes the scaffold. Override only if G1/the vision clearly points elsewhere. |
+| **Frontend** (`frontend/`) | **Next.js + Tailwind + shadcn/ui** | House default, scaffolded into the `frontend/` folder — matches `/proto` GATE 2's shadcn/Tailwind path, so proto recognizes the scaffold. Override only if G1/the vision clearly points elsewhere. |
 | **Database** (`backend/`) | **Postgres** | House default, owned by the backend. Override only with a clear reason from G1. |
 | **Backend** (`backend/`) | **always a separate service; language ALWAYS prompted unless already specified** | A separate `backend/` service is **always** created (the hard rule above — never folded into the frontend). The **language** is resolved so: **(1)** if the prompt/idea **or a project file** (G1 research, the G2 vision, any existing requirement/stack doc) **already specifies the backend language/stack → use that requirement** — record it + cite the source, do **not** prompt. **(2)** Otherwise → **always PROMPT the human**: *"Backend language — **Go, Rust, Python, or TypeScript/Node**?"* Never silently default. Ground the recommendation in G1's architecture (async/job-queue/compute-heavy → Go/Rust/Python; UI-adjacent API → TypeScript/Node) but still ask. Record the pick + one-line why. |
 
@@ -187,19 +187,19 @@ one folder. The split is fixed; only the backend *language* is chosen at the gat
 - **Analytics / measurement** — **GA4 is the default** so the product is measurable from release day:
   wire `gtag.js` into the app shell behind a `NEXT_PUBLIC_GA_MEASUREMENT_ID` env (no-op when the env is
   empty — same feature-flag-via-empty-env discipline as every optional integration). Feeds G4 as a
-  scaffold step and is the default measurement Method for `/saki-builder:prd` §5 metrics. Override only
+  scaffold step and is the default measurement Method for `/prd` §5 metrics. Override only
   with a clear reason from G1 (e.g. a privacy-first product picks a cookieless analytics stack).
 - **Architecture** — the ONE load-bearing decision from G1 (not a component diagram). Cite `docs/modular-architecture.md`.
 - **Initial DB schema** — entities + relations at **shape altitude** (the nouns and how they relate),
-  NOT full DDL. Full migrations are `/saki-builder:rplan`'s job later. Cite `docs/ddd-patterns.md`.
+  NOT full DDL. Full migrations are `/rplan`'s job later. Cite `docs/ddd-patterns.md`.
 
 **Write two artifacts** (only after the human approves — see the gate):
 - `foundations.md` (repo root) — the foundations spec + Decision Log. This is also the **greenfield-mode
-  marker** the loop's touch-ups key off (`/saki-builder:prd` reads it instead of grepping empty code).
+  marker** the loop's touch-ups key off (`/prd` reads it instead of grepping empty code).
 - `design.md` (repo root) — the project's **Part A block** from the Design System Contract, filled with the
   Part 0-derived values (PROJECT · PRIMARY LANGUAGE · DIRECTIONAL REFERENCE · the eight color roles +
   type/spacing/radius/elevation/motion tokens · and a `GOLD-STANDARD COMPONENT:` line left as
-  `<pending — built in G4>`). This is the design system doc `/saki-builder:proto` GATE 2 reads; Parts B–F stay
+  `<pending — built in G4>`). This is the design system doc `/proto` GATE 2 reads; Parts B–F stay
   invariant in the contract and are never copied here.
 
 **THE GATE (BLOCKING — HIGH risk, hard to reverse).** Present the foundations to the human in plain
@@ -212,14 +212,14 @@ approach, the analytics default (GA4) — and ask: *"Approve these foundations t
 
 Set `phase:"scaffold-ready"`. The scaffold produces the real preconditions the loop needs: a stack
 skeleton, a **real design system (tokens + primitives + app shell)**, and the **initial schema/migration**
-— enough that `/saki-builder:proto` GATE 2 passes and `/saki-builder:prd` can ground §16 against real code.
+— enough that `/proto` GATE 2 passes and `/prd` can ground §16 against real code.
 
 **Slice 1 does NOT auto-run the scaffold** (it is the irreversible file-creation step — automated in
 Slice 2). Instead, print a concrete, copy-pasteable checklist derived from the approved `foundations.md`,
 e.g. (default frontend in `frontend/` + the separate backend in `backend/`):
 
 ```
-G4 — Scaffold checklist (run these, then continue with /saki-builder:init-env):
+G4 — Scaffold checklist (run these, then continue with /init-env):
   ⛔ HARD RULE: frontend and backend are SEPARATE top-level folders — never one app.
   Frontend + design system  (frontend/):
     [ ] npx create-next-app@latest frontend --ts --tailwind --app --eslint
@@ -239,11 +239,11 @@ G4 — Scaffold checklist (run these, then continue with /saki-builder:init-env)
   Database (Postgres — owned by backend/):
     [ ] create the initial schema/migration for the entities in foundations.md (shape only)
   Claude dev env:
-    [ ] /saki-builder:init-env         # CLAUDE.md, hooks, agents, memory (Claude env — not the product)
+    [ ] /init-env         # CLAUDE.md, hooks, agents, memory (Claude env — not the product)
     [ ] design engine: ~/.claude/hooks/design-engine-setup.sh record --engine native
 ```
 
-Tell the human: *"Run these to create the real foundations, then re-run `/saki-builder:genesis` (it
+Tell the human: *"Run these to create the real foundations, then re-run `/genesis` (it
 resumes at G5) — or continue to seed the roadmap now and scaffold in parallel."* Genesis stays at
 `scaffold-ready` until the roadmap is seeded (G5 can run regardless — it doesn't need the code).
 
@@ -251,20 +251,20 @@ resumes at G5) — or continue to seed the roadmap now and scaffold in parallel.
 
 Seed the disciplined loop's entry artifact and stop.
 
-1. `/saki-builder:roadmap init "<product>"` — scaffold `tasks/roadmap.md`, **passing the G0 product name** so
+1. `/roadmap init "<product>"` — scaffold `tasks/roadmap.md`, **passing the G0 product name** so
    init does not prompt (it only asks when no name is supplied; default the repo name).
-2. Register the **MVP as the first epic** via `/saki-builder:add --epic "<rich intent>"` — compose the rich
+2. Register the **MVP as the first epic** via `/add --epic "<rich intent>"` — compose the rich
    intent from the G0 framing (goal · target user & job · the walking-skeleton flow · the success signal) as a
    **complete PRD-track shape**. **Pass `--epic` explicitly**: with a complete shape it triggers `/add`'s
    autonomous-orchestrator fallback (recorded with **no prompt**) AND makes the id deterministic — on a
    just-initialized roadmap the MVP is always **E1**. Capture the id (it will be `E1`) and use it verbatim below.
 3. **Trigger-gate the follow-on scope** — anything the G0 "NOT in the MVP" list or G1 "defer" bucket
    named goes on the roadmap as `Planned` with an **objective trigger** (a prod signal/query, not a date),
-   reusing `/saki-builder:pickup`'s recut/trigger-gate philosophy. Register each via `/saki-builder:add`
+   reusing `/pickup`'s recut/trigger-gate philosophy. Register each via `/add`
    **sequentially** (the id counter collides on parallel adds).
 
 Before the handoff, **probe whether the design system is actually on disk** — the same signal
-`/saki-builder:proto` GATE 2 checks (a real component library + a token source), **not** `design.md` (only a
+`/proto` GATE 2 checks (a real component library + a token source), **not** `design.md` (only a
 doc). This stops the sentinel from claiming a precondition that isn't there:
 
 ```bash
@@ -274,33 +274,33 @@ doc). This stops the sentinel from claiming a precondition that isn't there:
 ```
 
 Set `phase:"handed-off"`, write state, and print — **branch the message on the probe** so the human is never
-told `/saki-builder:proto` can run when it can't:
+told `/proto` can run when it can't:
 
 **If `SCAFFOLD_DONE`:**
 ```
 GENESIS_READY: <product> — foundations approved · roadmap seeded (E1 = MVP) · scaffold: done
 
 ✅ Product foundations set — the real design system is on disk. Next:
-   1. /saki-builder:pickup E1   — writes & reviews the MVP PRD (grounds on the scaffold).
-   2. /saki-builder:proto E1    — GATE 2 passes (design system exists); designs the UI + LOCKS the PRD.
-   3. /saki-builder:build E1    — ships the MVP slice-by-slice.
+   1. /pickup E1   — writes & reviews the MVP PRD (grounds on the scaffold).
+   2. /proto E1    — GATE 2 passes (design system exists); designs the UI + LOCKS the PRD.
+   3. /build E1    — ships the MVP slice-by-slice.
 ```
 
 **If `SCAFFOLD_PENDING`** (the Slice-1 default — G4 is a printed checklist the human still runs):
 ```
 GENESIS_READY: <product> — foundations approved · roadmap seeded (E1 = MVP) · scaffold: PENDING
 
-✅ Product foundations decided. ⚠ The design system is NOT on disk yet — /saki-builder:proto will stop at
+✅ Product foundations decided. ⚠ The design system is NOT on disk yet — /proto will stop at
    GATE 2 until you scaffold it. Next:
-   1. Run the G4 scaffold checklist above FIRST, then /saki-builder:init-env — creates the real stack +
-      design system + schema. (Re-run /saki-builder:genesis afterward to re-probe, or just continue once done.)
-   2. /saki-builder:pickup E1   — writes & reviews the MVP PRD.
-   3. /saki-builder:proto E1    — GATE 2 passes ONCE the scaffold exists; designs the UI + LOCKS the PRD.
-   4. /saki-builder:build E1    — ships the MVP slice-by-slice.
+   1. Run the G4 scaffold checklist above FIRST, then /init-env — creates the real stack +
+      design system + schema. (Re-run /genesis afterward to re-probe, or just continue once done.)
+   2. /pickup E1   — writes & reviews the MVP PRD.
+   3. /proto E1    — GATE 2 passes ONCE the scaffold exists; designs the UI + LOCKS the PRD.
+   4. /build E1    — ships the MVP slice-by-slice.
 ```
 
 `GENESIS_READY` on its own line is the terminal success sentinel — **both** branches emit it; the `scaffold:`
-field and the body tell the human whether `/saki-builder:proto` can run yet.
+field and the body tell the human whether `/proto` can run yet.
 
 ---
 
@@ -323,13 +323,13 @@ Maintain `tasks/.genesis-state.json`. Update after every phase transition. Times
 ## Survival & rules
 
 - **Genesis is Phase 0 — it produces the loop's inputs, never forks the loop.** Downstream is
-  `/saki-builder:pickup` → `/saki-builder:prd` → `/saki-builder:proto` → `/saki-builder:build`, unchanged.
+  `/pickup` → `/prd` → `/proto` → `/build`, unchanged.
 - **One human gate, at G3 (foundations).** G0 is a lean confirm; the frontend/backend split is fixed and the
   backend *language* is decided in G3 — **always prompt Go/Rust/Python/TypeScript-Node, unless the prompt or a
   file already specifies it** (then honor that, no prompt); everything else is autonomous. Never write
   `foundations.md`/`design.md` or scaffold before G3 approval.
 - **Reuse-first.** GATE 1 refuses to genesis a repo that already has a product. Reuse `frontend-design`,
-  `/deep-research`, `/saki-builder:init-env`, `/saki-builder:roadmap`, `/saki-builder:add` — never re-implement them.
+  `/deep-research`, `/init-env`, `/roadmap`, `/add` — never re-implement them.
 - **Frontend and backend are ALWAYS separate top-level folders (`frontend/` + `backend/`) — HARD RULE, no
   exceptions.** From scratch there is no unified full-stack app; a `backend/` service always exists. The
   backend **language** is **always prompted** (*Go / Rust / Python / TypeScript-Node*) — **unless the prompt
@@ -344,11 +344,11 @@ Maintain `tasks/.genesis-state.json`. Update after every phase transition. Times
 
 | Anti-pattern | Fix |
 |---|---|
-| Running genesis on a repo that already has a stack/code | GATE 1 refuses — use `/saki-builder:add` → `/saki-builder:pickup` for an existing product |
+| Running genesis on a repo that already has a stack/code | GATE 1 refuses — use `/add` → `/pickup` for an existing product |
 | Writing `foundations.md` / scaffolding before the human approves G3 | G3 is the single BLOCKING gate — present, get approval, then write |
 | Co-mingling frontend and backend in one app/folder (e.g. a single full-stack Next.js serving UI + API) | HARD RULE: always split into top-level `frontend/` + `backend/` from scratch — even a simple MVP; there is no unified-app option |
 | Silently defaulting the backend language (or skipping the prompt) | The split is mandatory; the language is **always prompted** — Go/Rust/Python/TypeScript-Node — UNLESS the prompt or a project file already specifies it (then honor that requirement, cite the source, don't prompt) |
-| Making the G2 vision high-fidelity or treating it as the deliverable | It's a throwaway, system-less directional mock that informs G3 — full fidelity is `/saki-builder:proto` after scaffold |
+| Making the G2 vision high-fidelity or treating it as the deliverable | It's a throwaway, system-less directional mock that informs G3 — full fidelity is `/proto` after scaffold |
 | Letting G1 research rabbit-hole into a report | Time-box it — a few targeted queries to ground G3, nothing more |
 | Auto-scaffolding in Slice 1 | Slice 1 prints the G4 checklist; auto-scaffold is Slice 2 (G4 is the irreversible step) |
 | Re-implementing prd/proto/pickup inside genesis | Genesis only produces their inputs and hands off — orchestrate, never fork |
@@ -357,8 +357,8 @@ Maintain `tasks/.genesis-state.json`. Update after every phase transition. Times
 
 - **Slice 1 (this file):** G0–G3 fully · G4 = printed checklist · G5 seeds the roadmap + handoff.
 - **Slice 2:** auto-run G4 (create the stack + design system + app shell + schema per the chosen backend);
-  add the loop touch-ups so `/saki-builder:prd` reads `foundations.md` for greenfield grounding and
-  `/saki-builder:proto` GATE 2 recognizes the freshly-scaffolded design system.
+  add the loop touch-ups so `/prd` reads `foundations.md` for greenfield grounding and
+  `/proto` GATE 2 recognizes the freshly-scaffolded design system.
 - **Slice 3:** resume/state hardening, `--restart` polish, Figma-engine interplay, follow-on trigger-gating.
 
 See `greenfield-genesis-plan.md` for the full design rationale and evidence.

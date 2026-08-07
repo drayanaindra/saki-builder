@@ -33,6 +33,36 @@ Do NOT execute until: the **Blocking Evidence Set is empty** (every blocking ite
 | ---------------- | -------------------- | -------------------------------- |
 | Read, lint, test | New file, API change | DB migration, auth, delete, push |
 
+## Pre-merge Gate (BLOCKING)
+
+Before `git push` to main, two PreToolUse:Bash hooks must both pass:
+
+**1. SonarQube quality gate must be PASSED** — `sonar-gate.sh`. If blocked:
+
+1. `/sonarqube:sonar-quality-gate` — see which conditions are failing
+2. `/sonarqube:sonar-list-issues` — see blocking issues
+3. Fix, re-run analysis, verify gate is PASSED, then push
+
+**2. Test coverage must be > 80%** — `coverage-gate.sh` (strict: exactly 80.0% blocks).
+Reads the last coverage report an earlier test run / `/saki-builder:qa` produced (Jest/Vitest
+`coverage-summary.json`, Cobertura `coverage.xml`, `lcov.info`, or Go `coverage.out`)
+and blocks the push unless total coverage is strictly above the floor. Threshold is
+`COVERAGE_MIN` (default 80). No report found → warns and allows (set `COVERAGE_STRICT=1`
+to require one). If blocked: `/saki-builder:qa` to add tests and re-check the floor, then push.
+
+To bypass either (intentional, documented reason only): run `git push` manually outside Claude Code.
+
+## Clean Code Standards (write-time, SonarQube)
+
+Write code that passes the gate the first time — don't write then fix. The gate grades your **diff**
+(Clean as You Code), so apply this to every line you touch. Top gate-blockers, always-on:
+
+- **Reliability**: null-check before deref (`if x is not None:`, not `if x:`); always close resources (`with`/`defer`/try-with-resources); check error returns; cover every switch/enum case.
+- **Security**: no hardcoded secrets; parameterize SQL/shell (no string-concat injection); validate external input at the boundary; strong crypto only (no MD5/SHA-1/DES/ECB).
+- **Maintainability**: cognitive complexity ≤ 15, function ≤ 40 LOC, params ≤ 7; DRY (extract at 3rd repeat, < 3% duplication); guard clauses over deep nesting; named constants over magic numbers; no dead/commented-out code; never swallow exceptions; new-code coverage ≥ 80%, **non-negotiable** (SonarQube gate) — `/saki-builder:qa` enforces the same ≥ 80% floor locally before push (`COVERAGE_MIN`, clamped — no lowering, no spike bypass), so coverage clears *before* the gate.
+
+Full reference (per-quality rule list + workflow): the `/saki-builder:clean-code` skill (`~/.claude/skills/clean-code/SKILL.md`). `/saki-builder:build` auto-loads it during implementation; invoke it manually before any non-trivial code change.
+
 ## Branch Points (BLOCKING)
 
 On unexpected state mid-execution, **earn the handoff** — a handoff is legitimate only once the resolvable path is exhausted. **Decide implementation. Escalate intent.**
@@ -65,6 +95,13 @@ Next actions:
 ```
 
 Be specific ("run `pytest tests/test_users.py`", not "test it"). Show the next uncompleted plan step if working from a plan.
+
+## Learning Loop
+
+- `/saki-builder:retro` before ending long sessions
+- `/saki-builder:reflect` weekly
+- Cross-project patterns: `~/.claude/memory/patterns.md` (generic + stack-portable) — **auto-loaded** via the `@import` at the end of this file, so `/saki-builder:prd`, `/saki-builder:rplan`, `/saki-builder:build` and every main-thread skill recall promoted patterns with no per-skill read. (Written by `/saki-builder:reflect`; raw session notes live in the per-project `lessons-learned.md` inbox, which is NOT loaded.)
+- Topic-specific patterns: `~/.claude/memory/patterns-<topic>.md` (e.g. `patterns-ios.md`). **Not auto-loaded** — to activate per-project, create `<project>/.claude/CLAUDE.md` with `@~/.claude/memory/patterns-<topic>.md`. Same for project-local `.claude/memory/patterns.md`: import it via the project CLAUDE.md (scaffolded by `/saki-builder:init-env`).
 
 ---
 *Detailed references (on demand): `config/docs/execution-protocol-detail.md`, `config/docs/xp-principles.md`, the `/saki-builder:clean-code` skill. Optional local gates (SonarQube pre-merge, etc.) are project-configured, not part of this core.*

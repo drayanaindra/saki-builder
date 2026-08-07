@@ -21,7 +21,7 @@ print('Model set to opus (alias -> latest Opus)')
 
 Then confirm with: `Model: OPUS | Status: Planning`
 
-> This pins the model to Opus for planning and does **not** auto-restore afterward — `/saki-builder:approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+> This pins the model to Opus for planning and does **not** auto-restore afterward — `/approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
 
 ---
 
@@ -64,15 +64,15 @@ If the invocation names a roadmap item id (`I<n>` or `B<n>`), or the prompt clea
 1. Read `tasks/roadmap.md` and find the `### <id>` block. If there's no match, say so and plan the prompt as-is.
 2. **Seed from the item — do NOT make the user restate it:** its **What** → the task / desired outcome, its
    **Repro / Context** → the starting evidence. Confirm the item is Plan-track (an `E<n>`/`F<n>` id belongs to
-   `/saki-builder:pickup`, not here — redirect and stop).
+   `/pickup`, not here — redirect and stop).
 3. **Flip the item `Planned → In-progress`** in `tasks/roadmap.md` (update `**Status:**` + `**Updated:**` via
-   `date +%F`) — the Plan-track analogue of what `/saki-builder:pickup` does for PRD-track, so the roadmap
+   `date +%F`) — the Plan-track analogue of what `/pickup` does for PRD-track, so the roadmap
    reflects that work started.
-4. **Stamp the plan** with `**Item:** <id>` in its header (Step 7) so `/saki-builder:qa` can close the loop
+4. **Stamp the plan** with `**Item:** <id>` in its header (Step 7) so `/qa` can close the loop
    back to the roadmap (flip the item to `Shipped`) when every criterion passes.
 5. **Record `**Child plan:** <plan-file>`** under the `### <id>` block in `tasks/roadmap.md` (mirror what
-   `/saki-builder:pickup` does with `**Child PRD:**` for PRD-track), once the plan file path is known
-   (Step 7). This gives `/saki-builder:build` PLAN mode a clean primary item→plan link; the `**Item:** <id>`
+   `/pickup` does with `**Child PRD:**` for PRD-track), once the plan file path is known
+   (Step 7). This gives `/build` PLAN mode a clean primary item→plan link; the `**Item:** <id>`
    stamp from (4) stays the fallback if `Child plan` is `—`.
 
 If no id is given (a raw standalone task), skip this and plan the prompt directly — unchanged behavior.
@@ -85,22 +85,22 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
 
 ### 1. Research Phase (read-only — NEVER skip)
 
-- **Ingest the source PRD slice FIRST (if this task came from `/saki-builder:prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
+- **Ingest the source PRD slice FIRST (if this task came from `/prd`):** locate the originating `tasks/prd-*.md` and the slice this plan implements, and carry it forward — do NOT re-derive:
   - the slice's **acceptance criteria** → seed the plan's Success Criteria
-  - the slice's **`Assumes:`** line (if present) → seed the plan's implementation steps + **Migration Checklist** (the hidden work — migration/backfill/index/flag/permission/rollback — `/saki-builder:prd-review` surfaced and `/saki-builder:prd` stated; do NOT re-derive it)
+  - the slice's **`Assumes:`** line (if present) → seed the plan's implementation steps + **Migration Checklist** (the hidden work — migration/backfill/index/flag/permission/rollback — `/prd-review` surfaced and `/prd` stated; do NOT re-derive it)
   - the source PRD's **§16 Technical Contract (thin)** (if present) → seed the plan's **Plan Wiring** + schema/endpoint design as the *shape to HARDEN* into full columns, request/response structs, and migration files. Do NOT re-derive the shape — deepen it: a §16 row tagged `NEW` is a create-target, a `REUSE` row (`path:line`) is an existing anchor to verify with grep/read, and a **`CHANGE` row** (`path:line` + its `↳ Breaks:` note) is an existing anchor to verify **AND a mandatory Compatibility & Consumers entry** — carry its `↳ Breaks:` note straight into the consumer inventory below, then harden it into an expand-contract step sequence rather than a single in-place edit. §16 is thin by design (entities/endpoint-purposes/one arch decision); the depth is yours to add here.
   - the **§5 outcome IDs** it serves → keep each Success Criterion's `→ 5.x` link
   - each **`event`-class §5 Method** (`event: emit <name> when <trigger>`) → **instrumentation the metric needs**, so materialize BOTH, do NOT re-derive: (a) a **Steps** row `Emit <event_name> at <wiring point>` wired into **Plan Wiring** at the point the trigger fires, and (b) a **Success Criterion** `event <name> fires when <trigger> (→ 5.x)`. **Reuse-first:** grep for `<event_name>` first — if the emit already exists, make it an assert-only criterion (no new emit step). `query`/`external`-class Methods carry no instrumentation (data already persists / read outside our code) — skip them. This is the seam that turns a declared metric into built, verified instrumentation (parallel to the `Assumes:`-line ingestion above).
   - the **outcome-tied kill criterion** (§6) and the **feature appetite band** (§6/header — `small|medium|large`) → into the plan header (Step 2 / template). The band is the *feature-wide* recut ceiling; derive THIS plan's own appetite (`~N agent tasks`) from the slice's size (its acceptance-criteria count — ≤5 ≈ one agent iteration per INVEST), not from the band directly.
   - any `⚠ DISCOVERY-RISK` banner → record as a plan-level UNKNOWN with a resolution strategy
-  - **Lock check:** if the source PRD carries no `<!-- prd-locked: … -->` marker, note it in the plan header
-    as `Source PRD: NOT LOCKED — requirements may still change`. Inside `/saki-builder:build` this never happens
-    (build's Gate 1.5 hard-blocks an unlocked PRD *before* rplan runs); a **standalone** `/saki-builder:rplan`
-    stays lenient — plan against it, but flag that the freeze (`/saki-builder:proto`'s lock) hasn't run yet.
+  - **Lock check:** if neither the source PRD's `<!-- prd-locked: … -->` marker nor `tasks/proto-<slug>/.prd-locked` exists, note it in the plan header
+    as `Source PRD: NOT LOCKED — requirements may still change`. Inside `/build` this never happens
+    (build's Gate 1.5 hard-blocks an unlocked PRD *before* rplan runs); a **standalone** `/rplan`
+    stays lenient — plan against it, but flag that the freeze (`/proto`'s lock) hasn't run yet.
   - **Prior slices — plan against what SHIPPED, not what the PRD guessed.** On a slice-scoped invocation
-    (`/saki-builder:build` names the plan `<prd-slug>-slice<N>`), glob `tasks/<prd-slug>-slice*-plan.md`
-    and read every plan for slices **1..N-1**: their **Success Criteria** (what `/saki-builder:qa` actually
-    verified), their **Plan Wiring** (what `/saki-builder:approved` reconciled after implementation drift),
+    (`/build` names the plan `<prd-slug>-slice<N>`), glob `tasks/<prd-slug>-slice*-plan.md`
+    and read every plan for slices **1..N-1**: their **Success Criteria** (what `/qa` actually
+    verified), their **Plan Wiring** (what `/approved` reconciled after implementation drift),
     and their **Compatibility & Consumers** table. Where the PRD's §16 or slice text disagrees with what an
     earlier slice actually built, **the shipped shape wins** — plan against it and record the divergence in
     this plan's header. Record which plans you read in the header's `**Prior slices:**` line. INVEST rule 4
@@ -108,7 +108,7 @@ Create an execution plan following the template at `${CLAUDE_PLUGIN_ROOT}/config
     A prior plan predating this section → record `prior slice N predates the compat section` and fall back to
     its Success Criteria + Plan Wiring. Slice 1, or no sibling plans → write `N/A — slice 1 / standalone`
     and skip silently.
-  If there is no source PRD (standalone `/saki-builder:rplan`), note "no source PRD" and continue.
+  If there is no source PRD (standalone `/rplan`), note "no source PRD" and continue.
 - **Persona check:** after PRD ingestion, check if `.claude/personas/*.md` exists. If it does,
   read the relevant persona(s) and carry forward into the plan:
   - §3 Pain Points & §5 UI/UX Constraints → inform which error/empty states to cover in Step 2.5
@@ -174,7 +174,7 @@ Feed the output into the context doc as a **Graphify Findings** section (god nod
 communities crossed, surprising connections relevant to the task).
 
 If `graphify-out/GRAPH_REPORT.md` is absent:
-- ≥20 files to read → offer once: "No graph yet — run `/saki-builder:graphify .` for 71×
+- ≥20 files to read → offer once: "No graph yet — run `/graphify .` for 71×
   cheaper research? (skipping proceeds with file reads)"
 - <20 files → skip silently.
 
@@ -191,8 +191,8 @@ The graph gives you derivable structure; this file gives you what no AST can see
 and the cross-process edges between them (graphify reports *no path* across a language/process
 boundary even when the two are genuinely coupled), the invariants that must hold, and what is
 deliberately absent. Cite it like any other anchor (`docs/project-context.md § Topology`).
-Absent → skip silently; it is written by `/saki-builder:init-env` and refreshed by
-`/saki-builder:wrap`. Contract: `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
+Absent → skip silently; it is written by `/init-env` and refreshed by
+`/wrap`. Contract: `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
 
 **Spike Protocol (XP):** If during research you encounter an unknown that cannot be resolved by reading code (e.g., third-party API behavior, performance characteristics, library compatibility), run a timeboxed spike:
 1. Spawn a subagent with a 15-minute timebox question. For genuinely **external** unknowns (third-party API/library behavior, current pricing/limits, ecosystem facts), the spike may use `WebSearch` / `/deep-research` / a connected MCP server — not only code reading.
@@ -219,7 +219,7 @@ Fill in the plan template with:
 
 **Skip** if the task is backend-only (no UI change, no endpoint a user/role directly hits through the app). Otherwise, write `tasks/[task]-flow.md` alongside the plan (same `tasks/` dir).
 
-Purpose: behavior checkpoint the user reads before approval to verify the plan will behave as expected. Also consumable by `/saki-builder:qa` to lift Playwright scenarios.
+Purpose: behavior checkpoint the user reads before approval to verify the plan will behave as expected. Also consumable by `/qa` to lift Playwright scenarios.
 
 Format: **Gherkin**, one `Feature:` block per role (Customer / Admin / Kasir / Warehouse / etc. — only roles that touch this feature). Do not merge roles.
 
@@ -398,7 +398,7 @@ class for every *other* predicate; it may not demote these.
 
 **Max unresolved unknowns before presenting:** 2 (an open MED/HIGH unknown is itself a Blocking item).
 
-> Bar rationale (vs `/saki-builder:prd`): a plan is one step from code and has a larger blast radius than a spec, so it **blocks on more predicate types** — every anchor must grep, every migration must have a creating step, every state-changing step needs a covered failure path. The higher bar is a longer blocking-predicate list, not a higher number.
+> Bar rationale (vs `/prd`): a plan is one step from code and has a larger blast radius than a spec, so it **blocks on more predicate types** — every anchor must grep, every migration must have a creating step, every state-changing step needs a covered failure path. The higher bar is a longer blocking-predicate list, not a higher number.
 
 #### 4e. Honesty rules
 
@@ -421,12 +421,12 @@ Before showing the plan to the user, answer all of these:
 7. Is the Evidence Ledger present, and does every Blocking item cite evidence (`path:line`, grep result, or step number)?
 
 If any answer is "No" → fix the plan before presenting.
-If #6 is "No" → STOP. Do not present. Return to user and ask for the example, or recommend `/saki-builder:shaping-requirements`. Do not invent the example.
+If #6 is "No" → STOP. Do not present. Return to user and ask for the example, or recommend `/shaping-requirements`. Do not invent the example.
 If #7 is "No" → the readiness claim is unsubstantiated. Build the ledger before presenting; do not empty the Blocking table by demoting items you haven't resolved.
 
 ### 6. Self-Review (built-in domain checks)
 
-**Run BEFORE presenting the plan. This replaces /saki-builder:rplan-review for LOW/MED risk plans.**
+**Run BEFORE presenting the plan. This replaces /rplan-review for LOW/MED risk plans.**
 
 Walk through the plan and check each item below. For each violation found, fix it in the plan immediately — do not just flag it.
 
@@ -444,7 +444,7 @@ Walk through the plan and check each item below. For each violation found, fix i
 | 8   | YAGNI violations    | For each new function/struct/file: (Q1) Is it in the current plan step? (Q2) Will code break without it now? (Q3) Same effort to add later? (Q4) Deferring creates breaking change? → If Q1=No or (Q2=No and Q4=No) → CUT IT. Common violations: premature interfaces with one impl, unused config options, pagination before data exists, factory patterns for single-use |
 | 9   | Missing TDD spec    | Any step with business logic that has no Test column entry → add test function name. Steps must specify: test name, what it asserts, TDD mode (Test-First / Test-Along / Test-After) |
 | 10  | Uncommittable steps | Any step marked Committable=No without naming which step completes it → fix. Adjacent uncommittable steps must be grouped as atomic commit |
-| 11  | Missing concrete example | The plan's `Concrete Example Output` section is empty, contains placeholder text ("TBD", "to be defined", "see ticket", "as discussed", "kamu yang tentukan", "n/a"), or only restates the problem statement → BLOCK. Stop self-review, return to user with: *"This plan needs a concrete example of the expected output before I can continue. Either paste an example, or run `/saki-builder:shaping-requirements` to define the problem shape first."* Do NOT attempt to fabricate the example yourself. |
+| 11  | Missing concrete example | The plan's `Concrete Example Output` section is empty, contains placeholder text ("TBD", "to be defined", "see ticket", "as discussed", "kamu yang tentukan", "n/a"), or only restates the problem statement → BLOCK. Stop self-review, return to user with: *"This plan needs a concrete example of the expected output before I can continue. Either paste an example, or run `/shaping-requirements` to define the problem shape first."* Do NOT attempt to fabricate the example yourself. |
 
 #### 6b. Project-Aware Checks (detect from project context)
 
@@ -488,7 +488,7 @@ If the spot-check finds blockers, fix them in the plan before presenting.
 
 #### 6d. Acceptance Criteria Hardening
 
-**Run after 6a–6c. Rewrites criteria in-place so `/saki-builder:qa` can run them as-is.**
+**Run after 6a–6c. Rewrites criteria in-place so `/qa` can run them as-is.**
 
 Read the Success Criteria section. For each criterion, it PASSES hardening only if it has ALL THREE:
 1. **Actor + Action** — who does what (`User calls POST /v1/endpoint`, `User clicks Submit button`)
@@ -496,7 +496,7 @@ Read the Success Criteria section. For each criterion, it PASSES hardening only 
 3. **Expected outcome** — exact result (`HTTP 201`, `{"status":"ok"}`, `"Success" toast visible`)
 
 **Classify each:**
-- `✅ HARDENED` — has all three, ready for `/saki-builder:qa`
+- `✅ HARDENED` — has all three, ready for `/qa`
 - `🔧 REWRITE` — missing test command or expected outcome
 - `🔲 MANUAL` — requires browser interaction, needs Playwright scenario or explicit manual steps
 
@@ -527,11 +527,11 @@ Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking i
 ### 7. Output with Next Action Recommendation
 
 - Write full plan to `tasks/[task]-plan.md` (`mkdir -p tasks` first — every workflow artifact lives under
-  `tasks/`, not the project root). **If a `/saki-builder:build` slice invocation supplied a slice-scoped name,
+  `tasks/`, not the project root). **If a `/build` slice invocation supplied a slice-scoped name,
   honor it** — write `tasks/<prd-slug>-slice<N>-plan.md` so each slice's plan is a distinct file, not a
   newest-wins `*-plan.md` several slices share. **If seeded from a roadmap item (Step 0.6), stamp
-  `**Item:** <id>` in the plan header** so `/saki-builder:qa` can flip that item to `Shipped` on all-pass.
-- **Seed the manual-chain resume manifest** (skip for **any** `/saki-builder:build`-driven invocation —
+  `**Item:** <id>` in the plan header** so `/qa` can flip that item to `Shipped` on all-pass.
+- **Seed the manual-chain resume manifest** (skip for **any** `/build`-driven invocation —
   PRD-mode slice *or* PLAN-mode item — build owns its own `.build-<slug>-state.json`; the invocation says it
   is build-driven): after writing the plan, run the **Init** snippet from
   `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md` with `PLAN_FILE` = the plan just written and
@@ -545,17 +545,17 @@ Update the Evidence Ledger to reflect what was fixed: remove resolved Blocking i
 
 #### Next Action Decision Tree
 
-Step 6 already performed self-review and (for HIGH risk) the combined-reviewer spot-check. `/saki-builder:rplan-review` is for HIGH-risk plans that benefit from parallel domain experts — it does NOT re-do Step 6's work. For LOW/MED, do not recommend `/saki-builder:rplan-review`; the gaps it would find are already covered by Step 6.
+Step 6 already performed self-review and (for HIGH risk) the combined-reviewer spot-check. `/rplan-review` is for HIGH-risk plans that benefit from parallel domain experts — it does NOT re-do Step 6's work. For LOW/MED, do not recommend `/rplan-review`; the gaps it would find are already covered by Step 6.
 
 ```
 If Blocking Set empty AND risk is LOW/MED:
-  → "Plan ready (0 blocking). /saki-builder:approved to start implementation."
+  → "Plan ready (0 blocking). /approved to start implementation."
 
 If Blocking Set empty AND risk is HIGH:
-  → "Plan ready (0 blocking, HIGH risk). Recommend /saki-builder:rplan-review for parallel domain expert review, or /saki-builder:approved if Step 6 spot-check is sufficient."
+  → "Plan ready (0 blocking, HIGH risk). Recommend /rplan-review for parallel domain expert review, or /approved if Step 6 spot-check is sufficient."
 
 If Blocking Set non-empty:
-  → "[N] blocking item(s): [list cited Blocking rows]. Fix the cited items and re-run /saki-builder:rplan — do NOT empty the table by demotion, do NOT escalate to /saki-builder:rplan-review to mask them."
+  → "[N] blocking item(s): [list cited Blocking rows]. Fix the cited items and re-run /rplan — do NOT empty the table by demotion, do NOT escalate to /rplan-review to mask them."
 
 If blocking items need your input to resolve:
   → "[N] blocking item(s) need your input: [specific questions]"
@@ -570,8 +570,8 @@ Risk: LOW / MED / HIGH
 Self-review: [N] issues found and fixed, [N] blocking items remaining
 
 Recommendation: [one of the above]
-> /saki-builder:approved    — start implementation
-> /saki-builder:rplan-review — expert validation (recommended for HIGH risk)
+> /approved    — start implementation
+> /rplan-review — expert validation (recommended for HIGH risk)
 > [specific questions if blocking items need your input]
 ```
 

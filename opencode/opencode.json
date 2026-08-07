@@ -1,58 +1,9 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-sonnet-4-6",
   "permission": {
-    "playwright*": "allow",
     "edit": "allow",
     "bash": {
-      "*": "ask",
-      "go test *": "allow",
-      "go build *": "allow",
-      "go vet *": "allow",
-      "npx tsc *": "allow",
-      "npx tsc": "allow",
-      "npx playwright *": "allow",
-      "curl *": "allow",
-      "ls *": "allow",
-      "ls": "allow",
-      "cat *": "allow",
-      "echo *": "allow",
-      "cd *": "allow",
-      "psql *": "allow",
-      "python3 -c *": "allow",
-      "mkdir *": "allow",
-      "touch *": "allow",
-      "cp *": "allow",
-      "source *": "allow",
-      "rtk *": "allow",
-      "pytest *": "allow",
-      "grep *": "allow",
-      "tail *": "allow",
-      "head *": "allow",
-      "awk *": "allow",
-      "sed *": "allow",
-      "wc *": "allow",
-      "find *": "allow",
-      "which *": "allow",
-      "sort *": "allow",
-      "uniq *": "allow",
-      "column *": "allow",
-      "git *": "allow",
-      "npm *": "allow",
-      "pnpm *": "allow",
-      "yarn *": "allow",
-      "node *": "allow"
-    }
-  },
-  "mcp": {
-    "playwright": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@playwright/mcp@latest"
-      ],
-      "enabled": true
+      "*": "ask"
     }
   }
 }

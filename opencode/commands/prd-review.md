@@ -1,18 +1,18 @@
 ---
-description: "Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · compat-declared · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /saki-builder:prd, before handing slices to /saki-builder:rplan. Emits a coarse verdict signal, not a precise score. Autonomous by default — loops (review → apply the prescribed fixes to the PRD → re-review) until SHIP·READY or blocked; pass `--review-only` for a single non-editing pass (today's behavior)."
+description: "Adversarial PRD review — deterministic structural scan, then a parallel judge panel (product, evidence & metrics, implementation-reality) PLUS a driver→navigator pair-review pass (high-risk PRDs only) that hunts the implementation + scope blind spots the panel misses. Every reviewing voice is bound to be concise + faithful — one line per finding, every claim cites the text it rests on, no fabrication. Leads on implementation reality: surfaces the failure/edge paths and hidden build work (migration, flag, permission, rollback) each slice hides, prescribing the criteria to catch them. Hard-gates acceptance criteria to be executable (Given/When/Then + `[auto]`/`[manual]` tag). Emits an implementation-reality checklist as the headline, a READINESS (Definition-of-Ready) gate for buildability-now, and a technical-contract check — verifying the PRD's §16 thin contract (present · cited · compat-declared · slice-coherent · still shape not full design) then flagging the residual undefined DB · API · architecture · UI/UX surfaces — verifying and handing off, never designing. Writes a team-shareable, trackable review record (PRD-version pinned · finding IDs + disposition · re-review reconcile). Run after /prd, before handing slices to /rplan. Emits a coarse verdict signal, not a precise score. Autonomous by default — loops (review → apply the prescribed fixes to the PRD → re-review) until SHIP·READY or blocked; pass `--review-only` for a single non-editing pass (today's behavior)."
 ---
 
 # PRD Review — Structural Scan + Adversarial Judge Panel + Pair-Review Blind-Spot Pass
 
-You are the review coordinator. Your job: stress-test a PRD produced by `/saki-builder:prd` *before* its slices go to `/saki-builder:rplan`, using an independent judge panel and a paired blind-spot pass. This complements `/saki-builder:prd`'s in-skill self-gate — a model that scores its own PRD is biased toward it; this skill is the fresh-context second opinion.
+You are the review coordinator. Your job: stress-test a PRD produced by `/prd` *before* its slices go to `/rplan`, using an independent judge panel and a paired blind-spot pass. This complements `/prd`'s in-skill self-gate — a model that scores its own PRD is biased toward it; this skill is the fresh-context second opinion.
 
 **Lead lens — implementation reality.** The highest-priority job is to make VISIBLE what building this actually entails: the failure/edge paths the happy-path criteria hide, and the implementation work a slice silently assumes (migration, backfill, feature flag, new permission, index, rollback). **Judge 3 owns this and leads synthesis** — its prescribed criteria + surfaced hidden work are the headline output, and the verdict gates on failure-surface completeness, not just premise soundness. The other judges (premise, metrics, evidence) still run — a well-tested bad idea is still a bad idea — they just don't lead. Priority order for the whole review: **① surface implementation reality → ② keep every finding grounded → ③ prescribe, don't lecture.**
 
-The review runs: **Phase 1** (structural hard gate) → **Phase 2** (parallel judge panel) → **Phase 2.5** (driver→navigator pair-review blind-spot pass) → **Phase 3** (synthesis: `R#` findings ledger + implementation-reality checklist + **Readiness / Definition-of-Ready** + **technical-surface & contract map** + verdict) → **Phase 4** (recommendation). Phase 1 is a hard gate — failure stops the review and sends the author back to `/saki-builder:prd`.
+The review runs: **Phase 1** (structural hard gate) → **Phase 2** (parallel judge panel) → **Phase 2.5** (driver→navigator pair-review blind-spot pass) → **Phase 3** (synthesis: `R#` findings ledger + implementation-reality checklist + **Readiness / Definition-of-Ready** + **technical-surface & contract map** + verdict) → **Phase 4** (recommendation). Phase 1 is a hard gate — failure stops the review and sends the author back to `/prd`.
 
 ## Honest-judge contract (the four limits this skill is built to contain)
 
-- **No external-fact validation.** Market sizes, user %, benchmarks — the panel neither confirms nor refutes them (that would be hallucination); it routes them to `UNVERIFIABLE` for a human or `/saki-builder:prd --research`.
+- **No external-fact validation.** Market sizes, user %, benchmarks — the panel neither confirms nor refutes them (that would be hallucination); it routes them to `UNVERIFIABLE` for a human or `/prd --research`.
 - **Default to REJECT.** Fluent, well-formatted prose is not evidence of quality — lean skeptical.
 - **Signal, not score.** The judge is non-deterministic — output is `SHIP / REVISE / DISCOVERY-FIRST`, one sample, not a number to treat as ground truth.
 - **Uncited critique is discarded.** Every finding quotes the section it attacks — *including prescriptions*, which must anchor to the slice/rule they extend, so the judge can't invent a checklist to look thorough.
@@ -43,12 +43,12 @@ cite-everything / discard-uncited / no-external-validation / default-reject rule
 
 ## Modes — autonomous (default) vs `--review-only`
 
-`/saki-builder:prd-review` runs **autonomous** unless `--review-only` is passed.
+`/prd-review` runs **autonomous** unless `--review-only` is passed.
 
 - **Autonomous (default).** After a review pass, if the PRD is not green (`Verdict SHIP` AND `Readiness
   READY`), **apply the review's own prescribed fixes to the PRD and re-review**, looping until green or a
-  hard stop — see **Phase 5**. This is the loop-to-green that `/saki-builder:pickup` also drives; it lives
-  here now, and `/saki-builder:pickup` reuses it (it does not keep its own copy).
+  hard stop — see **Phase 5**. This is the loop-to-green that `/pickup` also drives; it lives
+  here now, and `/pickup` reuses it (it does not keep its own copy).
 - **`--review-only`.** Run **one** pass (Step 0 → Phase 4) and stop. Never edit the PRD, never write a state
   file. This is the classic single-pass reviewer — use it for a one-shot second opinion, or when another
   orchestrator owns the loop.
@@ -115,11 +115,11 @@ convergence signal the pipeline uses to decide recut-vs-loop.
 
 A section is PRESENT only if it has real content — not a heading, not "N/A", not a template placeholder.
 
-| # | Required (per `/saki-builder:prd`) | Present & valid? | Notes |
+| # | Required (per `/prd`) | Present & valid? | Notes |
 |---|----------------------|------------------|-------|
-| 1 | **§2 states the load-bearing assumption + tag** — an explicit `**Load-bearing assumption:** <X> — assumed/observed/validated` line in §2 (the premise from `/saki-builder:prd` Step 0b, in the file). A bet also carries it in the DISCOVERY-RISK banner; a grounded PRD still states it in §2 | | |
+| 1 | **§2 states the load-bearing assumption + tag** — an explicit `**Load-bearing assumption:** <X> — assumed/observed/validated` line in §2 (the premise from `/prd` Step 0b, in the file). A bet also carries it in the DISCOVERY-RISK banner; a grounded PRD still states it in §2 | | |
 | 2 | TL;DR ≤3 sentences; problem names a **measurable harm** | | |
-| 3 | Evidence table — each claim tagged; floor met (≥1 `validated` OR a named spike — the §2 `**Spike:**` line `/saki-builder:prd` Step 0b writes when the load-bearing assumption is `assumed`; a bare `assumed` tag with no `**Spike:**` line does not count) | | |
+| 3 | Evidence table — each claim tagged; floor met (≥1 `validated` OR a named spike — the §2 `**Spike:**` line `/prd` Step 0b writes when the load-bearing assumption is `assumed`; a bare `assumed` tag with no `**Spike:**` line does not count) | | |
 | 4 | Primary JTBD in **Klement** form (`When… I want… so I can…`), exactly one | | |
 | 5 | §5 outcomes — each primary/secondary has target + **basis tag** (`baseline`/`benchmark`/`aspirational`) + measurement + a **JTBD link** (a `Jn` in §3/§4); the **counter-metric** row instead names the metric(s) it guards (`guards 5.x`, not a `Jn`) | | |
 | 5b | §5 Method is classified `query`/`event`/`external`, and every **`event`-class** row names its event (`event: emit <name> when <trigger>`) — an event-class Method with no named event is undefined instrumentation work | | |
@@ -133,7 +133,7 @@ A section is PRESENT only if it has real content — not a heading, not "N/A", n
 **Hard-fail rules (any one → Phase 1 FAILED):**
 - Primary JTBD in persona form ("As a [role], I want…") → FAIL
 - A `validated`/`observed` claim with no cited source → FAIL (fabricated evidence)
-- An §5 outcome with a numeric target but no **basis tag** — one of `baseline`/`benchmark`/`aspirational` → FAIL (fabricated precision). `aspirational` IS a valid basis (an honest not-yet-measured target passes); a bare number with no basis does not. Fix in /saki-builder:prd: add the Basis column value.
+- An §5 outcome with a numeric target but no **basis tag** — one of `baseline`/`benchmark`/`aspirational` → FAIL (fabricated precision). `aspirational` IS a valid basis (an honest not-yet-measured target passes); a bare number with no basis does not. Fix in /prd: add the Basis column value.
 - Any slice or §5 outcome whose `Jn` reference resolves to no job defined in §3/§4 (orphan / dangling JTBD) → FAIL (the counter-metric's `guards 5.x` is not a `Jn` and is exempt). The **reverse direction is NOT a hard-fail**: a §4 related job that no slice/outcome references (an *orphan job*) is scope theater, not a broken reference — route it to Judge 1 as a scope finding, do not fail Phase 1 on it
 - Kill criteria absent or only effort-scoped (not tied to a §5 metric) → FAIL
 - A `🔒 INVARIANT` (money/stock/tenant) with no acceptance criterion testing it → FAIL
@@ -149,10 +149,10 @@ PHASE 1 PASSED — proceeding to the judge panel
 ```
 PHASE 1 FAILED — STRUCTURAL BLOCKERS
 
-These are /saki-builder:prd's job to fix, not a judgment call:
+These are /prd's job to fix, not a judgment call:
   ❌ [item]: [specific gap, with the section]
 
-Action: fix in /saki-builder:prd → re-run /saki-builder:prd-review.
+Action: fix in /prd → re-run /prd-review.
 REVIEW STOPPED.
 ```
 
@@ -235,7 +235,7 @@ If absent: Judge 3 runs without graph context (unchanged behavior).
 1. **Missing failure/edge criteria — the post-manual-test bug source.** For each state-changing or `🔒` slice, name the failure paths the happy-path ACs leave untested and **prescribe the criterion that would catch each** (Given/When/Then + signal, tagged `[auto]`/`[manual]`). Draw from this canonical, **non-exhaustive** menu, applying an item *only where the slice's stated behavior implies that path* — prescribing a path the slice can't reach (e.g. `network-fail` for a slice that makes no network call) violates the grounding rule:
    over-limit · empty/zero · concurrent/double-submit · unauthorized/wrong-tenant · network-fail/timeout · partial-failure/rollback · idempotency-on-retry · pagination/large-N · error-state UI.
    **Anchor every prescription** to the slice + the exact behavior that implies it ("§8 Slice 3 debits balance → concurrent-debit criterion"). Prescribe, never merely flag — a flag forces the author to re-derive the fix and re-review. These prescribed criteria are exactly the "new tasks / bugs" that otherwise surface only when a human tests by hand.
-2. **Hidden implementation work a slice ASSUMES but never states.** For each slice, name the build work its stated behavior silently requires but the PRD omits: migration/backfill of existing rows, a feature flag, a new permission/role, an index the metric query needs, seed data, a rollback path, **a compatibility shim / dual-read window** (whenever the slice touches a §16 `CHANGE` row — an existing consumer must keep working across the change, which is real build work the criteria never state). Anchor each to the slice text that implies it. This is the mid-build discovery this review exists to prevent — surface it now, not in the build. **Prescribe the fix as an `Assumes:` line on that slice** (`Assumes: <the hidden work>` — `/saki-builder:prd` Step 3) — or, when the work is a load-bearing capability in its own right, prescribe **promoting it to its own slice**. It counts as *addressed* only when the slice carries that `Assumes:` line (or the dedicated slice); an unstated assumption is not addressed. This is the wire that makes the finding reach `/saki-builder:rplan` — `/saki-builder:pickup` bakes the `Assumes:` line into the PRD on REVISE, and rplan ingests it from the PRD (the review file itself is not read downstream).
+2. **Hidden implementation work a slice ASSUMES but never states.** For each slice, name the build work its stated behavior silently requires but the PRD omits: migration/backfill of existing rows, a feature flag, a new permission/role, an index the metric query needs, seed data, a rollback path, **a compatibility shim / dual-read window** (whenever the slice touches a §16 `CHANGE` row — an existing consumer must keep working across the change, which is real build work the criteria never state). Anchor each to the slice text that implies it. This is the mid-build discovery this review exists to prevent — surface it now, not in the build. **Prescribe the fix as an `Assumes:` line on that slice** (`Assumes: <the hidden work>` — `/prd` Step 3) — or, when the work is a load-bearing capability in its own right, prescribe **promoting it to its own slice**. It counts as *addressed* only when the slice carries that `Assumes:` line (or the dedicated slice); an unstated assumption is not addressed. This is the wire that makes the finding reach `/rplan` — `/pickup` bakes the `Assumes:` line into the PRD on REVISE, and rplan ingests it from the PRD (the review file itself is not read downstream).
 3. Slices failing INVEST — especially **horizontal-as-vertical** ("build the API layer" is not a slice).
 4. **Forward-dependency violations** (slice N needs N+1) or orphan slices serving no JTBD.
 5. Is Slice 1 a **vertical walking skeleton**, or plumbing that ships no user-visible value?
@@ -304,9 +304,9 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
    `R#` for a recurring issue, carry a `Won't-fix`/`Deferred` disposition forward (don't re-raise),
    mark a vanished issue `Fixed (auto, round k)`, and give a genuinely new issue the next free ID.
    Solo builders ignore Disposition (fix + re-run); teams edit it to track closure.
-4. **Classify** — BLOCK (fix before `/saki-builder:rplan`) / HIGH / MED / LOW.
+4. **Classify** — BLOCK (fix before `/rplan`) / HIGH / MED / LOW.
 5. **Collect unverifiable claims** from all judges into one list — NOT defects, grounding TODOs
-   (run `/saki-builder:prd --research` or validate manually).
+   (run `/prd --research` or validate manually).
 6. **Assemble the implementation-reality checklist — the headline output.** Two sections, in this order,
    each line citing its `R#`:
    - **Newly-surfaced (this review's payload):** every failure/edge criterion Judge 3 **and the pair**
@@ -314,7 +314,7 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
      *before* manual test.
    - **Pre-existing `[manual]` ACs:** the `[manual]`-tagged criteria already in the PRD, as the human's
      hand-run script.
-   `[auto]` criteria are not listed — `/saki-builder:qa` runs those. This checklist **leads** the printed
+   `[auto]` criteria are not listed — `/qa` runs those. This checklist **leads** the printed
    synthesis.
 7. **Readiness — Definition of Ready (buildability NOW, distinct from the verdict).** Roll up from the
    findings + a direct read of §12/§14. Each ❌ names the blocker + its `R#`/section — no free-floating
@@ -329,13 +329,13 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
    | 5 | No open BLOCK/HIGH | every ship-stopper is resolved or dispositioned (`Won't-fix`/`Deferred`) |
 
    Emit `Readiness: READY | NOT READY — <blockers>`. DoR #3 flags the PRD-level gap only — it cites the
-   §14 line, it does NOT probe the filesystem/network (that is `/saki-builder:rplan`'s job). An **omitted
-   §14** (`/saki-builder:prd` drops it when there are no dependencies) reads as `none` → DoR #3 READY, not
+   §14 line, it does NOT probe the filesystem/network (that is `/rplan`'s job). An **omitted
+   §14** (`/prd` drops it when there are no dependencies) reads as `none` → DoR #3 READY, not
    a gap; likewise an omitted §13 or §15 (a no-UI PRD has no screens section). Absent-because-none ≠ missing
-   — do not raise a false NOT-READY on it. **Readiness never requires the lock:** `/saki-builder:prd-review` runs
-   *before* the `/saki-builder:proto` lock (it is how the PRD reaches green), so an unlocked PRD is expected, never a gap.
+   — do not raise a false NOT-READY on it. **Readiness never requires the lock:** `/prd-review` runs
+   *before* the `/proto` lock (it is how the PRD reaches green), so an unlocked PRD is expected, never a gap.
 8. **Technical contract check & residual-gaps handoff (verify what's stated, flag what's missing — never design).**
-   The PRD now carries a **§16 Technical Contract (thin)** — the DB/API/architecture *shape* `/saki-builder:prd`
+   The PRD now carries a **§16 Technical Contract (thin)** — the DB/API/architecture *shape* `/prd`
    authored (entities · endpoint purposes · one architecture decision), each row REUSE (`path:line`), CHANGE
    (`path:line` + a `↳ Breaks:` sub-line), or NEW, and serving an `8.x · 5.x`. Two jobs:
 
@@ -346,14 +346,14 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
      surface. (REUSE/NEW-only §16s stay valid; CHANGE is an additional tag, not a replacement.)
    - **Compat-declared** — every **CHANGE** row carries a `↳ Breaks:` sub-line naming what depends on the
      present shape (or `none (additive)`). A CHANGE row without one declares a compatibility surface and
-     then hides its blast radius — it is a `REVISE` finding, because `/saki-builder:rplan` ingests exactly
+     then hides its blast radius — it is a `REVISE` finding, because `/rplan` ingests exactly
      that note as its Compatibility & Consumers entry. **Also flag the inverse mis-tag:** a row tagged
      `REUSE` whose serving §8 slice text says change / extend / rename / replace / add-field is a
      modification wearing a reuse tag — prescribe re-tagging it `CHANGE` + `↳ Breaks:`.
    - **Traceable** — every row serves a real §8 slice / §5 outcome (no speculative surface — YAGNI).
    - **Coherent** — no slice/rule implies a load-bearing surface that §16 omits; no §16 row references a
      non-existent slice/outcome. §16 must stay *shape* — a row carrying column/field names, a full request/
-     response payload, or a migration file has overstepped into `/saki-builder:rplan`'s lane (flag it, don't
+     response payload, or a migration file has overstepped into `/rplan`'s lane (flag it, don't
      bless it).
    A failure of (a) — §16 missing on a backend feature · an uncited row · an untraceable row · §16↔slice
    incoherence · a row that overstepped into full design · **a CHANGE row with no Breaks: note (or a REUSE
@@ -365,14 +365,14 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
 
    | Layer | Undefined load-bearing surface §16 leaves open (cited) | Handoff |
    |-------|--------------------------------------------------------|---------|
-   | DB / data | tables/fields/migrations/indexes implied but absent from §16 | → `/saki-builder:rplan` (DB) |
-   | API / integration | endpoints / payloads / error contracts implied but absent from §16 | → `/saki-builder:rplan` (API) |
-   | Architecture | components · data flow · external deps (§13/§14) · sequencing §16 leaves open | → `/saki-builder:rplan` |
-   | UI / UX | screens/states the PRD names (§15 inventory / §8 / §9) but leaves **undesigned** | → `/saki-builder:proto` (designs + locks) |
+   | DB / data | tables/fields/migrations/indexes implied but absent from §16 | → `/rplan` (DB) |
+   | API / integration | endpoints / payloads / error contracts implied but absent from §16 | → `/rplan` (API) |
+   | Architecture | components · data flow · external deps (§13/§14) · sequencing §16 leaves open | → `/rplan` |
+   | UI / UX | screens/states the PRD names (§15 inventory / §8 / §9) but leaves **undesigned** | → `/proto` (designs + locks) |
 
    **You verify + flag + hand off; you do NOT design.** No fabricated schema/endpoint/architecture/UI —
-   detailed DB/API/arch is `/saki-builder:rplan`'s lane (it *hardens* §16 into full design), UI is
-   `/saki-builder:proto`'s. An undefined load-bearing contract that blocks slice 1 is ALSO a Readiness gap
+   detailed DB/API/arch is `/rplan`'s lane (it *hardens* §16 into full design), UI is
+   `/proto`'s. An undefined load-bearing contract that blocks slice 1 is ALSO a Readiness gap
    (step 7 #2/#3). One line per gap; a layer with no undefined surface is simply omitted. An **omitted
    §13/§14/§15/§16** (no constraints / no deps / no UI / no backend surface) is not a gap.
 9. **Emit the verdict signal — NOT a precise score** (the judge is non-deterministic; a decimal would be
@@ -384,7 +384,7 @@ pair findings). Bound by **Concise & Faithful** — this is a ledger, not an ess
    | `REVISE` | any BLOCK or HIGH stands, **OR any state-changing/`🔒` slice is missing a prescribed failure criterion or has hidden work not yet stated as an `Assumes:` line / dedicated slice, OR §16 fails the contract check (missing on a backend feature · an uncited/untraceable row · §16↔slice incoherence · a row overstepped into full design · **a CHANGE row with no Breaks: note**), OR Readiness is NOT READY on a fixable blocker** — regardless of that finding's severity |
    | `SHIP` | no BLOCK/HIGH; **every state-changing/`🔒` slice's failure surface is covered**; only MED/LOW polish remains |
 
-   Print a **coverage line**: `Failure-surface: N/M state-changing slices fully covered · K hidden-work items surfaced.` A gap here holds `REVISE` even when the premise is clean. **Readiness is a distinct axis:** a `SHIP`-quality PRD that is not startable prints `SHIP · NOT READY` and Phase 4 points at the blocker, not `/saki-builder:rplan`.
+   Print a **coverage line**: `Failure-surface: N/M state-changing slices fully covered · K hidden-work items surfaced.` A gap here holds `REVISE` even when the premise is clean. **Readiness is a distinct axis:** a `SHIP`-quality PRD that is not startable prints `SHIP · NOT READY` and Phase 4 points at the blocker, not `/rplan`.
 
 **Write the full review to `tasks/prd-[slug]-review.md`** with the team-shareable header + ledger:
 
@@ -406,9 +406,9 @@ Disposition: Open        (Open | Fixed | Won't-fix: <reason> | Deferred: <trigge
 ### R2 · MED · Pair · §8 Slice 3
 ...
 
-## Implementation-reality checklist   (newly-surfaced R#s + pre-existing [manual] ACs + the [auto] list for /saki-builder:qa)
+## Implementation-reality checklist   (newly-surfaced R#s + pre-existing [manual] ACs + the [auto] list for /qa)
 ## Readiness (Definition of Ready)    (the 5-item table + Readiness verdict)
-## Technical contract (§16) check & residual gaps   (verify stated · flag residual → /saki-builder:rplan · /saki-builder:proto)
+## Technical contract (§16) check & residual gaps   (verify stated · flag residual → /rplan · /proto)
 ## Unverifiable claims                (grounding TODOs, not defects)
 ```
 
@@ -430,14 +430,14 @@ IMPLEMENTATION-REALITY CHECKLIST (the headline — caught before manual test, no
     ☐ R# [slice] hidden work: <migration | flag | permission | index | rollback> — <why the slice needs it>
   Pre-existing [manual] ACs (hand-run script):
     ☐ [slice] Given … When … Then … — expected signal: […]   [manual]
-  (full ledger + the [auto] criteria for /saki-builder:qa are in the review file)
+  (full ledger + the [auto] criteria for /qa are in the review file)
 
 TECHNICAL CONTRACT (§16 verify) + RESIDUAL GAPS (flagged, not designed; omit a layer with none):
   §16:   present | omitted(UI-only) · rows cited? · compat-declared? · slice-coherent?   [REVISE if missing on a backend feature · uncited/untraceable row · CHANGE row with no Breaks: note · incoherent · overstepped into full design]
-  DB:    <residual surface §16 leaves open, cited> → /saki-builder:rplan
-  API:   <…> → /saki-builder:rplan
-  Arch:  <…> → /saki-builder:rplan
-  UI/UX: <…> → /saki-builder:proto
+  DB:    <residual surface §16 leaves open, cited> → /rplan
+  API:   <…> → /rplan
+  Arch:  <…> → /rplan
+  UI/UX: <…> → /proto
 
 Uncited findings discarded: [N]
 BLOCK:  R# ❌ [§section] [source]: [issue] → [fix]
@@ -445,7 +445,7 @@ HIGH:   R# ⚠ [§section] [source]: [issue] → [fix]
 MED/LOW: [count, in the review file ledger]
 
 Unverifiable claims (grounding TODO, NOT defects):
-  • [§section] "[claim]" — ground via /saki-builder:prd --research or data
+  • [§section] "[claim]" — ground via /prd --research or data
 
 Caveat: external facts were NOT validated; one non-deterministic sample; a human decides.
 ```
@@ -461,16 +461,16 @@ Verdict:              DISCOVERY-FIRST / REVISE / SHIP
 Readiness:            READY / NOT READY [— blocker + R#/§]
 
 Next:
-  SHIP · READY      → proceed to /saki-builder:proto (designs the UI/UX and **locks** the PRD), then /saki-builder:build.
-                      PRD Status: advances to Approved on human sign-off; the /saki-builder:proto lock sets it Locked.
-                      (/saki-builder:build won't start until the PRD is Locked — the freeze before /saki-builder:rplan.)
+  SHIP · READY      → proceed to /proto (designs the UI/UX and **locks** the PRD), then /build.
+                      PRD Status: advances to Approved on human sign-off; the /proto lock sets it Locked.
+                      (/build won't start until the PRD is Locked — the freeze before /rplan.)
   SHIP · NOT READY  → sound, but not startable — clear the readiness blocker first
                       (resolve the open Q / state the dep plan / define the load-bearing contract),
-                      THEN /saki-builder:rplan.  PRD Status: stays In Review.
-  REVISE            → fix BLOCK/HIGH (+ any readiness blocker) in /saki-builder:prd, re-run /saki-builder:prd-review.
+                      THEN /rplan.  PRD Status: stays In Review.
+  REVISE            → fix BLOCK/HIGH (+ any readiness blocker) in /prd, re-run /prd-review.
                       PRD Status: stays In Review.
   DISCOVERY-FIRST   → the premise/evidence is too thin for a spec.
-                      Run /saki-builder:shaping-requirements or ground the load-bearing claim, then /saki-builder:prd again.
+                      Run /shaping-requirements or ground the load-bearing claim, then /prd again.
                       PRD Status: back to Draft.
 ```
 
@@ -486,7 +486,7 @@ a human. **In autonomous mode, Phase 5 acts on it for you** — applying the pre
 **Run only when NOT `--review-only`.** Phases 0–4 are the single-pass **review core** and never touch the
 PRD. Phase 5 wraps that core in the loop-to-green: run the core, read its verdict, and on anything short of
 green **apply the review's own prescribed fixes to the PRD** and run the core again — until the PRD is green
-or a hard stop is reached. You are the PRD author here (the same role `/saki-builder:pickup` played when it
+or a hard stop is reached. You are the PRD author here (the same role `/pickup` played when it
 owned this loop). The three judges still run as fresh Agent subagents each round.
 
 ### State file (single source of truth for the loop + the Stop hook)
@@ -529,6 +529,23 @@ the loop alive across turns. Get timestamps with `date +%s`. Schema:
    blocker), bump `review.rounds`, add to `review.blockers_fixed`, and re-run the core from step 1. **Cap at
    3 rounds.**
 
+   **Also stamp the pass into the PRD header** — this is the durable counter, and the state file is not:
+   `tasks/` is gitignored and a state file is deleted/rotated per run, so a count that lives only there
+   cannot be read back later. Add or increment, in the PRD's top comment block, on its own line:
+
+   ```
+   <!-- revision-passes: N -->
+   ```
+
+   `N` = the number of rounds in which this skill **applied fixes to the PRD**. Increment it here, in the
+   same step that applies them — never on a round that only re-read and found nothing to change, and never
+   on the `blocked` escape (step 4), which applies no fixes. A PRD that reached green on the first review
+   with no fixes therefore carries no marker at all, which reads as 0.
+
+   This is the counter `/build`'s E1 metric 5.1 names ("stamp a **Revision passes:** counter
+   into the PRD header, incremented by /prd-review each time it applies fixes"). It is what
+   makes a revision-pass baseline measurable across runs; `bin/revision-baseline.js` aggregates it.
+
 4. **Blocked — escape to the human, do NOT loop forever, do NOT fabricate grounding** — when the review
    can't be authored to green:
    - **`Verdict DISCOVERY-FIRST`** (a load-bearing unknown needs discovery), OR
@@ -568,7 +585,7 @@ grounded → ③ prescribe, don't lecture.**
   (Step 0 → Phase 4) never edits the PRD in either mode — only the **Phase 5** wrapper does, and only in
   autonomous mode. Autonomous loops fix→re-review to green with a hard **3-round cap** + a BLOCKED escape
   (`DISCOVERY-FIRST` / structural `NOT READY` / non-convergence) — never an infinite loop, never fabricated
-  grounding. `/saki-builder:pickup` reuses this loop; it must invoke `/saki-builder:prd-review` **without**
+  grounding. `/pickup` reuses this loop; it must invoke `/prd-review` **without**
   `--review-only` and never keep its own copy.
 - NEVER skip Phase 1. A missing section is a structural fail, never a judgment call.
 - Launch the three judges in parallel — never sequentially. **Judge 3 leads synthesis and the verdict.**
@@ -577,12 +594,12 @@ grounded → ③ prescribe, don't lecture.**
   print the skip note — Judge 3 already leads implementation coverage. It reports only the implementation +
   scope blind spots the panel MISSED — never re-lists panel findings. Same grounding guard as Judge 3:
   prescribe only paths a slice can reach.
-- A BLOCK from any judge = the PRD is not ready, regardless of the `/saki-builder:prd` self-gate result.
+- A BLOCK from any judge = the PRD is not ready, regardless of the `/prd` self-gate result.
 - **Judge 3 and the pair must PRESCRIBE** missing failure/edge criteria and name hidden work as an
   `Assumes:` line (or a dedicated slice) — never merely flag absence. Every prescription anchors to the
   slice + the behavior that implies it; a path the slice can't reach must NOT be prescribed (that's
   inventing work — a grounding violation). Hidden work counts as *addressed* only once it is stated as an
-  `Assumes:` line or promoted to its own slice — that is what carries it into the PRD and on to `/saki-builder:rplan`.
+  `Assumes:` line or promoted to its own slice — that is what carries it into the PRD and on to `/rplan`.
 - **Failure-surface completeness gates the verdict.** A state-changing/`🔒` slice with an uncovered
   failure path or unaddressed hidden work holds at `REVISE` even when the premise is clean.
 - **Readiness is a DISTINCT axis from the verdict** — the verdict judges soundness, readiness judges
@@ -593,8 +610,8 @@ grounded → ③ prescribe, don't lecture.**
   CHANGE row has a `↳ Breaks:` note) · is slice-coherent · stayed *shape* (a row
   with column names / full payloads / a migration file overstepped — flag it, don't complete it). Job (b) is
   gaps-only (undefined load-bearing surfaces §16 leaves open), not a full inventory; no fabricated
-  schema/endpoint/architecture/UI; every entry cites PRD text. Detailed DB/API/arch is `/saki-builder:rplan`'s
-  lane (it hardens §16), UI is `/saki-builder:proto`'s. Authoring or completing the contract — not just
+  schema/endpoint/architecture/UI; every entry cites PRD text. Detailed DB/API/arch is `/rplan`'s
+  lane (it hardens §16), UI is `/proto`'s. Authoring or completing the contract — not just
   flagging its gaps — is both a faithfulness and a scope violation.
 - **The review file is a trackable record:** every finding gets a stable `R#` + `Disposition`; a re-run
   reconciles against the prior file (Step 0.5) and never renumbers a retired ID. The `Reviewer`/`Status`
@@ -610,4 +627,4 @@ This is the **general version**. For project-specific judges (a domain metric mo
 ```
 .claude/skills/prd-review/SKILL.md
 ```
-That file overrides this one. Run `/saki-builder:init-env` to scaffold a project-specific override.
+That file overrides this one. Run `/init-env` to scaffold a project-specific override.

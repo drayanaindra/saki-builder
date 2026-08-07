@@ -363,7 +363,7 @@ Only cut lines **you** added; never delete pre-existing content you did not auth
 else's commit.
 
 Never restate anything derivable — god nodes, communities, module LOC and architecture tier belong to
-`graphify-out/GRAPH_REPORT.md` and `/saki-builder:arch-check`. Contract (scope · banned list · skeleton ·
+`graphify-out/GRAPH_REPORT.md` and `/arch-check`. Contract (scope · banned list · skeleton ·
 ceiling): `${CLAUDE_PLUGIN_ROOT}/config/docs/project-context-contract.md`.
 
 Then `git -C "<TREE>" add docs/project-context.md` so the refresh lands in the same commit.
@@ -439,7 +439,7 @@ Prune only **local** branches already merged into `origin/<default>`. Leave remo
 ## Phase 6 — Final report
 
 **Resume manifest (best-effort):** if a manual-chain manifest exists (the newest `tasks/.<slug>-state.json`
-carrying a top-level `steps` object — not `/saki-builder:build`'s `.build-*`), stamp `wrap=done`, the
+carrying a top-level `steps` object — not `/build`'s `.build-*`), stamp `wrap=done`, the
 terminal marker, using the `/wrap` manifest-resolution + stamp snippet in
 `${CLAUDE_PLUGIN_ROOT}/config/docs/manual-chain-resume.md`. Absent or error → skip silently; it never
 affects convergence.

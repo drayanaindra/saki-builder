@@ -1,12 +1,12 @@
 ---
-description: "Render a faithful, throwaway UI preview of a finished PRD's COMPLETE end-to-end user journey — every user-facing step plus the connective entry/success screens that join them, each in all its reachable states — INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /saki-builder:build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Also emits a single self-contained `preview-bundle.html` — every screenshot inlined — that's easy to share as one file (email/Slack/drive, no folder). Sits between /saki-builder:prd and /saki-builder:build. Usage — /saki-builder:proto <prd-file.md> [--slice=N]."
+description: "Render a faithful, throwaway UI preview of a finished PRD's COMPLETE end-to-end user journey — every user-facing step plus the connective entry/success screens that join them, each in all its reachable states — INSIDE the project's REAL app shell (nav/header/sidebar) using its real design-system components + tokens with mock data, then screenshot the full pages + states and assemble a Figma-like, journey-ordered page-overview gallery — so you see how the design looks as actual composed pages BEFORE /build runs. When the Figma MCP is connected, optionally also exports the same preview into Figma (editable layers, or a screenshot board) for review/edit in Figma. Also emits a single self-contained `preview-bundle.html` — every screenshot inlined — that's easy to share as one file (email/Slack/drive, no folder). Sits between /prd and /build. Usage — /proto <prd-file.md> [--slice=N]."
 ---
 
 # UI Preview Stage (faithful, throwaway)
 
 You produce **expectation-setting visibility**: what the end-user UI will look like, rendered with
 the project's **real** design-system components and tokens, screenshotted across every state —
-**before** `/saki-builder:build` writes a line of production code. Pipeline: `/saki-builder:prd → /saki-builder:proto → /saki-builder:build`.
+**before** `/build` writes a line of production code. Pipeline: `/prd → /proto → /build`.
 
 This is a *preview*, not a build. Hold the line on what it is and isn't:
 
@@ -18,9 +18,9 @@ This is a *preview*, not a build. Hold the line on what it is and isn't:
 - **It IS only approximate on**: live data density, real content lengths, true edge cases —
   these are mocked, not real.
 - **It is NOT**: a backend, real data fetching, state logic, validation rules, business-rule
-  implementation (PRD §10), tests, or production routes. All of that is `/saki-builder:build`.
+  implementation (PRD §10), tests, or production routes. All of that is `/build`.
 
-Show this fidelity contract to the user every run. Never imply the preview makes `/saki-builder:build` trivial —
+Show this fidelity contract to the user every run. Never imply the preview makes `/build` trivial —
 it removes the *look* risk, not the *behavior* work.
 
 **End-to-end by default — preview the whole journey, never a curated subset:**
@@ -41,14 +41,14 @@ it removes the *look* risk, not the *behavior* work.
 
 ## Input
 
-Usage: `/saki-builder:proto <E<n>|F<n> | prd-file.md> [--slice=N] [--restart]` (filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>`
+Usage: `/proto <E<n>|F<n> | prd-file.md> [--slice=N] [--restart]` (filler words fine) — or `/proto --figma-only <gallery-dir>`
 to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only). An interrupted run
 **resumes** at the next incomplete phase by default (Step 0.5); `--restart` forces a clean run from scratch.
 
-Locate the PRD exactly like `/saki-builder:build`. **PRD-track item id (`E<n>` or `F<n>`) — the disciplined
+Locate the PRD exactly like `/build`. **PRD-track item id (`E<n>` or `F<n>`) — the disciplined
 path:** if the argument is an item id, read `tasks/roadmap.md`, find `### <id>`, and resolve its
 `**Child PRD:**` link to `tasks/prd-<slug>.md`. If `<id>` has no Child PRD yet (its value is `—`), **STOP**:
-`<id> has no PRD yet — run /saki-builder:pickup <id> first`. Otherwise take the token ending in `.md` (or matching `prd-*`), and
+`<id> has no PRD yet — run /pickup <id> first`. Otherwise take the token ending in `.md` (or matching `prd-*`), and
 check, in order: `tasks/<name>`, `./<name>`, the path as given. `--slice=N` is an explicit narrowing
 flag that previews one slice in isolation; the default (no flag) always previews the **complete
 end-to-end journey** across every user-facing step.
@@ -60,7 +60,7 @@ elsewhere (e.g. a headless VPS / Studio run that skipped Figma — see Step 6c "
 the Figma MCP is **required** — if it's absent, STOP and say so (it's the explicit purpose, not a silent skip).
 The live route isn't running in this mode, so **Tier B** (screenshot board from the existing PNGs) is the
 path; the `<prd-slug>` for the Figma file name comes from the gallery dir (`proto-<slug>/`). For **Tier A**
-editable layers, run a full `/saki-builder:proto` on the Figma-connected machine instead (it re-renders the live route).
+editable layers, run a full `/proto` on the Figma-connected machine instead (it re-renders the live route).
 
 ---
 
@@ -72,13 +72,13 @@ is rendered **natively** (the canonical path) or seeded from a **Figma** source.
 ~/.claude/hooks/design-engine-setup.sh detect
 ```
 Route on `engine`, adding a **live** Figma check when the record says `figma`. **Invariant: the native HTML
-gallery is ALWAYS the canonical deliverable `/saki-builder:build` reads — Figma never becomes build's
+gallery is ALWAYS the canonical deliverable `/build` reads — Figma never becomes build's
 source (honesty rail). Figma, when selected, only *seeds* the native render and/or receives an export.**
 
 | recorded `engine` | live check | how this run behaves → resolved mode |
 |---|---|---|
 | `native`, or `status: NONE` (no record) | — | proceed exactly as below — native render → gallery. Step 6c export keeps its normal optional-when-connected behavior. → **`native`** |
-| `figma` | call the Figma MCP **`whoami`** — it FAILS / MCP absent here | **fall back to native** for this run; note once: *"design engine is figma but the Figma MCP isn't reachable here — rendered native; run `/saki-builder:proto --figma-only <gallery>` on a Figma-connected machine to export."* → **`native`** |
+| `figma` | call the Figma MCP **`whoami`** — it FAILS / MCP absent here | **fall back to native** for this run; note once: *"design engine is figma but the Figma MCP isn't reachable here — rendered native; run `/proto --figma-only <gallery>` on a Figma-connected machine to export."* → **`native`** |
 | `figma` | `whoami` OK, `figma_capability: read` (View/Dev seat) + `figma_source` set | **design-to-code reference**: still render natively, but seed each screen from the Figma source (Step 5's figma-reference note). Skip the Step 6c write-export — the seat can't write; note it. → **`figma-read`** |
 | `figma` | `whoami` OK, `figma_capability: write` | design-to-code reference (when a `figma_source` is set) **and** run the Step 6c export normally. → **`figma-write`** |
 
@@ -91,7 +91,7 @@ run over an engine mismatch. A `--figma-only` run ignores Step 0 (it is an expor
 
 ## Step 0.5 — Resume detection (a hard stop must not restart from zero)
 
-`/saki-builder:proto` writes durable checkpoints to `tasks/proto-<slug>/` and the project tree as it runs,
+`/proto` writes durable checkpoints to `tasks/proto-<slug>/` and the project tree as it runs,
 so an interrupted run (hard stop, crash, killed turn) can **resume at the next incomplete phase** instead of
 redoing expensive work — re-codifying real components (2.6), re-mounting the harness (5), or re-capturing
 the headless screenshots (6a). Run this the moment the PRD path is resolved (Input/Step 0) and `<slug>` is
@@ -118,7 +118,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
 | 6 | 6b | `preview.html`, `preview-bundle.html` **and** `index.md` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis); **`index.md` carries its `## Fidelity reductions` section** (an empty list is valid — a MISSING section means the producer spec never ran, so this checkpoint is NOT DONE). **On resume, do NOT write an empty list to satisfy this:** the section is *accumulated* across 5b/5c/6a/6c, which are in-context judgments with no other durable artifact, so a fresh context cannot reconstruct what an earlier run noted. Write `- (earlier reductions not recoverable — run resumed at 6b)` instead, so a silently-empty list can never read as "nothing was reduced" — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
 | 7 | 8 | `proto-<slug>/notes.md` exists | non-empty |
-| 8 | 8.5 | the PRD carries `<!-- prd-locked: … -->` | marker present |
+| 8 | 8.5 | `proto-<slug>/.prd-locked` exists (and the PRD carries `<!-- prd-locked: … -->` when the PRD file exists) | marker present |
 
 4. **In-context-only phases never block resume.** The gap analysis (2.5), state map (Step 3), and mock-data
    reasoning (Step 4) are chat reasoning whose OUTPUT already lives in the artifacts above (2.5 → the codified
@@ -128,7 +128,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 5. **Approval is proven ONLY by the lock marker (Step 8.5), never by a later artifact.** Step 7's human
    approval is in-context and not durably recorded until the lock is written. So even when `preview.html` and
    the notes exist, an **unlocked** PRD resumes at **Step 7 (re-present for approval)** — never auto-lock a run
-   whose approval you cannot see. The lock marker is the single durable proof the human said yes.
+   whose approval you cannot see. The lock markers are the durable proof the human said yes.
 6. **Partial-write safety.** A hard stop *inside* a phase can leave a half-written component (2.6) or harness
    file (5); the re-verify column catches it — a failing typecheck/provenance gate means that checkpoint is
    NOT DONE, so resume re-enters that phase and completes it rather than trusting a corrupt artifact. This is
@@ -141,7 +141,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
    a resumed run rebuilt `reuse-map.md` from `StudioShell.tsx` and re-shipped every misclassification). Treat
    it as `--restart` for the grounding phases.
 8. **Announce, then auto-resume.** Print one line —
-   `Resuming /saki-builder:proto <slug> from <phase> (checkpoints 1–K found in tasks/proto-<slug>/).` — then
+   `Resuming /proto <slug> from <phase> (checkpoints 1–K found in tasks/proto-<slug>/).` — then
    continue at that phase. Proto auto-proceeds by design; resume inherits that. `--restart` is the escape.
 
 ---
@@ -152,7 +152,7 @@ Read the PRD. If it cannot be found/read, **STOP**:
 ```
 HARD STOP — PRD NOT FOUND
 Looked for: tasks/<name>, ./<name>, <name>
-Pass a valid PRD path: /saki-builder:proto <prd-file.md>
+Pass a valid PRD path: /proto <prd-file.md>
 ```
 Do NOT invent a PRD. From it, extract:
 - **§8 Vertical Slices** — the work list. Include every slice with any **user-visible** outcome — a
@@ -185,8 +185,8 @@ list.** A shell that advertises `Activity`, `Completed`, or a clickable card whi
 the §8 slices produces dead-end affordances — the exact "I didn't see the end-to-end UI" failure. Resolve
 every gap one of two ways, never silently:
 - **The surface is in scope** → add it to the journey AND ensure the PRD defines it (a surface the proto
-  shows must be a surface `/saki-builder:build` builds). If it's not in §8, **enter the Convergence loop** —
-  invoke `/saki-builder:prd`/`/saki-builder:prd-review` to add it, re-derive the manifest, continue — do NOT
+  shows must be a surface `/build` builds). If it's not in §8, **enter the Convergence loop** —
+  invoke `/prd`/`/prd-review` to add it, re-derive the manifest, continue — do NOT
   stop; proto and PRD must agree, reached by looping, not by pausing.
 - **The surface is genuinely out of scope** (§11) → it must NOT be a live affordance in the shell. Note
   it, and treat the dangling nav item as a shell-fidelity bug to remove, not a screen to invent.
@@ -250,27 +250,27 @@ does NOT cover** → that's a coverage gap → **Convergence loop** (fix the PRD
 interrogation once, explicitly, and note the rows it added — an *unquestioned* manifest is precisely how a
 screen goes uncovered.
 
-**No-UI PRD branch (`/saki-builder:proto` is still the freeze gate).** If the finished PRD produces **no
+**No-UI PRD branch (`/proto` is still the freeze gate).** If the finished PRD produces **no
 user-visible screen** — every slice is pure infra/backend with no route and no outcome/confirmation/
 notification screen a user ever sees (no §15 inventory, no user-visible surface on any slice) — there is
 nothing to preview. Do **NOT** fabricate screens. Skip **Gate 2 and Steps 2.5–8 entirely** (a backend PRD
 needs no design system, so Gate 2's STOP must not fire here) and go straight to **Step 8.5 (Lock the PRD)**:
-here `/saki-builder:proto` serves only as the **explicit freeze gate** before build. Tell the
+here `/proto` serves only as the **explicit freeze gate** before build. Tell the
 human plainly — *"This PRD has no user-visible screens — nothing to preview; running proto now freezes the
 requirements for build"* — and on their confirmation write the lock with `ui:none`. This keeps
-`/saki-builder:proto` the single lock writer for **every** PRD, so `/saki-builder:build` (which hard-refuses an
+`/proto` the single lock writer for **every** PRD, so `/build` (which hard-refuses an
 unlocked PRD) has one consistent gate regardless of whether the feature has UI.
 
 ---
 
-## Convergence loop — proto ⇄ `/saki-builder:prd` (autonomous; the human gate is the VISUAL, not the abstract)
+## Convergence loop — proto ⇄ `/prd` (autonomous; the human gate is the VISUAL, not the abstract)
 
 **Why a loop, not a pause.** Without a rendered screen a human can't judge scope in the abstract — *"is this
 surface in scope?"* is unanswerable as text but obvious as a picture. So when proto surfaces a blocker whose
 root cause is **the PRD doesn't cover what the journey needs**, it does NOT stop and ask — it **converges
 autonomously** by adjusting the PRD through its owner, then presents the finished visual as the *single* human
-gate (Step 7 → lock 8.5). Mirrors `/saki-builder:build`'s `/saki-builder:wrap --heal` convergence and
-`/saki-builder:pickup`'s `/saki-builder:prd ⇄ /saki-builder:prd-review` loop.
+gate (Step 7 → lock 8.5). Mirrors `/build`'s `/wrap --heal` convergence and
+`/pickup`'s `/prd ⇄ /prd-review` loop.
 
 **Route every fork by DESIGN gap vs COVERAGE gap:**
 - **Design gap** (how a screen *looks* / holds the journey — a BIG design-only 🔶) → proto resolves it itself
@@ -278,13 +278,13 @@ gate (Step 7 → lock 8.5). Mirrors `/saki-builder:build`'s `/saki-builder:wrap 
 - **Coverage gap** (the PRD doesn't *cover* what the journey needs — a dead-end shell affordance with no
   screen (GATE 1), a journey step / backend-outcome screen with no §8 home, a scope-altering 🔶 (Step 2.5), an
   uncovered state a §9 criterion implies, a screen the Coverage Gate can't source) → **enter this loop.** Proto
-  must never invent scope itself (scope is `/saki-builder:prd`'s — Step 8.5), so it **delegates** the fix.
+  must never invent scope itself (scope is `/prd`'s — Step 8.5), so it **delegates** the fix.
 
 **The loop (bounded, autonomous):**
 1. **Name the gap** precisely — which affordance / step / screen the journey needs, and where the PRD is
    silent (cite §8 / §9 / §11).
-2. **Adjust the PRD via its owner** — invoke **`/saki-builder:prd-review`** when the gap is a
-   coverage/criteria hole in *existing* slices, or **`/saki-builder:prd`** when a genuinely *new* surface/slice
+2. **Adjust the PRD via its owner** — invoke **`/prd-review`** when the gap is a
+   coverage/criteria hole in *existing* slices, or **`/prd`** when a genuinely *new* surface/slice
    must be added. Pass the named gap. The PRD skill makes + owns the scope change; proto never hand-edits scope.
 3. **Re-derive downstream** — re-run from **GATE 1** (rewrite the Screen Manifest from the updated PRD) → Reuse
    Map (2.4) → render (5) → capture (6) → Coverage Gate. Lean on Step 0.5 resume so unaffected artifacts aren't
@@ -338,11 +338,11 @@ token file, open the root `layout.*` / `App.tsx`). Then branch:
 On **None**, output and stop:
 ```
 NO DESIGN SYSTEM FOUND — a faithful preview is impossible.
-Rendering a preview now would invent components that /saki-builder:build then contradicts (guaranteed drift).
+Rendering a preview now would invent components that /build then contradicts (guaranteed drift).
 Options:
-  (a) Scaffold one  — shadcn/ui + Tailwind tokens per design.md, then re-run /saki-builder:proto
+  (a) Scaffold one  — shadcn/ui + Tailwind tokens per design.md, then re-run /proto
   (b) Directional mock — I generate a looks-like mock (drift expected; expectations approximate)
-  (c) Skip preview — go straight to /saki-builder:build
+  (c) Skip preview — go straight to /build
 Pick a/b/c.
 ```
 Never silently invent a component set — that is the exact failure this gate exists to prevent.
@@ -441,11 +441,11 @@ product/brand name the PRD or roadmap uses. If they **differ**, do NOT type the 
 render — proto's job is to look like the *shipped* app, so **default to the implemented brand automatically**,
 log the drift to `prd-adjustments.md`, and surface it at Step 7 (the human sees the rendered brand and can
 confirm/override there). Don't pause mid-run. A *deliberate rebrand* is a scope change, not a proto tweak →
-route it through the **Convergence loop** (`/saki-builder:prd`), never hand-type a new brand into the render:
+route it through the **Convergence loop** (`/prd`), never hand-type a new brand into the render:
 ```
 NAME DRIFT — new screen "<name>": spec/roadmap name "<spec>" ≠ the brand the implemented UI renders
 ("<real>", <path>). Rendered with the implemented brand "<real>"; logged for Step-7 confirmation.
-(Intentional rebrand? → Convergence loop via /saki-builder:prd, not a proto edit.)
+(Intentional rebrand? → Convergence loop via /prd, not a proto edit.)
 ```
 The drift this exists to catch, concretely: a spec titled **"Builder Workflow Studio"** rendered onto a screen
 whose implemented shell says **"Saki Studio"**.
@@ -513,7 +513,7 @@ that renders the right pixels but can't support the interaction the journey need
   redesign: auto-resolving means a **reasoned, recorded** design decision, not an unexamined one.
 - **BIG that alters SCOPE** (new features/screens, not just layout/pattern — beyond §8/§11) → **this is not a
   design decision proto may make** (it violates "never invent a feature beyond §11"), so proto **delegates**:
-  **enter the Convergence loop** — invoke `/saki-builder:prd`/`/saki-builder:prd-review` to reconcile scope
+  **enter the Convergence loop** — invoke `/prd`/`/prd-review` to reconcile scope
   (GATE 1's two-way rule), re-derive, and continue — rather than pausing mid-run. The human judges the added
   scope at Step 7 by *seeing* it rendered, not as an abstract prompt. (If the loop can't converge in ≤3 passes,
   THEN surface it — a genuine product question.)
@@ -608,7 +608,7 @@ proceed to Step 3.
 > then places instances; they don't sketch a throwaway and rebuild it. So the moment the Step 2.5 specs are
 > confirmed, build them for **real** — before Step 5 renders — so the proto composes real components
 > everywhere (EXISTING from 2.4 + these NEW/⚠️ ones) and the Step 7 approval is on the real thing. This
-> closes the old fidelity gap (a human approved an *approximation* of a NEW component that `/saki-builder:build` then
+> closes the old fidelity gap (a human approved an *approximation* of a NEW component that `/build` then
 > rebuilt differently) and removes the build-it-twice duplication.
 
 Apply each confirmed ⚠️/❌ from Step 2.5 using the resolution path its spec already named — now, pre-render:
@@ -645,7 +645,7 @@ approximation — that's the whole point of codifying before render.
 
 Codify the ✅-confirmed ⚠️/❌ **and any BIG design-only 🔶 that Step 2.5 auto-decided** (it is now
 a concrete set of component/layout changes — build it here, per its recorded decision). **Never build a
-scope-altering 🔶** — that one routed to `/saki-builder:prd`, not here. If 2.5 found no ⚠️/❌/🔶 to build, state
+scope-altering 🔶** — that one routed to `/prd`, not here. If 2.5 found no ⚠️/❌/🔶 to build, state
 "No additions to codify" and continue to Step 3.
 
 ---
@@ -798,7 +798,7 @@ the real page will look** — the more it composes the real app shell, the more 
    **Storybook** (`.stories.tsx`, the `component` skill's convention) is an equivalent isolation
    option here.
 
-(The preview always lives in the `proto-preview` namespace — isolation + `/saki-builder:build` teardown, Step 8.
+(The preview always lives in the `proto-preview` namespace — isolation + `/build` teardown, Step 8.
 It is a **capture harness**, not a live route.)
 
 ### 5c. Auth gate (default-deny middleware)
@@ -894,7 +894,7 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
 > **Honesty note (2026-06-27):** the current Pipeline Studio opens the **static `preview.html`**
 > (Step 6) and **ignores this manifest** — the live-dev-server bridge was removed. The static gallery
 > is the real deliverable. Writing the manifest is **harmless and optional, not required**, and
-> nothing downstream depends on it (`/saki-builder:build` does not read it). Skip this sub-step unless you have a
+> nothing downstream depends on it (`/build` does not read it). Skip this sub-step unless you have a
 > specific reason; if you do write it, do not advertise it as enabling a live preview.
 
 If — and ONLY if — a routable `proto-preview` entry serves cleanly (5b option 1), you MAY write
@@ -998,7 +998,7 @@ re-run line + retry re-derivation · `log`→triage and the stop message.
   context — dev servers dump resolved config at boot, and a boot that failed for a *non-env* reason may
   still have loaded a real `.env`.
 - `devserver.log` is left on disk for inspection (local-only) and removed with the run directory at
-  `/saki-builder:build` teardown.
+  `/build` teardown.
 
 ### 5.5d. Wait for ready, then verify the bind
 
@@ -1054,7 +1054,7 @@ interactive auth prompt. These are human handoffs, never routed around.
   Last error: <one-line summary from the log>
   Re-run manually: <the derived cmd>
   Full log: tasks/proto-<slug>/devserver.log (last 20 lines above)
-  → Fix the error above, then re-run /saki-builder:proto <prd> — it resumes at Step 5.5.
+  → Fix the error above, then re-run /proto <prd> — it resumes at Step 5.5.
 ```
 
 ### 5.5f. Teardown by ownership — at Step 8, and on every abnormal exit
@@ -1094,7 +1094,7 @@ a bare kill.
 
 **Scope note.** This is *proto's own* Step 8, and it tears down the dev-server **process** only. It does
 **not** touch the `proto-preview` route or the 5c middleware bypass — those persist for
-`/saki-builder:build` to promote and delete. (`/saki-builder:build` has a same-numbered Step 8 that owns
+`/build` to promote and delete. (`/build` has a same-numbered Step 8 that owns
 *route* teardown; the two are different objects and must not be collapsed.)
 
 **Studio note.** Step 7a skips serving when `$SAKI_OUT` is set because *its* server would have to outlive
@@ -1220,7 +1220,7 @@ shell grid, a horizontal-only flex, a badge/label with no `whitespace-nowrap`/`s
 **design-system gap** — treat it like a Step 2.5 ⚠️: fix the responsive layout in the real component
 (`flex-col md:flex-row`, hide/transform the sidebar at the breakpoint, etc.), re-capture, and re-verify
 BEFORE presenting. Do not present a broken mobile frame and call it "approximate" — responsiveness is a
-look-fidelity property proto exists to derisk, not a `/saki-builder:build` behavior concern.
+look-fidelity property proto exists to derisk, not a `/build` behavior concern.
 
 ### 6a-bis. The hotspot anchors (input to the 6a script)
 
@@ -1292,7 +1292,7 @@ hotspot is missing, append it to **§Fidelity reductions** in `index.md` — nev
 
 **Note:** the gallery is interactive as a **Figma-style frame-to-frame flow** (click-through between
 captured frames + state/viewport toggles). It does NOT run live behavior (validation, API calls, real
-state) — that remains `/saki-builder:build`'s work.
+state) — that remains `/build`'s work.
 
 ### 6b-bis. Single-file shareable bundle (`preview-bundle.html`)
 
@@ -1302,7 +1302,7 @@ to its sibling PNGs — Pipeline Studio serves the two together, but the file **
 every screenshot as a `data:image/png;base64,…` URI — **one self-contained `.html` file** anyone can open by
 double-click, attach to Slack/email, or drop in a drive, with **no folder and no server**. It is a twin of
 the gallery (same Flow / Overview / state + viewport toggles), not a replacement: `preview.html` stays the
-canonical artifact Studio opens and `/saki-builder:build` reads; the bundle is only the shareable copy.
+canonical artifact Studio opens and `/build` reads; the bundle is only the shareable copy.
 
 Generate it mechanically from the finished `preview.html` + the captured PNGs — write
 `tasks/proto-<prd-slug>/proto-bundle.mjs` and run it from the repo root
@@ -1312,7 +1312,7 @@ its base64 data URI, changing **only** the image sources — the gallery logic i
 ```js
 // __PROTO__ throwaway — bundle preview.html + sibling PNGs into ONE self-contained, shareable file.
 // preview.html stays relative-src (Studio serves it + siblings); THIS is the portable twin you can send.
-// Deleted at /saki-builder:build teardown. Run from repo root: node tasks/proto-<slug>/proto-bundle.mjs
+// Deleted at /build teardown. Run from repo root: node tasks/proto-<slug>/proto-bundle.mjs
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -1361,7 +1361,7 @@ the size, send the folder (or a zip of `tasks/proto-<slug>/`) instead.
 
 Push the **same** captured proto into a Figma file so it can be reviewed/edited in Figma alongside
 (not instead of) the static gallery. This is **strictly additive**: the static `preview.html` gallery
-remains the canonical deliverable, and `/saki-builder:build` reads the gallery + handoff notes (Step 8), never Figma.
+remains the canonical deliverable, and `/build` reads the gallery + handoff notes (Step 8), never Figma.
 
 **Connection gate (skip silently if absent).** Check whether the **first-party** Figma MCP is connected
 — i.e. the write-to-canvas tools `generate_figma_design`, `create_new_file`, `upload_assets` are
@@ -1464,7 +1464,7 @@ it passes — cite the reference line that licenses it.
   re-compose in the Step 5 harness), **re-capture that screen (Step 6a)**, and re-run this gate. Never
   present a screen carrying an unlicensed tell to the human.
 
-Under `/saki-builder:build` (autonomous) this routes and re-runs like proto's other fidelity gates; in
+Under `/build` (autonomous) this routes and re-runs like proto's other fidelity gates; in
 a manual run, surface the per-screen tell + one-line fix. Step 7's human review is for *journey +
 design intent* — never for catching slop this gate exists to stop.
 
@@ -1474,7 +1474,7 @@ design intent* — never for catching slop this gate exists to stop.
 
 ### 7a. Serve a clickable local preview (terminal runs only)
 
-When `/saki-builder:proto` runs from a **terminal** (not under Pipeline Studio), start a throwaway static server on
+When `/proto` runs from a **terminal** (not under Pipeline Studio), start a throwaway static server on
 the gallery dir so the result hands back a **clickable URL** instead of a `file://` path. Under Pipeline
 Studio (`$SAKI_OUT` is set — Studio spawns headless with `stdio:'ignore'`, so a backgrounded server would
 die with the turn and its stdout is never read), **skip this**: Studio serves the gallery itself and its
@@ -1509,7 +1509,7 @@ Three gotchas this guards — **all hit in a real test**, do not "simplify" them
 
 Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
 
-> 1. "Does this match what you expected the end user to see — or adjust before `/saki-builder:build`?"
+> 1. "Does this match what you expected the end user to see — or adjust before `/build`?"
 > 2. "Now that you're seeing the real components rendered, do you want to revise any of them? (The specs
 >    were auto-applied in Step 2.5 using existing conventions, and Step 2.6 already built them as real
 >    design-system components — a change now is a tweak to the real component, applied in Step 7.5.)"
@@ -1518,7 +1518,7 @@ Iterate on **look and components only** (component choice, layout, copy, spacing
 names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto — say so
 and point back. If the user wants a *big* structural change the existing design can't hold, that is a 🔶
 (Step 2.5 rules): design-only → decide it here with the same senior-designer rigor, apply it in Step 7.5, and
-re-screenshot; scope-altering (new features/screens) → route back to `/saki-builder:prd`, never invent it here.
+re-screenshot; scope-altering (new features/screens) → route back to `/prd`, never invent it here.
 
 **Both questions must be approved before proceeding.** If the user approves the journey but wants a
 component change, **edit the real component** (it already lives in the design system from 2.6), re-screenshot
@@ -1541,17 +1541,17 @@ final state.
   `proto-bundle.mjs`** (6b-bis) so `preview-bundle.html` reflects the re-captured frames — a one-command,
   idempotent rebuild.
 
-`/saki-builder:build` then promotes these real presentational components (mock data → real data + state + tests +
+`/build` then promotes these real presentational components (mock data → real data + state + tests +
 backend wiring); it does NOT re-invent them. Write that as a hard dependency in the handoff notes (Step 8):
-"Design system was updated per `design-system-updates.md` (built in Step 2.6, finalized in 7.5). `/saki-builder:build`
+"Design system was updated per `design-system-updates.md` (built in Step 2.6, finalized in 7.5). `/build`
 MUST use these real components — do NOT re-invent them."
 
 ---
 
-## Step 8 — Handoff to `/saki-builder:build`
+## Step 8 — Handoff to `/build`
 
 Write `tasks/proto-<slug>/notes.md` capturing, per screen: the **real components chosen**,
-the **token references** used, and the **states** confirmed. Purpose: `/saki-builder:build` **promotes** these
+the **token references** used, and the **states** confirmed. Purpose: `/build` **promotes** these
 presentational components (mock data → real data + state + tests + backend wiring) instead of
 re-picking from scratch.
 
@@ -1560,11 +1560,11 @@ State the **cleanup contract** explicitly. The **static gallery — `preview.htm
 (read-only, via `/api/proto/...`), while `preview-bundle.html` is the single-file copy you share (6b-bis).
 It persists as the record regardless. The throwaway `proto-preview/*` route (incl. the
 `/proto-preview` index) and the Step 5c middleware bypass also **persist after the proto run** — but
-only because they are the **capture harness** and `/saki-builder:build`'s promotion source, **NOT** because the
+only because they are the **capture harness** and `/build`'s promotion source, **NOT** because the
 Studio serves them live (it no longer does; it opens the static gallery). So the proto run must NOT
 delete them, and must NOT run on a throwaway git branch that is then deleted. They remain throwaway
-w.r.t. **`/saki-builder:build`**, the **sole owner of teardown**: it promotes the presentational components into
-real routes, then deletes the `proto-preview/*` namespace and reverts the bypass. Until `/saki-builder:build`
+w.r.t. **`/build`**, the **sole owner of teardown**: it promotes the presentational components into
+real routes, then deletes the `proto-preview/*` namespace and reverts the bypass. Until `/build`
 runs they live in the working tree (uncommitted is fine). The `preview.json` manifest (5e), if you
 wrote one, is ignored by the current Studio and is removed with the namespace at teardown.
 
@@ -1573,7 +1573,7 @@ re-capture. Kill only what proto started: `owner: proto` in `tasks/proto-<slug>/
 identity + the self-kill guard, then `kill -- -<pgid>`; `owner: human` ⇒ leave it running and say so. The
 run's server artifacts — `devserver.json` and `devserver.log` — are local-only (ignored via
 `.git/info/exclude`, never the tracked `.gitignore`) and are removed with the run directory at
-`/saki-builder:build` teardown. This tears down the **process** only: the `proto-preview` route and the 5c
+`/build` teardown. This tears down the **process** only: the `proto-preview` route and the 5c
 bypass persist exactly as described above.
 
 ---
@@ -1614,7 +1614,7 @@ echo "distinct-desktop-page-frames=$DISTINCT   (must equal manifest when manifes
 HARD STOP — PROTO INCOMPLETE
 Manifest requires N screens; only M captured (desktop=…, mobile=…, gallery=…).
 Missing: <list the manifest rows that have no page frame>.
-/saki-builder:proto covers the WHOLE journey — every screen, no curation. Render the missing screen(s), re-run the
+/proto covers the WHOLE journey — every screen, no curation. Render the missing screen(s), re-run the
 capture, then re-run the Coverage Gate. Do NOT emit the Completion Output while any manifested screen is
 uncaptured.
 ```
@@ -1646,40 +1646,50 @@ that run is stamped `PARTIAL` everywhere so it can never be mistaken for full co
 
 ---
 
-## Step 8.5 — Lock the PRD (the explicit freeze before `/saki-builder:build`)
+## Step 8.5 — Lock the approval (the explicit freeze before `/build`)
 
 This is the **terminal act of the PRD phase**: with the UI/UX approved (Step 7) and the journey fully
-captured (Coverage Gate passed), **freeze the requirements** so `/saki-builder:build` — which hard-refuses an
-unlocked PRD — can proceed to `/saki-builder:rplan`. `/saki-builder:proto` is the **single lock writer**: a UI PRD
+captured (Coverage Gate passed), **freeze the requirements** so `/build` — which hard-refuses an
+unlocked PRD — can proceed to `/rplan`. `/proto` is the **single lock writer**: a UI PRD
 locks here after approval; a no-UI PRD (GATE 1 branch) jumps straight here on the human's confirmation.
 Do **not** lock a `PARTIAL` (`--slice=N`) run — a partial preview hasn't approved the whole journey; print
-`Not locking — PARTIAL run (--slice). Re-run /saki-builder:proto with no --slice to lock.` and skip this step.
+`Not locking — PARTIAL run (--slice). Re-run /proto with no --slice to lock.` and skip this step.
 
-Write the lock into the PRD file (the one loaded in GATE 1):
-1. **Header marker** — add, in the PRD's top comment block, on its own line:
+Write the approval into the gallery **always**, and into the PRD file **when it exists** (two artifacts in PRD-first order, one in proto-first). `<@approver>` = the PRD header `Owner` if set, else
+`@<git config user.name>`, else `unassigned`; `<YYYY-MM-DD>` = `date +%F`. Never emit either before the
+human has approved (Step 7 / the no-UI confirm) — the marker IS the approval record.
+
+1. **Gallery marker (always)** — write `tasks/proto-<slug>/.prd-locked` containing one line:
+   `<@approver> · <YYYY-MM-DD> · prd:prd-<slug>.md · ui:tasks/proto-<slug>/`  (`ui:none` for a no-UI PRD).
+   The `prd:` field names the PRD this approval froze. GATE 1.5 verifies it against the PRD it was
+   handed, so one gallery's approval can never be inherited by a different file that happens to derive
+   the same slug.
+   This is the artifact that exists in **both** pipeline orders. The gallery is proto's own output, so it
+   is always present at Step 8.5 — whereas the PRD file is only guaranteed in PRD-first order.
+2. **Header marker (when the PRD file exists)** — add, in the PRD's top comment block, on its own line:
    `<!-- prd-locked: <@approver> · <YYYY-MM-DD> · ui:tasks/proto-<slug>/ -->`  (`ui:none` for a no-UI PRD).
-   `<@approver>` = the PRD header `Owner` if set, else `@<git config user.name>`, else `unassigned`;
-   `<YYYY-MM-DD>` = `date +%F`. The **absence** of this marker is what `/saki-builder:build` blocks on, so writing
-   it is what unblocks the build — never emit it before the human has approved (Step 7 / the no-UI confirm).
-2. **Header Status** — set the header field to `**Status:** Locked`.
-3. **§15 reference** — in §15 Screens & UI Reference, append `**UI approved:** tasks/proto-<slug>/ · <date>`
+   Skip this and items 3–4 if there is no PRD file yet (a proto-before-PRD run) — the gallery marker
+   already records the approval, and `/build` GATE 1.5 accepts either. Do **not** create a
+   PRD here; writing requirements is `/prd`'s job.
+3. **Header Status** — set the header field to `**Status:** Locked`.
+4. **§15 reference** — in §15 Screens & UI Reference, append `**UI approved:** tasks/proto-<slug>/ · <date>`
    so the locked artifact points at this approved gallery. If §15 is absent on a UI PRD (an older PRD that
-   didn't persist its screens), create it from the Screen Manifest first. Skip step 3 for a no-UI PRD.
+   didn't persist its screens), create it from the Screen Manifest first. Skip item 4 for a no-UI PRD.
 
 Then announce it plainly:
 ```
-🔒 PRD LOCKED — requirements frozen (Status: Locked · ui:tasks/proto-<slug>/).
-   /saki-builder:build tasks/prd-<slug>.md can now proceed (it refuses an unlocked PRD).
+🔒 APPROVAL LOCKED — requirements frozen (tasks/proto-<slug>/.prd-locked · Status: Locked · ui:tasks/proto-<slug>/).
+   /build tasks/prd-<slug>.md can now proceed (it refuses an unlocked PRD).
 ```
-The lock is `/saki-builder:proto`'s one write-back into the PRD — it **never** edits scope, criteria, or rules
-(that stays `/saki-builder:prd`); it only stamps the freeze marker + the design reference.
+The lock is `/proto`'s only write-back into the PRD — it **never** edits scope, criteria, or rules
+(that stays `/prd`); it only stamps the freeze marker + the design reference.
 
 ---
 
 ## Completion Output
 
 ```
---- /saki-builder:proto COMPLETE ---
+--- /proto COMPLETE ---
 PRD: <prd-file>
 PRD status: 🔒 Locked — <@approver> · <date>  (requirements frozen; ui:tasks/proto-<slug>/ | none)   [or: not locked — PARTIAL --slice run]
 Design system: <Found | Partial(<which half>) | scaffolded>
@@ -1690,7 +1700,7 @@ Design System Gap Analysis:
   ❌ New (K components created)   →  see design-system-updates.md
   🔶 Design change (P)  →  [auto-decided & applied (senior-designer rationale in design-system-updates.md) | reconciled via Convergence loop → see prd-adjustments.md | none]
 
-PRD adjusted this run: tasks/proto-<slug>/prd-adjustments.md  (Convergence-loop changes /saki-builder:prd made to close coverage gaps — review at approval; or "none — PRD covered the whole journey")
+PRD adjusted this run: tasks/proto-<slug>/prd-adjustments.md  (Convergence-loop changes /prd made to close coverage gaps — review at approval; or "none — PRD covered the whole journey")
   (or: No extensions needed — all components already existed)
 
 Design system updated: tasks/proto-<slug>/design-system-updates.md  (built in Step 2.6, before render)
@@ -1714,7 +1724,7 @@ Figma export: <Figma file URL — Tier A editable layers | Tier B screenshot boa
 
 Fidelity: faithful on layout/components/look/responsive/page-composition-in-real-shell/per-state;
           approximate on live data density + edge cases; no backend/logic.
-Design system: updated before /saki-builder:build — new components are real, not approximations.
+Design system: updated before /build — new components are real, not approximations.
 
 Next actions:
 > Open the local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — served in Step 7a)
@@ -1722,7 +1732,7 @@ Next actions:
 > Open the exported Figma file to review/edit the layers (if Step 6c ran)
 > Share tasks/proto-<slug>/preview-bundle.html — one self-contained file (screenshots inlined; no sibling folder needed)
 > Review tasks/proto-<slug>/index.md and confirm the look
-> /saki-builder:build tasks/<prd-file>  (the PRD is now 🔒 Locked — build proceeds; promotes these components into real implementation, design system already updated)
+> /build tasks/<prd-file>  (the PRD is now 🔒 Locked — build proceeds; promotes these components into real implementation, design system already updated)
 ```
 (The static `preview.html` is what the Studio opens — no marker line is needed. The `preview.json`
 manifest of 5e is optional/legacy and ignored by the current Studio; only mention it if you wrote one.)
@@ -1744,7 +1754,7 @@ in `${CLAUDE_PLUGIN_ROOT}/config/docs/proto-incidents.md` (read on demand, not l
 - **Never render without grounding** — missing or wrong `reuse-map.md`/`screen-manifest.md` ⇒ HARD STOP; on resume re-derive from the real app, never from the harness (Step 5 gate · Step 0.5 pt 7).
 - **Never send an implemented component to gap analysis as NEW** — a `NEW` row is a claim of absence, proven by an empty grep (Step 2.4 Guard).
 - **Climb the cost ladder, then codify before rendering** — reuse ✅ < scale ⚠️ < add ❌ < propose 🔶, adding only what the screen forces; a confirmed addition is built for real *before* the render, never approximated (Step 2.5 · Step 2.6).
-- **Never pause mid-run on a coverage gap** — delegate to `/saki-builder:prd`, re-derive, loop **≤3 passes**; the human gate is the finished VISUAL at Step 7 (Convergence loop · Step 7b).
+- **Never pause mid-run on a coverage gap** — delegate to `/prd`, re-derive, loop **≤3 passes**; the human gate is the finished VISUAL at Step 7 (Convergence loop · Step 7b).
 - **Never boot real auth or a DB to render a preview** — mock session/locale/data-layer (Step 5a).
 - **Never let a preview route reach production** — `proto-preview` namespace + `__PROTO__` banner + the cleanup contract (Step 5d · Step 8).
 - **Never abort because the app isn't running** — Step 5.5 reuses or boots it, triages the failure, and verifies the bind is loopback (Step 5.5).

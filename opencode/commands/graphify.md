@@ -1,11 +1,11 @@
 ---
-description: "Build or query a knowledge graph of the current project. Self-contained — works without the global /graphify skill. Auto-installs graphifyy if missing. Enriches rplan research and arch-check with god nodes, community clusters, and path traces. Usage — /saki-builder:graphify [path|url|query] [flags]"
+description: "Build or query a knowledge graph of the current project. Self-contained — works without the global `graphify` skill (~/.claude/skills/graphify). Auto-installs graphifyy if missing. Enriches rplan research and arch-check with god nodes, community clusters, and path traces. Usage — /graphify [path|url|query] [flags]"
 ---
 
-# /saki-builder:graphify
+# /graphify
 
 Turns any project into a queryable knowledge graph. Self-contained: runs the graphify CLI
-directly after install — does NOT require the global `/graphify` skill.
+directly after install — does NOT require the global `graphify` skill (~/.claude/skills/graphify).
 
 ---
 
@@ -118,10 +118,10 @@ CLI's sequential mode. Check and delegate:
 ```bash
 GLOBAL_SKILL="$HOME/.claude/skills/graphify/SKILL.md"
 if [ -f "$GLOBAL_SKILL" ]; then
-    echo "Global /graphify skill found — using it for richer semantic extraction."
-    # Signal to the model: invoke the global /graphify skill with all user args
+    echo "Global graphify skill (~/.claude/skills/graphify) found — using it for richer semantic extraction."
+    # Signal to the model: invoke the global `graphify` skill (~/.claude/skills/graphify) with all user args
 else
-    echo "Global /graphify skill not found — using CLI (good for code repos; install the Graphify global skill for doc/paper/image corpora)."
+    echo "Global graphify skill (~/.claude/skills/graphify) not found — using CLI (good for code repos; install the Graphify global skill for doc/paper/image corpora)."
     # Continue with CLI path above
 fi
 ```
@@ -166,7 +166,7 @@ Then paste the **God Nodes**, **Surprising Connections**, and **Suggested Questi
 from `graphify-out/GRAPH_REPORT.md` directly into chat. Do NOT paste the full report.
 
 Offer the saki-builder-specific follow-up:
-> "Graph ready. Run `/saki-builder:arch-check` to cross-reference god nodes with module size triggers?"
+> "Graph ready. Run `/arch-check` to cross-reference god nodes with module size triggers?"
 
 ---
 
@@ -190,7 +190,7 @@ graphify explain "GodNodeName"   # prints Degree + full connection list for one 
 ```
 
 Both skills are **additive only** — they skip silently if `graphify-out/graph.json` is absent.
-The user builds the graph once with `/saki-builder:graphify .` and all skills pick it up.
+The user builds the graph once with `/graphify .` and all skills pick it up.
 
 ---
 

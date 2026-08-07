@@ -1,5 +1,5 @@
 ---
-description: "SonarQube clean-code standard, applied at write-time. Invoke before writing or modifying code so the change passes the SonarQube quality gate the first time instead of failing it later. Auto-loaded by /saki-builder:build during implementation. Covers Reliability (bugs), Security (vulnerabilities/hotspots), Maintainability (code smells), and the Clean-as-You-Code model the gate grades on."
+description: "SonarQube clean-code standard, applied at write-time. Invoke before writing or modifying code so the change passes the SonarQube quality gate the first time instead of failing it later. Auto-loaded by /build during implementation. Covers Reliability (bugs), Security (vulnerabilities/hotspots), Maintainability (code smells), and the Clean-as-You-Code model the gate grades on."
 ---
 
 # SonarQube Clean Code Standard (write-time)
@@ -13,7 +13,7 @@ thresholds). Goal: write the change clean so the gate passes the first time — 
 The quality gate is evaluated on **new / changed code** (your diff), not the whole repo — so every
 rule below applies to the lines you touch. Default gate conditions on new code:
 
-- Coverage **≥ 80%** (SonarQube new-code) — `/saki-builder:qa` enforces the same **≥ 80% NON-NEGOTIABLE** floor locally first (`COVERAGE_MIN`, clamped — no lowering, no spike/skip bypass), so you clear coverage *before* the gate, not at it
+- Coverage **≥ 80%** (SonarQube new-code) — `/qa` enforces the same **≥ 80% NON-NEGOTIABLE** floor locally first (`COVERAGE_MIN`, clamped — no lowering, no spike/skip bypass), so you clear coverage *before* the gate, not at it
 - Duplicated lines **< 3%**
 - **0** new Bugs, Vulnerabilities, and unreviewed Security Hotspots
 - Maintainability / Reliability / Security rating **A**
@@ -57,7 +57,7 @@ Hotspot** (security), or **Code Smell** (maintainability). The three sections be
 
 ## Testing (gate conditions)
 
-- Coverage: `/saki-builder:qa`'s **Coverage Gate** enforces a **non-negotiable ≥ 80%** floor (`COVERAGE_MIN`, **default 80**, clamped so it can only be raised) before push — it also gates the *changed files* to mirror SonarQube's new-code model; SonarQube's ≥80% new-code condition is the final check. Write tests with the code (TDD per `xp-principles.md`).
+- Coverage: `/qa`'s **Coverage Gate** enforces a **non-negotiable ≥ 80%** floor (`COVERAGE_MIN`, **default 80**, clamped so it can only be raised) before push — it also gates the *changed files* to mirror SonarQube's new-code model; SonarQube's ≥80% new-code condition is the final check. Write tests with the code (TDD per `xp-principles.md`).
 - Cover the failure path of every invariant/guard you add, not just the happy path.
 - No flaky/ignored tests left enabled.
 

@@ -1,42 +1,44 @@
 ---
-description: "Pull a PRD-track roadmap item (Epic E<n> or Feature F<n>) into active development — the disciplined entry point for feature work. `/pickup <id>` reads the item from tasks/roadmap.md, seeds /saki-builder:prd from it (PRD stamped Epic: <id>), then loops /saki-builder:prd ↔ /saki-builder:prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /saki-builder:proto. Flips the item Planned→In-progress. If review dead-ends on a **scope** blocker (non-convergence / over-appetite), acts as a Senior PM — recuts the initiative into an MVP + trigger-gated follow-on phases, registers each on the roadmap via /saki-builder:add, and drives the MVP PRD to green (follow-on phases stay Planned for a later pickup); escapes to Blocked only when the review can't reach a shippable PRD for a non-scope reason (discovery/premise). Running /saki-builder:proto <id> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Plan-track items (Improvement/Bug) don't come here — they go to /saki-builder:rplan. Usage — /saki-builder:pickup <E<n>|F<n>>."
+description: "Pull a PRD-track roadmap item (Epic E<n> or Feature F<n>) into active development — the disciplined entry point for feature work. `/pickup <id>` reads the item from tasks/roadmap.md, seeds /prd from it (PRD stamped Epic: <id>), then loops /prd ↔ /prd-review until the PRD is green (Verdict SHIP AND Readiness READY) and STOPS — ready for /proto. Flips the item Planned→In-progress. If the PRD's slice count exceeds its appetite band (checked before any review round) — or the review later dead-ends on a **scope** blocker (non-convergence) — acts as a Senior PM — recuts the initiative into an MVP + trigger-gated follow-on phases, registers each on the roadmap via /add, and drives the MVP PRD to green (follow-on phases stay Planned for a later pickup); escapes to Blocked only when the review can't reach a shippable PRD for a non-scope reason (discovery/premise). Running /proto <id> afterwards designs the UI/UX and LOCKS the PRD (freezes requirements — the gate before build); there is no separate approve step. Plan-track items (Improvement/Bug) don't come here — they go to /rplan. Usage — /pickup <E<n>|F<n>>."
 ---
 
 # Pick up a PRD-track item → write & review its PRD to green (ready for proto)
 
-`/saki-builder:pickup <id>` is the **only** way to start PRD-track work — the structural gate of the
+`/pickup <id>` is the **only** way to start PRD-track work — the structural gate of the
 disciplined workflow. It requires a **PRD-track item** (Epic `E<n>` or Feature `F<n>`) that already exists
 on `tasks/roadmap.md`; there is no cold-intent path. Epics and Features are handled **identically** here —
 "the item" below means either. (Plan-track items — Improvement `I<n>`, Bug `B<n>` — never come here; run
-`/saki-builder:rplan` on them instead.) It runs the **front half** of the product flow: seed
-`/saki-builder:prd` from the item, then loop
-`/saki-builder:prd-review` until the PRD is **green** (`Verdict SHIP` AND `Readiness READY`), and stop there —
-"ready to proto". You do **not** re-implement `/saki-builder:prd` or `/saki-builder:prd-review`; you **invoke** them
+`/rplan` on them instead.) It runs the **front half** of the product flow: seed
+`/prd` from the item, then loop
+`/prd-review` until the PRD is **green** (`Verdict SHIP` AND `Readiness READY`), and stop there —
+"ready to proto". You do **not** re-implement `/prd` or `/prd-review`; you **invoke** them
 (Skill tool) and drive the loop.
 
 ```
-/saki-builder:pickup E3
+/pickup E3
   → resolve E3 from tasks/roadmap.md   (flip Planned → In-progress)
-  → /saki-builder:prd   (seeded by the item; PRD stamped `Item: E3`)
-  → loop /saki-builder:prd-review until SHIP · READY   (≤3 rounds)
-       ↳ scope blocker (non-convergence / over-appetite) → Phase 2b: Senior-PM recut
-         → split into MVP + trigger-gated phases → /saki-builder:add each → drive the MVP to green
+  → /prd   (seeded by the item; PRD stamped `Item: E3`)
+  → loop /prd-review until SHIP · READY   (≤3 rounds)
+       ↳ scope blocker → Phase 2b: Senior-PM recut
+         · from Phase 1.5 (over-appetite: §8 slice count > §6 band) — before any review round
+         · from Phase 2  (non-convergence / readiness blocker) — the sentinel backstop
+         → split into MVP + trigger-gated phases → /add each → drive the MVP to green
        ↳ non-scope blocker (discovery / unproven premise) → escape to Blocked
-  → STOP — MVP PRD green & ready. Run /saki-builder:proto E3 (it designs the UI/UX and LOCKS the PRD).
+  → STOP — MVP PRD green & ready. Run /proto E3 (it designs the UI/UX and LOCKS the PRD).
 ```
 
-The single human gate is at proto — **running `/saki-builder:proto E<n>` designs the UI/UX and locks the PRD**
-(the explicit freeze before build); `/saki-builder:pickup` writes no lock flag and never advances into proto itself.
+The single human gate is at proto — **running `/proto E<n>` designs the UI/UX and locks the PRD**
+(the explicit freeze before build); `/pickup` writes no lock flag and never advances into proto itself.
 
 ---
 
 ## Usage
 
-- `/saki-builder:pickup <id>` — start (or resume) a PRD-track item `E<n>` / `F<n>`. Filler words are fine (`/saki-builder:pickup start E3`).
+- `/pickup <id>` — start (or resume) a PRD-track item `E<n>` / `F<n>`. Filler words are fine (`/pickup start E3`).
 - No item id → **structural gate**: print
-  `no item id — add one first with /saki-builder:add, then /saki-builder:pickup <E<n>|F<n>>` and stop. Never invent a feature.
+  `no item id — add one first with /add, then /pickup <E<n>|F<n>>` and stop. Never invent a feature.
 - A Plan-track id (`I<n>` / `B<n>`) → **wrong track**: print
-  `<id> is a Plan-track item (Improvement/Bug) — run /saki-builder:rplan, not /saki-builder:pickup` and stop.
+  `<id> is a Plan-track item (Improvement/Bug) — run /rplan, not /pickup` and stop.
 
 ---
 
@@ -55,7 +57,7 @@ single cursor — a run with **no `recut` block is NEVER treated as a recut**):
 | 3 | a `recut` block with `recut.stage` == `registering` | The `/add` loop was interrupted mid-registration — **continue Phase 2b Step 3**, using `recut.phases[]` (and the roadmap) to skip already-registered phases (dedup). Never restart the loop. |
 | 4 | a `recut` block with `recut.stage` == `driving` | The MVP is being driven. **Resume the CHILD from the PERSISTED state seed** — `state.slug` / `prd` / `title` already point at the MVP; drive its Phase 1/2 at the recorded top-level `phase`. **Do NOT re-resolve the invoked parent id via GATE 1, do NOT re-init `state.slug`.** The once-guard holds: `state["slug"]` == `recut.active_slug` → never recut again. |
 | 5 | **no `recut` block**, `phase` == `prd` | Normal run — re-run Phase 1 from where the PRD was incomplete (re-resolving the invoked id is correct — it IS the run). |
-| 6 | **no `recut` block**, `phase` == `review` | Normal run — resume Phase 2 (re-invoke autonomous `/saki-builder:prd-review`, read its terminal sentinel). |
+| 6 | **no `recut` block**, `phase` == `review` | Normal run — resume Phase 2 (re-invoke autonomous `/prd-review`, read its terminal sentinel). |
 | 7 | (no state file) | Fresh start → Phase 1. |
 | — | anything else (unknown/empty top-level `phase` with a state file, or a `recut` block with an absent/unknown `stage`) | **Fall through to the best-effort catch-all below** — treat as a normal fresh run; never hard-fail. |
 
@@ -66,7 +68,7 @@ hard-fail on it. Always write the state file before ending a turn so resume land
 
 ## GATE 0.5 — Greenfield guard (no product foundations yet → genesis first)
 
-`/saki-builder:pickup` seeds `/saki-builder:prd`, which assumes a **stack, design system, and schema that
+`/pickup` seeds `/prd`, which assumes a **stack, design system, and schema that
 already exist** (prd grounds §16 against real code; proto's GATE 2 hard-STOPs without a design system). On a
 brand-new repo none of that exists, so picking up here would seed a **stack-less PRD**. Detect that first
 with **`test` builtins** — not `ls`/`find` output — so the check is both glob-safe (no `*.md` glob that
@@ -84,7 +86,7 @@ fi
 ```
 
 - **`GREENFIELD_NO_FOUNDATIONS`** → the product has **no foundations yet** → STOP:
-  `This repo has no product foundations yet — /saki-builder:pickup would seed a PRD assuming a stack, design system, and schema that don't exist. Run /saki-builder:genesis "<product idea>" first (it sets the MVP goal + foundations and seeds the roadmap), then /saki-builder:pickup E1.`
+  `This repo has no product foundations yet — /pickup would seed a PRD assuming a stack, design system, and schema that don't exist. Run /genesis "<product idea>" first (it sets the MVP goal + foundations and seeds the roadmap), then /pickup E1.`
   Do not proceed into a stack-less PRD.
 - **`FOUNDATIONS_PRESENT`** (a `foundations.md`, stack, or code exists) → foundations are in place (genesis
   ran, or this is an existing product that predates genesis) → proceed to GATE 1 normally.
@@ -94,17 +96,17 @@ fi
 ## GATE 1 — Resolve the item (hard stop if missing / wrong track)
 
 Read `tasks/roadmap.md`. Find the `### <id> · <title>` block (`<id>` = `E<n>` or `F<n>`). If absent → print
-`<id> not found on the roadmap. /saki-builder:roadmap to see items, /saki-builder:add to add one.` and stop.
+`<id> not found on the roadmap. /roadmap to see items, /add to add one.` and stop.
 
 Check the block's `**Track:**` (or infer from the prefix). If it is **Plan** (Improvement/Bug) → print
-`<id> is a Plan-track item — run /saki-builder:rplan, not /saki-builder:pickup` and stop. Only PRD-track
+`<id> is a Plan-track item — run /rplan, not /pickup` and stop. Only PRD-track
 items proceed.
 
 Extract the item's fields: **title, Goal, Target user & Job (JTBD), User flow, Success signal**. These
-become the **item seed** handed to `/saki-builder:prd`.
+become the **item seed** handed to `/prd`.
 
-Derive `<slug>` the way `/saki-builder:prd` does: `slugify(title)`. (Single-source the slug in `/saki-builder:prd`'s
-`{{input.feature | slugify}}` — `/saki-builder:pickup` passes the title as the feature, so the PRD lands at
+Derive `<slug>` the way `/prd` does: `slugify(title)`. (Single-source the slug in `/prd`'s
+`{{input.feature | slugify}}` — `/pickup` passes the title as the feature, so the PRD lands at
 `tasks/prd-<slug>.md` and the slug always matches.)
 
 ---
@@ -138,8 +140,8 @@ Maintain `tasks/.pickup-<slug>-state.json`. **Update it after every phase transi
 
 `phase` (top-level) is the cursor the Stop gate keys off:
 - `prd` / `review` → front-half work in progress → the Stop gate **keeps you running**.
-- `proto-ready` → PRD is green (`SHIP · READY`), waiting for the human to run `/saki-builder:proto` → the Stop
-  gate **releases** (the human's turn). This is the terminal success state for `/saki-builder:pickup`.
+- `proto-ready` → PRD is green (`SHIP · READY`), waiting for the human to run `/proto` → the Stop
+  gate **releases** (the human's turn). This is the terminal success state for `/pickup`.
 - `blocked` → a hard stop you reported → the Stop gate **releases**.
 
 `recut` is **optional** and present only after a Phase-2b scope recut. **Its presence ⇔ "this run is a
@@ -157,7 +159,7 @@ lookup-by-parent-id always resolves.
 
 ---
 
-## Phase 1 — `/saki-builder:prd`  (seeded by the item)
+## Phase 1 — `/prd`  (seeded by the item)
 
 1. Init the state file (`phase:"prd"`, stamp `started_at`, `epic`, `slug`, `title`, `prd`). **On a RESUME
    (the state file already exists with a `slug`), PRESERVE the existing `slug` / `prd` / `title` — stamp them
@@ -165,32 +167,80 @@ lookup-by-parent-id always resolves.
    overwrite `state.slug` with the parent slug and break the once-guard — see GATE 0 precedence 4.)
 2. **Flip the item `Planned → In-progress`** in `tasks/roadmap.md` (update its `**Status:**` and `**Updated:**`).
 3. Invoke the `prd` skill. **Pass the item _title_ verbatim as the `feature` input** — nothing else folded
-   in. `feature` is the filename driver (`/saki-builder:prd` saves `tasks/prd-<slugify(feature)>.md`), so the
+   in. `feature` is the filename driver (`/prd` saves `tasks/prd-<slugify(feature)>.md`), so the
    bare title is what makes the PRD land at exactly `tasks/prd-<slug>.md` and match the `**Child PRD:**` link
    you record in step 5 (see the slug note above). Supply the rest of the **item seed** as
-   `/saki-builder:prd`'s grounding context — **NOT concatenated into `feature`** — so its Step 0/0.5/1 consume
+   `/prd`'s grounding context — **NOT concatenated into `feature`** — so its Step 0/0.5/1 consume
    it autonomously (no human gate here; the shape phase takes its autonomous fallback under
-   `/saki-builder:pickup`). The seed grounds the shape:
+   `/pickup`). The seed grounds the shape:
    - item **Goal** → the problem / desired outcome
    - item **Target user & Job** → the JTBD (§3) (also the `audience`)
    - item **User flow** → the recommended solution shape
    - item **Success signal** → an outcome/metric seed (§5) and appetite hint
-4. When `/saki-builder:prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Item: <id>`**
-   (pass the item id so `/saki-builder:prd` stamps it; if it wrote `—`, edit the header to `**Item:** <id>`).
+4. When `/prd` finishes it saves `tasks/prd-<slug>.md`. **Confirm the header carries `Item: <id>`**
+   (pass the item id so `/prd` stamps it; if it wrote `—`, edit the header to `**Item:** <id>`).
 5. Record `**Child PRD:** prd-<slug>.md` under the `### <id>` block in `tasks/roadmap.md`.
 6. Set `phase:"review"`, `prd_written:true`. Advance the **PRD doc header** `**Status:** Draft → In Review`
-   — the autonomous review is starting, and `/saki-builder:prd`'s manual `Draft → In Review` bump doesn't
-   fire under `/saki-builder:pickup`, so set it here (otherwise the doc reads a stale `Draft` right up to the
-   proto lock). `/saki-builder:proto` later overwrites it to `Locked`.
+   — the autonomous review is starting, and `/prd`'s manual `Draft → In Review` bump doesn't
+   fire under `/pickup`, so set it here (otherwise the doc reads a stale `Draft` right up to the
+   proto lock). `/proto` later overwrites it to `Locked`.
 
 ---
 
-## Phase 2 — `/saki-builder:prd-review`  (delegate the loop-to-green)
+## Phase 1.5 — Appetite gate  (route on the SCOPE SIGNAL, not on a review sentinel)
+
+The recut exists because an initiative can be **too big for its appetite**. That is a property of the
+PRD, knowable the moment Phase 1 writes it — so it is checked here, **before** `/prd-review`
+runs. Binding the recut only to prd-review's `non-convergence` sentinel makes a *scope* gate depend on a
+*review* stage: in any order where the render happens before the review, an over-appetite initiative gets
+its whole journey built and approved before a scope gate can fire.
+
+Read the two **machine-readable markers** `/prd` emits at the top of every PRD
+(`config/skills/prd/SKILL.md:483-484`) — never scrape the prose:
+
+```bash
+# The PRD template emits both of these; they are the canonical, unambiguous source.
+# Do NOT count "### Slice N" headings: real PRDs render slices as bullets or numbered lists, and
+# §9 (Acceptance Criteria per Slice) repeats the same headings — a prose count is both inert on
+# the real corpus and prone to double-counting §8+§9 into a false recut.
+BAND="$(grep -oE '^<!-- appetite: *(small|medium|large) *-->' "$PRD" 2>/dev/null \
+        | grep -oE '(small|medium|large)' | head -1)"
+SLICES="$(grep -oE '^<!-- slices: *[0-9]+ *-->' "$PRD" 2>/dev/null \
+        | grep -oE '[0-9]+' | head -1)"
+case "$BAND" in small) CAP=2 ;; medium) CAP=4 ;; large) CAP=7 ;; *) CAP="" ;; esac
+```
+
+Both patterns are **anchored to line start** and matched against the marker's exact shape, so a band
+word appearing in prose, inside a fenced example, or in a table cell cannot be mistaken for the real
+field.
+
+**Fail-open is load-bearing.** If `CAP` is empty (no `appetite:` marker, or a value outside the three
+bands) or `SLICES` is empty (no `slices:` marker — an older PRD predating the template), **do not
+recut** — log one line and fall through to Phase 2, where the sentinel remains the backstop. A gate
+that cannot read its input must never rewrite scope on a guess.
+
+- **`SLICES > CAP`** -> **over-appetite**. Log
+  `APPETITE GATE: <slug> - <SLICES> slices vs <BAND> band (<=<CAP>) -> over by <n>` and go to
+  **Phase 2b (Senior-PM recut)** with reason `over-appetite`.
+- **otherwise** -> log
+  `APPETITE GATE: <slug> - <SLICES> slices vs <BAND> band (<=<CAP>) -> within appetite`
+  and continue to Phase 2 unchanged.
+
+**Run this BEFORE Phase 1 step 6 sets `phase:"review"`.** Phase 1.5 has no state field of its own, and
+GATE 0 maps `phase == "review"` to "resume at Phase 2" — so checking after the flip would let any resume
+silently skip the gate. Running it inside Phase 1's block makes `phase:"review"` mean "Phase 1 *and* the
+appetite gate completed", which is what the resume logic already assumes.
+
+This is a **router, never a blocker** — it can only send the run to a phase that already exists.
+
+---
+
+## Phase 2 — `/prd-review`  (delegate the loop-to-green)
 
 Set `phase:"review"`. Invoke the `prd-review` skill on the PRD **WITHOUT `--review-only`** — its default
 **autonomous** mode drives the loop-to-green itself (review → apply the prescribed fixes to the PRD →
 re-review, with a hard 3-round cap + a BLOCKED escape). You no longer hand-roll that loop; `prd-review`
-**owns** it now, and `/saki-builder:pickup` **reuses** it (one loop, one place — never a second copy here).
+**owns** it now, and `/pickup` **reuses** it (one loop, one place — never a second copy here).
 
 Read `prd-review`'s **terminal** result — one of the sentinels it prints on its own line:
 
@@ -220,20 +270,23 @@ buildable-now and `prd-review` returns `blocked` on that structural readiness ga
     forever, do NOT fabricate grounding, **never recut past an unproven premise** — `prd-review` already
     exhausted the fixable paths.
 
-Key design note (option 3 — one shared loop): the loop-to-green lives in `/saki-builder:prd-review`'s
-autonomous mode; `/saki-builder:pickup` **reuses** it and keeps no copy. The fix→re-review loop, the 3-round
+Key design note (option 3 — one shared loop): the loop-to-green lives in `/prd-review`'s
+autonomous mode; `/pickup` **reuses** it and keeps no copy. The fix→re-review loop, the 3-round
 cap, and the non-convergence / DISCOVERY-FIRST / structural-`NOT READY` escapes all run **inside**
-`prd-review`. `/saki-builder:pickup` only invokes it (without `--review-only`) and does the item-specific
+`prd-review`. `/pickup` only invokes it (without `--review-only`) and does the item-specific
 terminal handling: proto-ready handoff, a **Phase-2b Senior-PM recut** on a scope blocker, or flip the item
 to Blocked on a non-scope blocker. No nesting — the loop runs in exactly one place, so there is no
-double-loop when `/saki-builder:pickup` runs.
+double-loop when `/pickup` runs.
 
 ---
 
-## Phase 2b — Scope recut (Senior PM)  (only on a SCOPE blocker; runs while `phase` stays `review`/`prd`)
+## Phase 2b — Scope recut (Senior PM)  (on a SCOPE signal, from either door; runs while `phase` stays `review`/`prd`)
 
-Entered from Phase 2 when the review dead-ends because the initiative is **too big for its appetite**
-(a scope problem), not because its premise is unproven. Acting as a Senior PM, you recut it into an MVP
+**Two doors, one phase.** Entered either from **Phase 1.5** — the appetite gate detected the PRD's slice
+count exceeds its §6 band, reason `over-appetite`, before any review round — or from **Phase 2**, when the
+review dead-ends because the initiative is **too big for its appetite** (a scope problem), not because its
+premise is unproven. The Phase-1.5 door is the earlier and cheaper of the two; the sentinel door remains
+the backstop for scope problems the slice count alone doesn't reveal. Acting as a Senior PM, you recut it into an MVP
 plus trigger-gated follow-on phases, register each on the roadmap, and drive **only the MVP** to green.
 
 **Recut at most once per pickup run — detected via the state file (the once-guard).** If the current run is
@@ -255,6 +308,7 @@ with no manual counter. You do **not** hand-bump `review.rounds` here anymore. J
 `recut.stage` + append to `recut.phases[]` at each transition (Steps 1/3/5).
 
 ### Step 0 — Confirm it is a scope blocker (classify `readiness: blocker`)
+- `over-appetite` (from Phase 1.5) → scope blocker, already quantified (slice count vs §6 band) → proceed.
 - `non-convergence` → scope blocker → proceed.
 - `readiness: blocker` → pass the blocker to the senior-pm (Step 1) and ask it to classify **first**: a
   **decomposable scope/sequencing** blocker (an in-initiative dependency that can be sequenced as its own
@@ -267,7 +321,7 @@ with no manual counter. You do **not** hand-bump `review.rounds` here anymore. J
 **First write `recut = {parent:<id>, stage:"phasing", phases:[], registered:0}` to the state file** (this
 marks the run as a recut so GATE 0 resumes it correctly, and starts crediting the gate). Then spawn the
 `senior-pm` agent (Agent tool) with: the **item seed**, the non-converged PRD (`tasks/prd-<slug>.md`), and
-the **review ledger** (`tasks/prd-<slug>-review.md`). Ask for its **`MVP-Phasing Decision`** artifact
+the **review ledger** (`tasks/prd-<slug>-review.md`) **when it exists** — on the Phase-1.5 door prd-review has not run, so there is no ledger; pass the appetite figures (`<SLICES> slices vs <BAND> band, cap <CAP>`) as the scope evidence instead. Ask for its **`MVP-Phasing Decision`** artifact
 (`config/agents/senior-pm.md`), and **embed the exact output template verbatim in the spawn prompt**
 (belt-and-suspenders, so autonomy holds even if the agent file drifts) — instruct it to **decide, not ask**,
 and to return the shape **inline**. The decision is an **MVP phasing**:
@@ -279,7 +333,7 @@ and to return the shape **inline**. The decision is an **MVP phasing**:
   needed (e.g. "ships when the first dup-row is logged" / "when cohort resubmit-rate <50%"), never a
   calendar date — and one line on why it's deferred.
 - **A complete PRD-track shape per phase** (MVP and each deferred) — **title · Goal (outcome) · Target
-  user & Job (JTBD) · User flow · Success signal** — because this is exactly the intake `/saki-builder:add`
+  user & Job (JTBD) · User flow · Success signal** — because this is exactly the intake `/add`
   consumes in Step 3. For a deferred phase the **Success signal encodes its objective trigger**. Without a
   full shape per phase, Step 3 would have to invent the missing fields or `/add` would prompt — breaking
   autonomy. (The MVP's JTBD is the parent's primary job; a deferred phase's is the narrower sub-job it serves.)
@@ -298,13 +352,13 @@ re-invoke it with the exact 5-field-per-phase template AND the **specific verifi
 not a bare "try again" (bump `recut.pm_rounds`). If it still fails → abandon the recut, fall through to the
 plain-blocked path (record the reason).
 
-### Step 3 — Register each phase via `/saki-builder:add`
+### Step 3 — Register each phase via `/add`
 **Set `recut.stage = "registering"`** before the first `/add` (marks the loop for GATE 0 resume + credits the
 gate). Register the phases **one `/add` per turn, never in parallel** (a MUST, not prose) — each
-`/saki-builder:add` scans `tasks/roadmap.md` for the next free `F<n>`, so a parallel batch would collide on
+`/add` scans `tasks/roadmap.md` for the next free `F<n>`, so a parallel batch would collide on
 the id counter; **read back the assigned `F<n>` before the next**. **Cap the fan-out at ≤ 5 phases** (a
 runaway/injected phasing can't spam the roadmap). Invoke the `add` skill as
-`/saki-builder:add --feature --autonomous "<rich intent>"` — the **`--autonomous` flag** is the deterministic
+`/add --feature --autonomous "<rich intent>"` — the **`--autonomous` flag** is the deterministic
 no-prompt path (`config/skills/add/SKILL.md`). **Idempotent (dedup):** before each `/add`, skip a phase
 already recorded in `recut.phases[]` OR already present on the roadmap; append each registered phase to
 `recut.phases[]` as `{id, slug, role}` (`role:"mvp"` for the MVP, `role:"deferred"` otherwise) and bump
@@ -320,7 +374,7 @@ annotate it `Recut into phase chain — MVP <mvp-id> active` (there is no `Recut
 one). The deferred children stay `Planned`. The parent's `Child PRD:` (the non-converged PRD) is now
 **superseded by the `Phase chain:`** — leave that PRD as a historical artifact; each child gets its own
 fresh PRD when picked up. Do not re-point or delete it. The parent is **not stranded**: when the last
-phase-chain child ships, `/saki-builder:build` flips the parent to `Shipped` (see build's Completion
+phase-chain child ships, `/build` flips the parent to `Shipped` (see build's Completion
 Output); the roadmap view renders it `recut → superseded` until then.
 
 ### Step 5 — Re-point to the MVP, delete the sidecar for a fresh budget (the rest stay Planned)
@@ -329,11 +383,11 @@ Re-point the run to the **MVP child**: set `recut.stage = "driving"`, `recut.act
 `phase:"prd"`. **Do NOT rename the state file — it keeps the parent's name so GATE 0's lookup-by-parent-id
 always resolves.** Instead, **give the MVP sub-run a fresh breaker budget by deleting the sidecar in place:**
 `rm -f tasks/.pickup-<parent-slug>-state.json.gate.json` (idempotent — a missing sidecar is fine). Then
-**re-enter Phase 1** (`/saki-builder:prd` seeded by the MVP item) → Phase 2 (`/saki-builder:prd-review` to
+**re-enter Phase 1** (`/prd` seeded by the MVP item) → Phase 2 (`/prd-review` to
 green). (The MVP's own review rounds live in its own `tasks/.prd-review-<mvp-slug>-state.json`, which the
 gate now folds via `delegated_rounds` since `state.slug` = mvp-slug.) Because the MVP is appetite-sized it
 converges; stop at `proto-ready` **for the MVP** as normal (Phase 3).
-The deferred phases stay `Planned` with their triggers — a later `/saki-builder:pickup F8` picks up phase 2
+The deferred phases stay `Planned` with their triggers — a later `/pickup F8` picks up phase 2
 when its trigger fires. `/pickup` does **not** drive them here.
 
 Before the MVP's Phase-3 `PICKUP_READY`, emit on its own line:
@@ -345,8 +399,8 @@ PICKUP_RECUT: <parent-id> → <mvp-id>(MVP) + <deferred ids> · phases registere
 
 ## Phase 3 — Ready for proto (terminal success — NO lock flag written here)
 
-The PRD is green. `/saki-builder:pickup` stops here. It writes **no** lock flag — running `/saki-builder:proto E<n>`
-designs the UI/UX and **locks** the PRD (`Status: Locked` + `<!-- prd-locked -->`, freezing requirements), the
+The PRD is green. `/pickup` stops here. It writes **no** lock flag — running `/proto E<n>`
+designs the UI/UX and **locks** the approval (`tasks/proto-<slug>/.prd-locked`, plus `Status: Locked` + `<!-- prd-locked -->` in the PRD when it exists — freezing requirements), the
 single human gate before build. The item stays `In-progress`.
 
 Ensure `phase:"proto-ready"` and the state file is written, then print:
@@ -356,8 +410,8 @@ PICKUP_READY: <slug> — review SHIP · READY · R rounds · B blockers fixed
 
 ✅ PRD green & ready for proto: tasks/prd-<slug>.md   (Item: <id>)
    Review record: tasks/prd-<slug>-review.md
-   Run /saki-builder:proto <id> when ready — it designs the UI/UX and LOCKS the PRD (freezes requirements).
-   (then /saki-builder:build <id> to ship it — build refuses an unlocked PRD)
+   Run /proto <id> when ready — it designs the UI/UX and LOCKS the PRD (freezes requirements).
+   (then /build <id> to ship it — build refuses an unlocked PRD)
 ```
 
 `PICKUP_READY` (own line) is the terminal success sentinel. The `pickup-completion-gate.sh` Stop hook
@@ -371,11 +425,11 @@ ALLOWS the stop at `phase:"proto-ready"` — ending the turn here is correct and
   stop while `phase` ∈ {prd, review}). It releases the moment `phase` becomes `proto-ready` or `blocked`.
 - **The gate is structural.** No item id → no run. There is no cold-intent feature path — that is the whole
   point of the disciplined workflow.
-- **One human gate, at proto.** `/saki-builder:pickup` never advances into proto; running `/saki-builder:proto E<n>`
-  designs the UI/UX and **locks** the PRD (the freeze before build). Never auto-run `/saki-builder:proto` from here.
+- **One human gate, at proto.** `/pickup` never advances into proto; running `/proto E<n>`
+  designs the UI/UX and **locks** the PRD (the freeze before build). Never auto-run `/proto` from here.
 - **Never fabricate grounding, never infinite-loop.** The stops are: green (`proto-ready`), a **scope**
-  block (`non-convergence`, or a decomposable `readiness` blocker) → **Phase 2b recut** (then the MVP
-  loops to green), or a non-scope block (`DISCOVERY-FIRST` / unaccepted bet / unresolved DISCOVERY-RISK)
+  block (`over-appetite` from Phase 1.5, or `non-convergence` / a decomposable `readiness` blocker from
+  Phase 2) → **Phase 2b recut** (then the MVP loops to green), or a non-scope block (`DISCOVERY-FIRST` / unaccepted bet / unresolved DISCOVERY-RISK)
   → `blocked`.
 - **Recut only on a scope blocker, and only once.** A scope block routes to Phase 2b (Senior-PM recut);
   `DISCOVERY-FIRST` and bet/discovery readiness blockers **never** recut — you cannot phase past an
@@ -383,12 +437,12 @@ ALLOWS the stop at `phase:"proto-ready"` — ending the turn here is correct and
   `blocked`.
 - **The recut re-sequences, never invents.** Verify every phase's scope traces to real PRD slices/outcomes
   before acting (global rule 4); deferred phases carry **objective triggers** (a prod signal/query, not a
-  date); register them via `/saki-builder:add --feature` (non-interactive, full shape) and drive **only the
-  MVP** to green — follow-on phases stay `Planned` for a later `/saki-builder:pickup`.
+  date); register them via `/add --feature` (non-interactive, full shape) and drive **only the
+  MVP** to green — follow-on phases stay `Planned` for a later `/pickup`.
 - **Single source of truth for behaviour.** Invoke `prd` / `prd-review`; do not re-implement them. The item
   is the source of intent; the PRD is the source of scope. The **loop-to-green lives in `prd-review`'s
-  autonomous mode** — `/saki-builder:pickup` reuses it (invoke without `--review-only`), never a second copy.
+  autonomous mode** — `/pickup` reuses it (invoke without `--review-only`), never a second copy.
 - **Always persist state before ending a turn** so any resume (a context clear, or the Stop gate re-driving
   you) lands on the right phase.
-- **Status honesty.** Flip the item `In-progress` on start and `Blocked` on escape; `/saki-builder:build` owns
+- **Status honesty.** Flip the item `In-progress` on start and `Blocked` on escape; `/build` owns
   the `Shipped` flip. Never mark an item `Shipped` from here.

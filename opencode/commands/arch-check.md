@@ -1,10 +1,10 @@
 ---
-description: "Read-only per-module architecture-tier detector. Measures the MECHANICAL transition triggers from modular-architecture.md against the repo and reports, per module, which fired — recommending a clean-arch (Stage 3) upgrade ONLY for modules that cross thresholds. Judgment-only triggers (business rules, aggregate boundaries) surfaced as candidates. Detect + recommend only — never rewrites code or runs a migration. Usage — /saki-builder:arch-check [repo-root]."
+description: "Read-only per-module architecture-tier detector. Measures the MECHANICAL transition triggers from modular-architecture.md against the repo and reports, per module, which fired — recommending a clean-arch (Stage 3) upgrade ONLY for modules that cross thresholds. Judgment-only triggers (business rules, aggregate boundaries) surfaced as candidates. Detect + recommend only — never rewrites code or runs a migration. Usage — /arch-check [repo-root]."
 ---
 
 # arch-check — per-module architecture-tier detector
 
-`/saki-builder:arch-check` answers one question, per module, from evidence:
+`/arch-check` answers one question, per module, from evidence:
 **"Which architecture-ladder transition triggers have actually fired — and does any specific module
 warrant a clean-architecture (Stage 3) upgrade?"**
 
@@ -13,7 +13,7 @@ The architecture ladder and its transition triggers live in
 **single source of truth** for the thresholds; this skill only *measures the repo against it* and reports.
 
 **It is detect + recommend ONLY.** It never edits, moves, or refactors code, and never runs a migration.
-Acting on a recommendation is a separate, human-gated step (`/saki-builder:rplan` a per-module refactor).
+Acting on a recommendation is a separate, human-gated step (`/rplan` a per-module refactor).
 
 ---
 
@@ -53,7 +53,7 @@ Read the knowledge graph report before and after running `detect.sh`. This step 
 if the graph is absent, proceed to Step 3.
 
 ```bash
-cat graphify-out/GRAPH_REPORT.md 2>/dev/null || echo "No graph — run /saki-builder:graphify . to build one."
+cat graphify-out/GRAPH_REPORT.md 2>/dev/null || echo "No graph — run /graphify . to build one."
 ```
 
 Then query for module-specific structural data:
@@ -125,7 +125,7 @@ NOT auto-measured (judgment/external — confirm manually):
 
 Recommendation: <upgrade `<module>` per-module via the Strangler-Fig recipe | all modules stay Stage 2>.
 
-Detect-only — no code changed. To act: /saki-builder:rplan a per-module refactor of `<module>`.
+Detect-only — no code changed. To act: /rplan a per-module refactor of `<module>`.
 ```
 
 ---

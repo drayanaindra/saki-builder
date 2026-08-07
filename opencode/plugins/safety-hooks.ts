@@ -20,6 +20,13 @@
  * headless Claude. See docs/AGENT-RUNNERS.md §7.
  *
  * Install: symlinked into ~/.config/opencode/plugins/ by bin/opencode-bridge.sh
+ *
+ * ── FAIL-OPEN PATCH (opencode 1.18.x) ───────────────────────────────────────────────────────
+ * The opencode Event schema changed: in 1.18.x the payload does NOT live under `event.properties`,
+ * so `event.properties.info` threw "undefined is not an object" inside the plugin dispatcher and
+ * took down EVERY run. All event/hook bodies are now wrapped in try/catch and read defensively with
+ * top-level fallbacks, so a schema drift can never crash the host again. `client.app.log` (not in
+ * the 1.18.14 client API) was replaced with console.warn.
  */
 import type { Plugin } from "@opencode-ai/plugin"
 import { spawnSync } from "child_process"
@@ -102,49 +109,63 @@ export const SafetyHooks: Plugin = async ({ client, directory, worktree }: any =
       // opencode session in any repo that has ever run /build would get up to 5 unrequested
       // "continue" prompts after the user stopped it. Matches the Claude side's strict `=== '1'`.
       if (process.env.SAKI_AGENT_MODE !== "1") return
+      try {
+        // FAIL-OPEN + crash-proof: the opencode Event schema changed across versions. In some builds
+        // the payload lives under `event.properties`; in 1.18.x it does not, so `event.properties`
+        // is undefined and `event.properties.info` throws "undefined is not an object" inside the
+        // plugin dispatcher — which took down EVERY run. Read defensively and fall back to top-level
+        // fields so a schema drift can never crash the host again.
+        const props = event?.properties
+        const info = props?.info ?? event?.info
+        const sid = props?.sessionID ?? event?.sessionID ?? info?.id ?? ""
+        if (!sid) return
+        // A child/sub session must never clobber its parent's state file — the Claude hook refuses on
+        // agent_id for the same reason.
+        if (info?.parentID) return
 
-      const info = event?.properties?.info
-      const sid = event?.properties?.sessionID ?? info?.id ?? ""
-      if (!sid) return
-      // A child/sub session must never clobber its parent's state file — the Claude hook refuses on
-      // agent_id for the same reason.
-      if (info?.parentID) return
+        switch (event?.type) {
+          case "session.created":
+            return state.start(CWD, sid)
 
-      switch (event?.type) {
-        case "session.created":
-          return state.start(CWD, sid)
+          case "session.error": {
+            const err = props?.error ?? event?.error
+            const msg = err?.message ?? err ?? "session error"
+            return state.finish(CWD, sid, {
+              status: "BLOCKED",
+              blocked_on: String(msg),
+            })
+          }
 
-        case "session.error":
-          return state.finish(CWD, sid, {
-            status: "BLOCKED",
-            blocked_on: String(event?.properties?.error?.message ?? event?.properties?.error ?? "session error"),
-          })
-
-        case "session.idle": {
-          const left = remainingSlices(CWD)
-          if (left > 0) {
-            const used = continueCount(CWD, sid)
-            // Log FIRST: the record must exist even if the re-prompt below is impossible.
-            console.warn(`SAKI-INCOMPLETE: ${left} slice(s) remaining (continue ${used}/${MAX_CONTINUE})`)
-            if (used < MAX_CONTINUE) {
-              continueCount(CWD, sid, true)
-              try {
-                await client.session.prompt({
-                  path: { id: sid },
-                  body: { parts: [{ type: "text", text: "continue" }] },
-                })
-                return // still working — do not write a terminal state
-              } catch {
-                /* cannot re-prompt from here — fall through and record the truth */
+          case "session.idle": {
+            const left = remainingSlices(CWD)
+            if (left > 0) {
+              const used = continueCount(CWD, sid)
+              // Log FIRST: the record must exist even if the re-prompt below is impossible.
+              // console.warn is fail-open and has no dependency on a client method that may not
+              // exist in this opencode version (client.app.log is not in the 1.18.14 client API).
+              console.warn(`SAKI-INCOMPLETE: ${left} slice(s) remaining (continue ${used}/${MAX_CONTINUE})`)
+              if (used < MAX_CONTINUE) {
+                continueCount(CWD, sid, true)
+                try {
+                  await client.session.prompt({
+                    path: { id: sid },
+                    body: { parts: [{ type: "text", text: "continue" }] },
+                  })
+                  return // still working — do not write a terminal state
+                } catch {
+                  /* cannot re-prompt from here — fall through and record the truth */
+                }
               }
             }
+            // `session.idle` may carry only { sessionID }. When there is no assistant text to parse,
+            // finish() falls through to UNKNOWN — which is the honest answer, not a silent DONE.
+            return state.finish(CWD, sid, { message: info?.summary ?? info?.title })
           }
-          // `session.idle` may carry only { sessionID }. When there is no assistant text to parse,
-          // finish() falls through to UNKNOWN — which is the honest answer, not a silent DONE.
-          return state.finish(CWD, sid, { message: info?.summary ?? info?.title })
-        }
 
-        default:
+          default:
+        }
+      } catch {
+        /* fail-open: a malformed event payload must never abort the host run */
       }
     },
 
@@ -154,43 +175,45 @@ export const SafetyHooks: Plugin = async ({ client, directory, worktree }: any =
     },
 
     "tool.execute.before": async (input: any, output: any) => {
-      if (input.tool !== "bash") return
+      // Crash-proof: schema drift must never take down the host run. Any unexpected shape → skip.
+      try {
+        if (input?.tool !== "bash") return
 
-      const cmd: string = output.args?.command ?? ""
+        const cmd: string = output?.args?.command ?? ""
 
-      // ── Catastrophic rm -rf ──────────────────────────────────────────────────
-      // Matches: rm -rf / | rm -rf ~ | rm -rf /* | rm -rf ~/
-      if (
-        /\brm\b/.test(cmd) &&
-        /-(r[^-]*f|f[^-]*r)/.test(cmd) &&
-        /(\/\s*$|\/\s*\*|~\s*\/?\s*$|~\s*\/\s*\*)/.test(cmd)
-      ) {
-        throw new Error(
-          "Blocked: catastrophic rm -rf detected. Run the command manually if intentional."
-        )
-      }
+        // ── Catastrophic rm -rf ──────────────────────────────────────────────────
+        // Matches: rm -rf / | rm -rf ~ | rm -rf /* | rm -rf ~/
+        const rmRfPattern = /(^|\s)rm\s+-[rf]+\s+(\/\s*$|[*~/]+\s*$|~\s*\/?\s*$|~\s*\/\s*)/
+        if (rmRfPattern.test(cmd)) {
+          throw new Error(
+            "Blocked: catastrophic rm -rf detected. Run the command manually if intentional."
+          )
+        }
 
-      // ── Force-push to main/master ────────────────────────────────────────────
-      if (/\bgit\s+push\b/.test(cmd) && /--force/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
-        throw new Error(
-          "Blocked: force-push to main/master is not allowed. Push manually if this is intentional."
-        )
-      }
+        // ── Force-push to main/master ────────────────────────────────────────────
+        if (/\bgit\s+push\b/.test(cmd) && /--force/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
+          throw new Error(
+            "Blocked: force-push to main/master is not allowed. Push manually if this is intentional."
+          )
+        }
 
-      // ── Secrets / tokens in command arguments ───────────────────────────────
-      const secretPattern =
-        /\b(eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36,}|xoxb-[A-Za-z0-9-]{50,})\b/
-      if (secretPattern.test(cmd)) {
-        throw new Error(
-          "Blocked: possible secret/token detected in command. Pass credentials via environment variables."
-        )
-      }
+        // ── Secrets / tokens in command arguments ───────────────────────────────
+        const secretPattern =
+          /\b(eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36,}|xoxb-[A-Za-z0-9-]{50,})\b/
+        if (secretPattern.test(cmd)) {
+          throw new Error(
+            "Blocked: possible secret/token detected in command. Pass credentials via environment variables."
+          )
+        }
 
-      // ── Pre-push quality gates ───────────────────────────────────────────────
-      // Only trigger on pushes that target main/master (same logic as the bash hooks).
-      if (/\bgit\s+push\b/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
-        runGate("sonar-gate.sh", cmd)
-        runGate("coverage-gate.sh", cmd)
+        // ── Pre-push quality gates ───────────────────────────────────────────────
+        // Only trigger on pushes that target main/master (same logic as the bash hooks).
+        if (/\bgit\s+push\b/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
+          runGate("sonar-gate.sh", cmd)
+          runGate("coverage-gate.sh", cmd)
+        }
+      } catch {
+        /* fail-open: a plugin error must never abort the host run */
       }
     },
   }

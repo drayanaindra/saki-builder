@@ -61,14 +61,14 @@
         ]
       },
       {
+        "matcher": "agent_needs_input|idle_prompt",
         "hooks": [
           {
             "type": "command",
             "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"$HOME/.claude/hooks/agent-session.js\"'",
             "timeout": 5
           }
-        ],
-        "matcher": "agent_needs_input|idle_prompt"
+        ]
       }
     ],
     "SessionStart": [

@@ -12,7 +12,7 @@ For Playwright edge cases (auth fixture imports, `addInitScript` safety, teardow
 
 ## Step 0: Find the active plan
 
-**If the caller (e.g. `/saki-builder:build`) passed a specific plan-file path, use that exact file** — it pins
+**If the caller (e.g. `/build`) passed a specific plan-file path, use that exact file** — it pins
 QA to the intended slice instead of whichever `*-plan.md` is newest (a multi-slice build keeps several in the
 same dir). Otherwise find the most recently modified `*-plan.md` in `tasks/` (workflow artifacts live under
 `tasks/`, not the project root):
@@ -22,7 +22,7 @@ same dir). Otherwise find the most recently modified `*-plan.md` in `tasks/` (wo
 PLAN_FILE="${PLAN_FILE:-$(ls -t $(pwd)/tasks/*-plan.md 2>/dev/null | head -1)}"
 ```
 
-If no plan file found → stop: "No plan file found. Run /saki-builder:rplan first."
+If no plan file found → stop: "No plan file found. Run /rplan first."
 
 Read the plan. Log which file was selected:
 
@@ -380,14 +380,14 @@ git diff --name-only "$BASE"...HEAD -- '*.ts' '*.tsx' '*.js' '*.go' '*.py' | gre
 
 **Verdict (this is a real QA criterion — never SKIP):**
 - **PASS** (total ≥ floor AND every changed file ≥ floor) → record `COVERAGE: <pct>% ✓`, continue.
-- **FAIL** → RED. In `/saki-builder:build` / `/saki-builder:approved` (TDD) context, treat like any failing test: list the
+- **FAIL** → RED. In `/build` / `/approved` (TDD) context, treat like any failing test: list the
   lowest-covered files + uncovered lines, write the missing tests (Red→Green), re-run; do not proceed while
-  red. Standalone `/saki-builder:qa`: report `COVERAGE FAIL` + file list as a blocking result.
+  red. Standalone `/qa`: report `COVERAGE FAIL` + file list as a blocking result.
 - **No coverage tooling** → `COVERAGE: BLOCKED — no coverage tooling`, with the exact install line
   (`npm i -D @vitest/coverage-v8`, `pip install pytest-cov`, …). Never silently pass.
 
 **Fail-fast by default (the durable fix):** bake the floor into the test runner so plain `npm test` fails
-when coverage drops — `/saki-builder:init-env` scaffolds this and it is the real "by default" enforcement:
+when coverage drops — `/init-env` scaffolds this and it is the real "by default" enforcement:
 - Vitest → `test.coverage.thresholds = { lines: 80, functions: 80, branches: 80, statements: 80 }` (`vite.config.ts`)
 - Jest → `coverageThreshold: { global: { lines: 80, branches: 80, functions: 80, statements: 80 } }`
 - pytest → `--cov-fail-under=80` in `addopts`
@@ -648,18 +648,18 @@ selected in Step 0). Absent file or error → skip silently; it never changes th
 - If a criterion says "verify X works" with no specifics → derive the test from the plan wiring.
 - After reporting, update the plan file's Success Criteria checkboxes: `[ ]` → `[x]` for PASS, `[!]` for FAIL.
 - **Plan-track roadmap close-out.** If the plan header carries `**Item:** I<n>` or `**Item:** B<n>` (a
-  Plan-track item seeded by `/saki-builder:rplan` Step 0.6) AND the final verdict is `✅ ALL PASS` (no FAIL,
+  Plan-track item seeded by `/rplan` Step 0.6) AND the final verdict is `✅ ALL PASS` (no FAIL,
   no unresolved CRITICAL), flip that item to `Shipped` in `tasks/roadmap.md` (`**Status:** Shipped`,
   `**Updated:**` today via `date +%F`). This closes the Plan-track lifecycle (Planned → In-progress →
-  Shipped), mirroring what `/saki-builder:build` does for PRD-track. Only for an `I<n>`/`B<n>` id, only on
-  all-pass — never for an `E<n>`/`F<n>` slice plan (those ship via `/saki-builder:build`), never on a FAIL.
-  **Exception — running under `/saki-builder:build` (PLAN mode): do NOT flip here.** Check for the concrete
+  Shipped), mirroring what `/build` does for PRD-track. Only for an `I<n>`/`B<n>` id, only on
+  all-pass — never for an `E<n>`/`F<n>` slice plan (those ship via `/build`), never on a FAIL.
+  **Exception — running under `/build` (PLAN mode): do NOT flip here.** Check for the concrete
   signal: **if this qa invocation contains the literal token `BUILD-DRIVEN`** (the P4 step of build's
-  Single-Plan Loop passes the line `BUILD-DRIVEN: /saki-builder:build owns the terminal Shipped flip — do NOT
-  flip the roadmap`), skip the flip entirely. `/saki-builder:build` owns the **terminal** `Shipped` flip — it
-  fires only after `/saki-builder:reviewer`, the security audit, and `/saki-builder:wrap --heal` all converge,
+  Single-Plan Loop passes the line `BUILD-DRIVEN: /build owns the terminal Shipped flip — do NOT
+  flip the roadmap`), skip the flip entirely. `/build` owns the **terminal** `Shipped` flip — it
+  fires only after `/reviewer`, the security audit, and `/wrap --heal` all converge,
   not at qa-pass; flipping here would mark the item `Shipped` while reviewer/security may still surface a
   blocker. No `BUILD-DRIVEN` token ⇒ this is the **manual chain** (qa invoked directly, no build to own the
   flip) ⇒ flip as above. Decide by the token's presence, never by guessing whether a build is running.
 - **Never hardcode project paths.** All paths derived from `$(pwd)`, `FRONTEND_ROOT`, `PROJECT_ROOT`.
-- **MCP Playwright tools are only for `/saki-builder:qa` and explicit debug sessions.** Do not invoke `mcp__playwright__*` tools during regular coding work. This keeps the "on-demand" contract even though the MCP server is always loaded at session start.
+- **MCP Playwright tools are only for `/qa` and explicit debug sessions.** Do not invoke `mcp__playwright__*` tools during regular coding work. This keeps the "on-demand" contract even though the MCP server is always loaded at session start.
