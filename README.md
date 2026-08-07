@@ -23,6 +23,18 @@ Start a new session. Done. Every command is available as `/saki-builder:<name>`.
 
 > The plugin auto-detects when you're behind and nudges you at session start.
 
+### OpenCode
+
+The same toolkit ships as an npm plugin for [OpenCode](https://opencode.ai) ≥ 1.18. Two commands:
+
+```
+opencode plugin @saketek/saki-builder --global   ← hooks (safety gates + run visibility)
+npx @saketek/saki-builder install                ← skills / commands / agents / rules
+```
+
+Restart opencode — commands are bare (`/rplan`, `/prd`, `/build`, not `/saki-builder:rplan`).
+Full install, update, uninstall, and publish instructions: **[docs/OPENCODE-INSTALL.md](docs/OPENCODE-INSTALL.md)**.
+
 **Driving it from an agent runner?** Hermes Agent, OpenClaw, or CI spawning `claude -p` in the
 background: set `SAKI_AGENT_MODE=1` and poll `tasks/.saki/latest.json` to see whether a run is alive,
 hung, or finished. Full contract + supervisor loop: **[docs/AGENT-RUNNERS.md](docs/AGENT-RUNNERS.md)**.

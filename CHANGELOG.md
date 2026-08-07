@@ -2,6 +2,20 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## Unreleased — OpenCode npm plugin packaging
+
+**saki-builder is now installable in OpenCode like a plugin, not just via the repo-clone bridge.**
+The repo root is the npm package `@saketek/saki-builder` (0.27.0, zero runtime dependencies): the
+OpenCode V1 server entry `opencode/plugins/plugin.ts` (default export `{ id, server }` wiring the
+existing `safety-hooks.ts` + `saki-state.ts`), a bundle builder (`bin/build-npm-bundle.sh` →
+`dist/opencode-bundle/` reusing `build-opencode.sh --from-plugin` + `namespace-refs.js --reverse`),
+an idempotent installer (`bin/saki-install.mjs`, backup-before-overwrite, repoints AGENTS.md
+`config/docs/` refs to the package), a smoke test (`npm run smoke`), and `docs/OPENCODE-INSTALL.md`.
+
+Install: `opencode plugin @saketek/saki-builder --global` + `npx @saketek/saki-builder install`.
+Verified end-to-end: the package loads through the real OpenCode 1.18.15 loader (path spec) and the
+`session.created` hook writes `tasks/.saki/latest.json`. Publishing to npm is a human-gated step.
+
 ## 0.27.0 — 2026-08-07
 
 **Four items and one measurement, all of which 0.26.0 shipped without.** The plugin loads a
