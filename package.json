@@ -1,12 +1,54 @@
 {
-  "name": "saki-builder",
-  "private": true,
-  "description": "Config validator for the saki-builder Claude Code plugin (zero-dependency structural checks). Not a runtime package.",
+  "name": "@saketek/saki-builder",
+  "version": "0.27.0",
+  "description": "A personal-scale shared toolkit for AI coding agents: research\u2192plan\u2192build\u2192qa\u2192review skills, safety hooks, adversarial reviewers, domain agents, and an execution protocol. OpenCode plugin edition of the saki-builder Claude Code plugin.",
+  "exports": {
+    "./server": "./opencode/plugins/plugin.ts",
+    ".": "./opencode/plugins/plugin.ts"
+  },
+  "bin": {
+    "saki-builder": "./bin/saki-install.mjs"
+  },
+  "files": [
+    "opencode/plugins/*",
+    "dist/opencode-bundle/",
+    "config/docs/",
+    "config/hooks/",
+    "bin/saki-install.mjs",
+    "LICENSE",
+    "README.md",
+    "docs/OPENCODE-INSTALL.md"
+  ],
+  "engines": {
+    "node": ">=18",
+    "opencode": ">=1.18.0"
+  },
   "scripts": {
     "test": "node test/validate.js",
-    "validate": "node test/validate.js"
+    "validate": "node test/validate.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "smoke": "tsx test/opencode-plugin-smoke.mts",
+    "prepack": "bash bin/build-npm-bundle.sh",
+    "install:opencode": "node bin/saki-install.mjs"
   },
-  "engines": {
-    "node": ">=18"
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.14.24",
+    "@types/node": "^26.1.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  },
+  "keywords": [
+    "opencode-plugin",
+    "workflow",
+    "planning",
+    "code-review",
+    "tdd",
+    "skills",
+    "agents",
+    "safety-hooks"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   }
 }
