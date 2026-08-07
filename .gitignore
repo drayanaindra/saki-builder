@@ -41,3 +41,7 @@ session-env/
 history.jsonl
 stats-cache.json
 mcp-needs-auth-cache.json
+
+# npm package build output
+dist/
+node_modules/
