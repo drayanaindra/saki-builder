@@ -2,19 +2,107 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
-## Unreleased — OpenCode npm plugin packaging
+## 0.28.0 — 2026-08-09
 
-**saki-builder is now installable in OpenCode like a plugin, not just via the repo-clone bridge.**
-The repo root is the npm package `@saketek/saki-builder` (0.27.0, zero runtime dependencies): the
-OpenCode V1 server entry `opencode/plugins/plugin.ts` (default export `{ id, server }` wiring the
-existing `safety-hooks.ts` + `saki-state.ts`), a bundle builder (`bin/build-npm-bundle.sh` →
-`dist/opencode-bundle/` reusing `build-opencode.sh --from-plugin` + `namespace-refs.js --reverse`),
-an idempotent installer (`bin/saki-install.mjs`, backup-before-overwrite, repoints AGENTS.md
-`config/docs/` refs to the package), a smoke test (`npm run smoke`), and `docs/OPENCODE-INSTALL.md`.
+**The OpenCode plugin did not load, and its safety gates blocked nothing. Both are fixed, and
+`/init-env` now scaffolds for OpenCode as well as Claude Code.** Anyone on 0.27.0 with the OpenCode
+plugin installed should treat this as the release that makes it real: until now it registered
+nothing at all.
+
+### The plugin was inert (`opencode/plugins/plugin.ts`)
+
+OpenCode 1.18.x does not look for a specific export name — it calls **every** export of a plugin
+module as a plugin factory. A single non-callable export makes registration throw, and OpenCode
+skips the entire module silently. `export const id = "saki-builder"` was exactly that, so the plugin
+never loaded: no safety gates, no run visibility. It looked correct in review and matched the
+`PluginModule` type, whose optional `id` belongs to the in-progress V2 system rather than the V1
+loader we run on. (0.27.0's notes below claimed a `{ id, server }` default export was the working
+shape. It was not — that is the bug.)
+
+Probed against 1.18.15 on both load paths (a file in `~/.config/opencode/plugins/` and an npm
+package registered via `plugin: [...]`):
+
+| module shape | result |
+|---|---|
+| `export default fn` | loads |
+| `export const server = fn` | loads |
+| `export default fn` + `export const other = fn` | **both** load — registered twice |
+| `export default fn` + `export const id = "x"` | **nothing loads** |
+| `export default fn` + `export const n = 42` | **nothing loads** |
+
+`plugin.ts` now exports only the factory, and forwards the real `PluginInput` to `SafetyHooks`
+instead of `{}` — which had been discarding `worktree`/`directory` (run-state written relative to
+`process.cwd()` rather than the worktree) and `client` (the bounded `session.idle` re-prompt could
+never fire).
+
+### The safety gates blocked nothing (`opencode/plugins/safety-hooks.ts`)
+
+`tool.execute.before` wrapped its whole body in `try { … } catch { /* fail-open */ }`. Every guard
+signals a block by **throwing**, so the catch swallowed the blocks themselves. Probed directly
+against the shipped code: `rm -rf /`, `git push --force origin main`, a JWT in argv and an `sk-` key
+in argv were all **allowed**, and the pre-push sonar + coverage gates were bypassed the same way.
+
+The catch existed for a real reason — an OpenCode Event schema change was crashing runs — but it was
+scoped to the whole handler instead of the one thing that can throw accidentally. It is now narrowed
+to the input read: the command is parsed inside the `try`, every check runs outside it. Malformed
+input still fails open; a deliberate deny propagates.
+
+Both defects shipped in the same commit that broke `npm run smoke` into a parse error — and the
+smoke test is what asserts those blocks. **A guard that is never observed blocking is
+indistinguishable from no guard.** The tests now observe it: `test/test-safety-hooks.mts` watches
+each guard actually block (and each allow case not fire), and the smoke test asserts every export of
+`plugin.ts` is callable before anything else. Both fail against the pre-fix code.
+
+### `/init-env` scaffolds for OpenCode (`config/skills/init-env/SKILL.md`)
+
+`/init-env` produced a Claude-Code-only environment. Under OpenCode every load-bearing artifact was
+ignored or silently degraded: OpenCode reads `CLAUDE.md` as a compat fallback but **never expands
+`@import`**, so the execution protocol, ddd-patterns, modular-architecture and the project
+`patterns.md` all vanished, while `.claude/settings.json` hooks, `.claude/agents/` and
+`.claude/skills/` were ignored outright. The scaffold looked successful and loaded nothing.
+
+One source, runtime engine detection — no forked OpenCode copy of the skill:
+
+- **Step 0** detects the host (`OPENCODE` / `CLAUDECODE`, both positive signals — `OPENCODE` first
+  because OpenCode launched from a Claude Code shell inherits `CLAUDECODE`) and resolves
+  `SAKI_DOCS` + `SAKI_HOOKS` across the plugin, OpenCode and `~/.claude` installs.
+- An **engine→artifact map** drives Steps 1–14 so the two cannot drift: `AGENTS.md` vs `CLAUDE.md`,
+  `opencode.json` `instructions[]` vs `@import`, `.opencode/plugin/` vs `settings.json` hooks,
+  `.opencode/agent/` (`mode: subagent`, no CSV `tools:`) vs `.claude/agents/`.
+- `ENGINE=both` keeps the rules body in `AGENTS.md` exactly once, with `CLAUDE.md` as a thin
+  `@import` wrapper.
+- **OpenCode resolves project scope from the git root**: in a non-git directory `.opencode/` and
+  `opencode.json` are ignored entirely, so that is now a blocking pre-check.
+
+`config/docs/templates/opencode-quality-hooks.ts` is the `settings.json`-hooks analogue
+(`tool.execute.after` = typecheck, `tool.execute.before` = commit gate, `throw` to block). It is a
+real file inside the `tsconfig` include, so it cannot rot out of compiling, and its blocking throw
+sits outside the fail-open catch by design.
+
+Verified against the installed OpenCode 1.18.15: agents, skills, commands and plugins are discovered
+from `.opencode/` (singular and plural both work), `instructions[]` resolves absolute and relative
+paths and tolerates missing globs, and a scaffolded project registers `planner`/`reviewer`/`qa`.
+`test/test-init-env-engines.sh` gates all of it and fails against the old Claude-only skill.
+
+### OpenCode npm plugin packaging
+
+**saki-builder is installable in OpenCode like a plugin, not just via the repo-clone bridge.**
+The repo root is the npm package `@saketek/saki-builder` (zero runtime dependencies): the OpenCode
+server entry `opencode/plugins/plugin.ts` wiring the existing `safety-hooks.ts` + `saki-state.ts`, a
+bundle builder (`bin/build-npm-bundle.sh` → `dist/opencode-bundle/` reusing
+`build-opencode.sh --from-plugin` + `namespace-refs.js --reverse`), an idempotent installer
+(`bin/saki-install.mjs`, backup-before-overwrite, repoints AGENTS.md `config/docs/` refs to the
+package), a smoke test (`npm run smoke`), and `docs/OPENCODE-INSTALL.md`.
 
 Install: `opencode plugin @saketek/saki-builder --global` + `npx @saketek/saki-builder install`.
-Verified end-to-end: the package loads through the real OpenCode 1.18.15 loader (path spec) and the
-`session.created` hook writes `tasks/.saki/latest.json`. Publishing to npm is a human-gated step.
+Publishing to npm is a human-gated step.
+
+### Tests
+
+`npm test` now runs `test/test-safety-hooks.mts` alongside `validate.js`, so the safety guards are
+checked by default rather than only in a smoke script nobody notices is broken. New:
+`test/test-init-env-engines.sh`, `test/test-safety-hooks.mts`. `npm run typecheck` and
+`npm run smoke` are green again (both had been failing since 0.27.0's packaging work).
 
 ## 0.27.0 — 2026-08-07
 
