@@ -24,7 +24,8 @@
     "opencode": ">=1.18.0"
   },
   "scripts": {
-    "test": "node test/validate.js",
+    "test": "node test/validate.js && tsx test/test-safety-hooks.mts",
+    "test:safety": "tsx test/test-safety-hooks.mts",
     "validate": "node test/validate.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "smoke": "tsx test/opencode-plugin-smoke.mts",

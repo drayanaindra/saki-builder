@@ -175,45 +175,55 @@ export const SafetyHooks: Plugin = async ({ client, directory, worktree }: any =
     },
 
     "tool.execute.before": async (input: any, output: any) => {
-      // Crash-proof: schema drift must never take down the host run. Any unexpected shape → skip.
+      if (input?.tool !== "bash") return
+
+      // ── Crash-proof, but ONLY around reading the input ──────────────────────
+      // Schema drift must never take down the host run, so the READ is guarded. The read is the
+      // only thing that can throw accidentally.
+      //
+      // The blocking checks below are deliberately OUTSIDE this try. They signal a block by
+      // throwing, so a catch wrapped around them swallows the block itself: for ~1 release every
+      // guard in this file was inert — `rm -rf /`, force-push to main, secrets in argv and the
+      // pre-push sonar/coverage gates all threw, were caught here, and the command ran anyway.
+      // Never widen this try to cover a `throw` that means "deny". See test/test-safety-hooks.mts.
+      let cmd = ""
       try {
-        if (input?.tool !== "bash") return
-
-        const cmd: string = output?.args?.command ?? ""
-
-        // ── Catastrophic rm -rf ──────────────────────────────────────────────────
-        // Matches: rm -rf / | rm -rf ~ | rm -rf /* | rm -rf ~/
-        const rmRfPattern = /(^|\s)rm\s+-[rf]+\s+(\/\s*$|[*~/]+\s*$|~\s*\/?\s*$|~\s*\/\s*)/
-        if (rmRfPattern.test(cmd)) {
-          throw new Error(
-            "Blocked: catastrophic rm -rf detected. Run the command manually if intentional."
-          )
-        }
-
-        // ── Force-push to main/master ────────────────────────────────────────────
-        if (/\bgit\s+push\b/.test(cmd) && /--force/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
-          throw new Error(
-            "Blocked: force-push to main/master is not allowed. Push manually if this is intentional."
-          )
-        }
-
-        // ── Secrets / tokens in command arguments ───────────────────────────────
-        const secretPattern =
-          /\b(eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36,}|xoxb-[A-Za-z0-9-]{50,})\b/
-        if (secretPattern.test(cmd)) {
-          throw new Error(
-            "Blocked: possible secret/token detected in command. Pass credentials via environment variables."
-          )
-        }
-
-        // ── Pre-push quality gates ───────────────────────────────────────────────
-        // Only trigger on pushes that target main/master (same logic as the bash hooks).
-        if (/\bgit\s+push\b/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
-          runGate("sonar-gate.sh", cmd)
-          runGate("coverage-gate.sh", cmd)
-        }
+        cmd = String(output?.args?.command ?? "")
       } catch {
-        /* fail-open: a plugin error must never abort the host run */
+        return // unreadable input → fail open, nothing to inspect
+      }
+      if (!cmd) return
+
+      // ── Catastrophic rm -rf ────────────────────────────────────────────────
+      // Matches: rm -rf / | rm -rf ~ | rm -rf /* | rm -rf ~/
+      const rmRfPattern = /(^|\s)rm\s+-[rf]+\s+(\/\s*$|[*~/]+\s*$|~\s*\/?\s*$|~\s*\/\s*)/
+      if (rmRfPattern.test(cmd)) {
+        throw new Error(
+          "Blocked: catastrophic rm -rf detected. Run the command manually if intentional."
+        )
+      }
+
+      // ── Force-push to main/master ──────────────────────────────────────────
+      if (/\bgit\s+push\b/.test(cmd) && /--force/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
+        throw new Error(
+          "Blocked: force-push to main/master is not allowed. Push manually if this is intentional."
+        )
+      }
+
+      // ── Secrets / tokens in command arguments ──────────────────────────────
+      const secretPattern =
+        /\b(eyJ[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36,}|xoxb-[A-Za-z0-9-]{50,})\b/
+      if (secretPattern.test(cmd)) {
+        throw new Error(
+          "Blocked: possible secret/token detected in command. Pass credentials via environment variables."
+        )
+      }
+
+      // ── Pre-push quality gates ─────────────────────────────────────────────
+      // Only trigger on pushes that target main/master (same logic as the bash hooks).
+      if (/\bgit\s+push\b/.test(cmd) && /\b(main|master)\b/.test(cmd)) {
+        runGate("sonar-gate.sh", cmd)
+        runGate("coverage-gate.sh", cmd)
       }
     },
   }
