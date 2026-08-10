@@ -2,6 +2,12 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.28.1 — 2026-08-11
+
+Patch re-release of 0.28.0. No package content changed since the last publish (the only commit
+after the tag touched the local `opencode/opencode.json` dev config, which is not shipped); this
+version exists to re-publish the current `main` state to npm as `latest`.
+
 ## 0.28.0 — 2026-08-09
 
 **The OpenCode plugin did not load, and its safety gates blocked nothing. Both are fixed, and
