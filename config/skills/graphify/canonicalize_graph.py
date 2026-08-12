@@ -32,6 +32,65 @@ def normalize_id(label):
     return stripped.casefold()
 
 
+def _group_key(node):
+    key = normalize_id(node.get("label"))
+    return key if key else node["id"]
+
+
+def build_remap(nodes):
+    """Return (winner_nodes, remap, canonical_keys) for duplicate-label groups.
+
+    Nodes are grouped by canonical key; the deterministic winner is the node
+    with the smallest id. Winner nodes gain ``canonical_id`` (and
+    ``merged_from`` when they absorbed others).
+    """
+    groups = {}
+    for node in nodes:
+        groups.setdefault(_group_key(node), []).append(node)
+
+    winner_nodes = []
+    merged_to_winner = {}
+    canonical_keys = {}
+    for group in groups.values():
+        group = sorted(group, key=lambda n: n["id"])
+        winner = group[0]
+        for node in group:
+            canonical_keys[node["id"]] = _group_key(node)
+        if len(group) > 1:
+            winner["merged_from"] = [n["id"] for n in group[1:]]
+        winner["canonical_id"] = canonical_keys[winner["id"]]
+        winner_nodes.append(winner)
+        for node in group:
+            merged_to_winner[node["id"]] = winner["id"]
+
+    remap = {old_id: merged_to_winner[old_id] for old_id in canonical_keys}
+    return winner_nodes, remap
+
+
+def _rewire_endpoint(endpoint, remap):
+    return remap.get(endpoint, endpoint)
+
+
+def rewire_links(links, remap):
+    """Rewrite link endpoints through ``remap`` and collapse duplicate edges."""
+    for link in links:
+        link["source"] = _rewire_endpoint(link["source"], remap)
+        link["target"] = _rewire_endpoint(link["target"], remap)
+
+    accumulated = {}
+    for link in links:
+        key = (link["source"], link["target"], link["relation"])
+        if key in accumulated:
+            existing = accumulated[key]
+            existing["weight"] = existing.get("weight", 0.0) + link.get("weight", 0.0)
+            if link.get("confidence_score", 0.0) > existing.get("confidence_score", 0.0):
+                existing["confidence"] = link["confidence"]
+                existing["confidence_score"] = link["confidence_score"]
+        else:
+            accumulated[key] = dict(link)
+    return list(accumulated.values())
+
+
 def canonicalize_graph(graph):
     """Return a copy of ``graph`` with duplicate-label nodes merged.
 
@@ -46,48 +105,14 @@ def canonicalize_graph(graph):
     links = list(graph.get("links", []))
     hyperedges = list(graph.get("hyperedges", []))
 
-    groups = {}
-    for node in nodes:
-        key = normalize_id(node.get("label"))
-        groups.setdefault(key if key else node["id"], []).append(node)
-
-    winner_nodes = []
-    merged_to_winner = {}
-    canonical_keys = {}
-    for group in groups.values():
-        group = sorted(group, key=lambda n: n["id"])
-        winner = group[0]
-        for node in group:
-            canonical_keys[node["id"]] = normalize_id(node.get("label"))
-        if len(group) > 1:
-            winner["merged_from"] = [n["id"] for n in group[1:]]
-        winner["canonical_id"] = canonical_keys[winner["id"]]
-        winner_nodes.append(winner)
-        for node in group:
-            merged_to_winner[node["id"]] = winner["id"]
-
-    remap = {old_id: merged_to_winner[old_id] for old_id in canonical_keys}
-    for link in links:
-        link["source"] = remap.get(link["source"], link["source"])
-        link["target"] = remap.get(link["target"], link["target"])
-
-    accumulated = {}
-    for link in links:
-        key = (link["source"], link["target"], link["relation"])
-        if key in accumulated:
-            existing = accumulated[key]
-            existing["weight"] = existing.get("weight", 0.0) + link.get("weight", 0.0)
-            if link.get("confidence_score", 0.0) > existing.get("confidence_score", 0.0):
-                existing["confidence"] = link["confidence"]
-                existing["confidence_score"] = link["confidence_score"]
-        else:
-            accumulated[key] = dict(link)
+    winner_nodes, remap = build_remap(nodes)
+    links = rewire_links(links, remap)
 
     for hyper in hyperedges:
         hyper["nodes"] = [remap.get(nid, nid) for nid in hyper.get("nodes", [])]
 
     out["nodes"] = winner_nodes
-    out["links"] = list(accumulated.values())
+    out["links"] = links
     out["hyperedges"] = hyperedges
     return out
 

@@ -155,3 +155,37 @@ def test_hyperedges_rewired(tmp_path):
     out = canonicalize_graph(graph)
     for hyper in out["hyperedges"]:
         assert "src_mod_b_foo" not in hyper["nodes"]
+
+
+def test_empty_canonical_key_falls_back_to_node_id(tmp_path):
+    graph = {
+        "directed": True,
+        "multigraph": True,
+        "graph": {},
+        "nodes": [
+            {"id": "punct_node", "label": "!!!", "source_file": "src/a.py"},
+            {"id": "other_node", "label": "other()", "source_file": "src/b.py"},
+        ],
+        "links": [
+            {
+                "source": "punct_node",
+                "target": "other_node",
+                "relation": "calls",
+                "weight": 1.0,
+                "confidence": "EXTRACTED",
+                "confidence_score": 1.0,
+            }
+        ],
+        "hyperedges": [],
+    }
+    out = canonicalize_graph(graph)
+    nodes = {n["id"]: n for n in out["nodes"]}
+    assert "punct_node" in nodes
+    assert nodes["punct_node"]["canonical_id"] == "punct_node"
+    assert len(out["nodes"]) == 2
+    assert out["links"][0]["source"] == "punct_node"
+
+
+def test_normalize_id_empty_and_unicode():
+    assert normalize_id("") == ""
+    assert normalize_id("\u2163()") == "iv"
