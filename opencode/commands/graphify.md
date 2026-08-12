@@ -62,7 +62,10 @@ echo "graphify ready: $PYTHON"
 
 ## Step 1 — Run the pipeline (CLI-first, no global skill required)
 
-After install, run the graphify CLI directly. It handles the full pipeline (detect → extract → cluster → HTML + JSON + GRAPH_REPORT.md) without needing the global `~/.claude/skills/graphify/SKILL.md`.
+After install, run the graphify CLI directly. Plain `graphify [path]` is **extract-only**: it
+writes `graphify-out/graph.json` (plus `cache/`/`manifest.json`) but does NOT generate
+`GRAPH_REPORT.md` — that needs a separate `graphify cluster-only <path> --no-viz --no-label` step
+below. No global `~/.claude/skills/graphify/SKILL.md` is required.
 
 **Build graph on a local path or GitHub URL:**
 ```bash
@@ -89,6 +92,19 @@ graphify https://github.com/org/repo
 graphify query "<question>"
 graphify path "ModuleA" "ModuleB"
 graphify explain "SomeNode"
+```
+
+**Canonicalize duplicates** (post-build pass — always run after the CLI build, before any
+`cluster-only` report regen):
+```bash
+python3 config/skills/graphify/canonicalize_graph.py graphify-out/graph.json
+# idempotent; merges same-label nodes (canonical_id/merged_from), rewires edges,
+# accumulates weights for recurring (source, target, relation) triples
+```
+
+**Regenerate the audit report** from the canonical graph (preserves `canonical_id`/`merged_from`):
+```bash
+graphify cluster-only . --no-viz --no-label
 ```
 
 **Hybrid answering (graph orient → targeted reads).** The graph is blind to string
@@ -198,6 +214,8 @@ The user builds the graph once with `/graphify .` and all skills pick it up.
 
 - Never invent a node, edge, or edge-count/Degree figure — god-node ranking is by edge count
   (`Degree` in `graphify explain` output), not a centrality score; the graph has no `betweenness` field.
+- Dedup only removes duplicates already present — it never invents a node, edge, or degree figure;
+  confidence (EXTRACTED/INFERRED/AMBIGUOUS) is preserved.
 - If the CLI errors, show the raw error — do not fabricate a graph.
 - Token cost from semantic extraction appears in `GRAPH_REPORT.md`; surface it when non-zero.
 - A `GRAPH HEALTH WARNING` from the CLI must be shown to the user, not suppressed.
