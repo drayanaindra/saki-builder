@@ -45,3 +45,10 @@ mcp-needs-auth-cache.json
 # npm package build output
 dist/
 node_modules/
+
+# graphify knowledge-graph output + Python test/cov artifacts
+graphify-out/
+coverage.xml
+.coverage
+__pycache__/
+.pytest_cache/
