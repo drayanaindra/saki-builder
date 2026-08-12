@@ -9,6 +9,7 @@ is unchanged. Idempotent.
 """
 
 import argparse
+import copy
 import json
 import re
 import sys
@@ -33,12 +34,19 @@ def normalize_id(label):
 
 
 def _group_key(node):
+    """Return a (kind, key) grouping tuple for ``node``.
+
+    ``kind`` is "label" when the normalized label is non-empty and "id" when it
+    normalizes to empty (punctuation-only labels). Keeping the two namespaces
+    separate prevents a punctuation-only label node's id from colliding with
+    another node's normalized label.
+    """
     key = normalize_id(node.get("label"))
-    return key if key else node["id"]
+    return ("label", key) if key else ("id", node["id"])
 
 
 def build_remap(nodes):
-    """Return (winner_nodes, remap, canonical_keys) for duplicate-label groups.
+    """Return (winner_nodes, remap) for duplicate-label groups.
 
     Nodes are grouped by canonical key; the deterministic winner is the node
     with the smallest id. Winner nodes gain ``canonical_id`` (and
@@ -55,7 +63,8 @@ def build_remap(nodes):
         group = sorted(group, key=lambda n: n["id"])
         winner = group[0]
         for node in group:
-            canonical_keys[node["id"]] = _group_key(node)
+            kind, key = _group_key(node)
+            canonical_keys[node["id"]] = key if kind == "label" else node["id"]
         if len(group) > 1:
             winner["merged_from"] = [n["id"] for n in group[1:]]
         winner["canonical_id"] = canonical_keys[winner["id"]]
@@ -99,17 +108,21 @@ def canonicalize_graph(graph):
     ``merged_from`` when they absorbed others). Links and hyperedge node
     lists are rewired, and links sharing (source, target, relation) are
     collapsed with summed weights and the strongest confidence retained.
+    The input ``graph`` is not mutated.
     """
     out = dict(graph)
-    nodes = list(graph.get("nodes", []))
-    links = list(graph.get("links", []))
-    hyperedges = list(graph.get("hyperedges", []))
+    nodes = copy.deepcopy(graph.get("nodes", []))
+    links = copy.deepcopy(graph.get("links", []))
+    hyperedges = copy.deepcopy(graph.get("hyperedges", []))
 
     winner_nodes, remap = build_remap(nodes)
     links = rewire_links(links, remap)
 
     for hyper in hyperedges:
-        hyper["nodes"] = [remap.get(nid, nid) for nid in hyper.get("nodes", [])]
+        rewired = [remap.get(nid, nid) for nid in hyper.get("nodes", [])]
+        seen = set()
+        deduped = [nid for nid in rewired if not (nid in seen or seen.add(nid))]
+        hyper["nodes"] = deduped
 
     out["nodes"] = winner_nodes
     out["links"] = links

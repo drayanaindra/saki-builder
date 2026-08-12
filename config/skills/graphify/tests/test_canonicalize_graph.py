@@ -94,6 +94,13 @@ def test_merge_same_label_nodes_rewires_edges():
         assert link["target"] != "src_mod_b_foo"
 
 
+def test_input_graph_not_mutated():
+    graph = copy.deepcopy(BASE_GRAPH)
+    original = copy.deepcopy(graph)
+    canonicalize_graph(graph)
+    assert graph == original
+
+
 def test_accumulate_edge_weights_for_recurring_src_tgt_relation():
     graph = copy.deepcopy(BASE_GRAPH)
     out = canonicalize_graph(graph)
@@ -155,6 +162,7 @@ def test_hyperedges_rewired(tmp_path):
     out = canonicalize_graph(graph)
     for hyper in out["hyperedges"]:
         assert "src_mod_b_foo" not in hyper["nodes"]
+        assert len(hyper["nodes"]) == len(set(hyper["nodes"]))
 
 
 def test_empty_canonical_key_falls_back_to_node_id(tmp_path):
@@ -184,6 +192,34 @@ def test_empty_canonical_key_falls_back_to_node_id(tmp_path):
     assert nodes["punct_node"]["canonical_id"] == "punct_node"
     assert len(out["nodes"]) == 2
     assert out["links"][0]["source"] == "punct_node"
+
+
+def test_empty_key_does_not_collide_with_normalized_label(tmp_path):
+    graph = {
+        "directed": True,
+        "multigraph": True,
+        "graph": {},
+        "nodes": [
+            {"id": "foo", "label": "!!!", "source_file": "src/a.py"},
+            {"id": "other", "label": "Foo()", "source_file": "src/b.py"},
+        ],
+        "links": [
+            {
+                "source": "foo",
+                "target": "other",
+                "relation": "calls",
+                "weight": 1.0,
+                "confidence": "EXTRACTED",
+                "confidence_score": 1.0,
+            }
+        ],
+        "hyperedges": [],
+    }
+    out = canonicalize_graph(graph)
+    node_ids = _node_ids(out)
+    assert len(out["nodes"]) == 2
+    assert {"foo", "other"} <= node_ids
+    assert out["links"][0]["source"] == "foo"
 
 
 def test_normalize_id_empty_and_unicode():
