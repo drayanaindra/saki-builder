@@ -63,16 +63,19 @@ Resolve manually or use /rplan (manual mode) with explicit human approval.
 
 ## Phase 1: PLAN (/rplan behavior)
 
-Switch model to Opus:
+Use the most capable model available (Claude Code: `opus` alias; opencode: `/models`):
 
 ```bash
 python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.claude' / 'settings.json'
-s = json.loads(p.read_text())
-s['model'] = 'claude-opus-4-6'
-p.write_text(json.dumps(s, indent=2))
-print('Model set to claude-opus-4-6')
+if p.exists():
+    s = json.loads(p.read_text())
+    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
+    p.write_text(json.dumps(s, indent=2))
+    print('Model set to the most capable (opus alias)')
+else:
+    print('opencode: select the most capable model via /models')
 "
 ```
 
@@ -223,15 +226,18 @@ OR
 ```
 
 **If confidence > 96%:**
-- Switch model to Sonnet:
+- Keep the most capable model active:
   ```bash
   python3 -c "
   import json, pathlib
   p = pathlib.Path.home() / '.claude' / 'settings.json'
-  s = json.loads(p.read_text())
-  s['model'] = 'claude-sonnet-4-6'
-  p.write_text(json.dumps(s, indent=2))
-  print('Model set to claude-sonnet-4-6')
+  if p.exists():
+      s = json.loads(p.read_text())
+      s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
+      p.write_text(json.dumps(s, indent=2))
+      print('Model set to the most capable (opus alias)')
+  else:
+      print('opencode: select the most capable model via /models')
   "
   ```
 - Proceed to Phase 4 immediately.

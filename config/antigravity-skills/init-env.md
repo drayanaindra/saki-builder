@@ -50,12 +50,12 @@ Set up the Claude Code production development environment for this project: $ARG
 5. **Create .claude/agents/planner.md**:
    - Read-only planning subagent
    - Tools: Read, Grep, Glob, WebFetch, WebSearch
-   - Model: sonnet (fast, good enough for exploration)
+   - Model: the most capable model available (fast enough for exploration; quality matters)
 
 6. **Create .claude/agents/reviewer.md**:
    - Fresh-context code reviewer
    - Tools: Read, Grep, Glob, Bash
-   - Model: opus (thorough review needs best model)
+   - Model: the most capable model available (thorough review needs the best model)
 
 7. **Create .claude/agents/qa.md**:
    - Copy from global template: `~/.claude/agents/qa.md`

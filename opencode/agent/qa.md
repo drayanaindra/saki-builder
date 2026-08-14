@@ -2,7 +2,6 @@
 mode: subagent
 name: qa
 description: Acceptance-criteria verifier. Runs tests, checks the build, and reports pass/fail per criterion in an isolated context, without proposing improvements or setup steps. Use to verify that an implemented change meets its acceptance criteria.
-model: sonnet
 ---
 
 # QA Agent

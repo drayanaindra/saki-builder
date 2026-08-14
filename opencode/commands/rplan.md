@@ -4,24 +4,27 @@ description: "Create structured execution plan with an evidence-based readiness 
 
 # Structured Planning
 
-## Step 0: Switch model to Opus
+## Step 0: Switch to the most capable model
 
-Run this bash command first before doing anything else:
+Use the most capable model available for planning. On Claude Code, set the `opus` alias now; on opencode, pick your top-tier model via `/models` (the command runs either way):
 
 ```bash
 python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.claude' / 'settings.json'
-s = json.loads(p.read_text())
-s['model'] = 'opus'  # alias — resolves to the best available Opus; never goes stale
-p.write_text(json.dumps(s, indent=2))
-print('Model set to opus (alias -> latest Opus)')
+if p.exists():
+    s = json.loads(p.read_text())
+    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
+    p.write_text(json.dumps(s, indent=2))
+    print('Model set to the most capable (opus alias)')
+else:
+    print('opencode: select the most capable model via /models')
 "
 ```
 
-Then confirm with: `Model: OPUS | Status: Planning`
+Then confirm with: `Model: MOST CAPABLE | Status: Planning`
 
-> This pins the model to Opus for planning and does **not** auto-restore afterward — `/approved` switches to Sonnet for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+> This keeps you on the most capable model for planning and does **not** auto-restore afterward — `/approved` keeps the most capable model for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
 
 ---
 
@@ -587,7 +590,7 @@ Recommendation: [one of the above]
 | Orphan criterion | a Success Criterion with no `→ 5.x` link and no guardrail | Link the PRD outcome or name the guardrail, else cut it |
 | Consumer-blind change | a step changes an existing signature/endpoint/field/config key, and the plan traces only the NEW call chain — nobody asked who calls it today | Run the Step-1 consumer inventory: grep every caller, give each a verdict, mitigate every `breaks` (§4b). Forward wiring answers "what will this call"; it never answers "what already calls this" |
 | Hollow Blocking table | empty Blocking table on a 9-step HIGH-risk plan with an unverified anchor | Re-walk §4a, classify every reference; every unverified anchor is Blocking |
-| Stale model pin | leaving `claude-opus-4-x` hardcoded in Step 0 | Use the `opus` alias |
+| Stale model pin | leaving `claude-opus-4-x` hardcoded in Step 0 | Use the `opus` alias (the most capable model) |
 
 ## Rules
 

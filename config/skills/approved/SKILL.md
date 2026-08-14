@@ -1,6 +1,6 @@
 ---
 name: approved
-description: Approve the current plan and switch model to Sonnet. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, metrics-triggered refactoring. Loads the plan's research context, reconciles plan↔code drift in place, and runs a Plan-Conformance Gate (every wiring chain verified against the diff) before /saki-builder:qa so implementation stays consistent with the approved design.
+description: Approve the current plan and keep the most capable model active. Enforces XP discipline — TDD cycle (Red→Green→Refactor), commit-per-step, YAGNI check, metrics-triggered refactoring. Loads the plan's research context, reconciles plan↔code drift in place, and runs a Plan-Conformance Gate (every wiring chain verified against the diff) before /saki-builder:qa so implementation stays consistent with the approved design.
 user-invocable: true
 ---
 
@@ -8,18 +8,21 @@ user-invocable: true
 
 The user has reviewed and approved the current plan. Do the following in order:
 
-## Step 1: Switch model to Sonnet
+## Step 1: Keep the most capable model active
 
-Run this bash command to update the model in settings:
+Ensure you are still running on the most capable model available. On Claude Code, set the `opus` alias; on opencode, keep your top-tier model selected via `/models`:
 
 ```bash
 python3 -c "
 import json, pathlib
 p = pathlib.Path.home() / '.claude' / 'settings.json'
-s = json.loads(p.read_text())
-s['model'] = 'claude-sonnet-4-6'
-p.write_text(json.dumps(s, indent=2))
-print('Model set to claude-sonnet-4-6')
+if p.exists():
+    s = json.loads(p.read_text())
+    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
+    p.write_text(json.dumps(s, indent=2))
+    print('Model set to the most capable (opus alias)')
+else:
+    print('opencode: select the most capable model via /models')
 "
 ```
 
@@ -62,7 +65,7 @@ cited reason. Then re-run /saki-builder:approved.
 Respond with:
 
 ```
-Model: SONNET | Status: Approved — XP implementation starting
+Model: MOST CAPABLE | Status: Approved — XP implementation starting
 
 Plan: [filename]
 Steps: [N]

@@ -20,7 +20,7 @@ Trivial (typo, 1-line fix) → execute directly.
 
 ## Response Header
 
-`Model: [OPUS/SONNET/HAIKU] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`
+`Model: [MOST CAPABLE] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`
 Required for non-trivial responses. Skip for trivial replies, acknowledgments, short clarifying questions.
 
 ## Readiness Gate
