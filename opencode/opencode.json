@@ -6,5 +6,8 @@
     "bash": {
       "*": "ask"
     }
-  }
+  },
+  "plugin": [
+    "@saketek/saki-builder"
+  ]
 }
