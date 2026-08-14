@@ -2,6 +2,47 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.29.0 — 2026-08-15
+
+**Graphify gains a post-build canonicalize/dedup pass, the pipeline stops downgrading models at
+`/approved`, `build-opencode.sh` can mirror a repo's own config, and the repo registers itself as the
+OpenCode plugin it ships.** All four land in the plugin snapshot at this bump.
+
+### `/graphify` canonicalize/dedup pass (`config/skills/graphify/`)
+
+`canonicalize_graph.py` is a post-build pass that normalizes a freshly built knowledge graph:
+`normalize_id` (mirrors the `graphifyy ids.py` recipe), merges duplicate-label nodes to a
+deterministic sorted-id winner (`canonical_id`/`merged_from`), rewires links + hyperedge nodes to the
+winners, and accumulates `(src, tgt, relation)` edge weights keeping the strongest-confidence
+provenance. Review-fix pass addresses three MED findings: no input mutation, no hyperedge dup-ids,
+no empty-key collisions. `build_remap`/`rewire_links` are extracted (function ≤ 40 LOC), and the
+empty-canonical-key fallback + unicode normalize_id are covered. Line coverage 87% ≥ 80%;
+`test/test_canonicalize_graph.py` gates RED→GREEN. Wired into the SKILL.md pipeline with an honesty
+note; `graphify-out/` + Python test/cov artifacts are gitignored.
+
+### Model policy: most capable model everywhere (`config/skills/*`, `config/agents/*`)
+
+The pipeline used to pin Opus for `/prd` + `/rplan` then downgrade to Sonnet at `/approved` for
+implementation — backwards, since implementation is where correctness is decided. Every stage now
+stays on the most capable model available. The `opus` alias (never a pinned `claude-opus-4-x`) is set
+in Step 0; the python snippet degrades to an opencode `/models` hint when settings.json is absent.
+Agent frontmatter `model:` pins are dropped so agents inherit the session model; the response header
+is `Model: [MOST CAPABLE]`; default model in `config/settings.json` is `opus`.
+
+### `build-opencode.sh --project <repo>` (mirror a repo's OWN config)
+
+The global pass covered `~/.claude` only, so a repo's own CLAUDE.md / `.claude/agents/` /
+`.claude/skills/` were invisible to opencode — silently downgrading any skill that prefers a project
+override (e.g. `/reviewer` falls back to a generic checklist without `.claude/agents/reviewer.md`).
+`--project` writes `<repo>/AGENTS.md` (CLAUDE.md with @imports inlined), `<repo>/.opencode/agent/`,
+`<repo>/.opencode/command/`. Output paths probed against opencode 1.18.16, not assumed.
+
+### The repo registers itself as an OpenCode plugin (`opencode/opencode.json`)
+
+The `plugin` array is added so opencode loads the published `@saketek/saki-builder`; package.json
+declares it as the dependency opencode resolves the plugin from (and fixes the description mojibake →
+literal arrow), and package-lock is refreshed to the new version.
+
 ## 0.28.1 — 2026-08-11
 
 Patch re-release of 0.28.0. No package content changed since the last publish (the only commit
