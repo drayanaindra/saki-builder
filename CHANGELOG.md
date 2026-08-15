@@ -2,6 +2,12 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.30.0 — 2026-08-15
+
+**Codex now supports seamless plugin installation from the repository marketplace.** The release
+adds a Codex plugin manifest and directly invocable skills, documents Git marketplace installation,
+and keeps the OpenCode bundle namespace-safe with narrowly scoped shell permissions.
+
 ## 0.29.0 — 2026-08-15
 
 **Graphify gains a post-build canonicalize/dedup pass, the pipeline stops downgrading models at
