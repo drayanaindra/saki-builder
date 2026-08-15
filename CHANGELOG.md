@@ -2,6 +2,30 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.30.2 — 2026-08-15
+
+**`/init-env` now scaffolds Codex environments.** 0.30.1 shipped the installer's Codex detection but
+not the scaffold's, so `/init-env` under Codex fell through to `claude` and wrote `CLAUDE.md` +
+`.claude/` — files Codex never reads. The environment looked initialized and loaded nothing.
+
+Step 0 detects Codex and every later step is parameterized by it: the ENGINE ladder gains a Codex
+rung tested **before** `CLAUDECODE` (Codex, like OpenCode, inherits `CLAUDECODE` when launched from a
+Claude Code shell, so testing it earlier misfires), `--engine` accepts a comma list with `both` and
+`all` aliases, and the engine→artifact map gains a Codex column — `AGENTS.md` shared with OpenCode
+and written once, plus `.codex/agents/*.toml`, `.codex/skills/` and `.codex/.env-init.json`.
+
+Detection uses `CODEX_THREAD_ID`/`CODEX_CI`, never `CODEX_HOME`: a Codex run exports the first two to
+every child but exports `CODEX_HOME` only when the caller pinned one, so a `CODEX_HOME` test misses an
+ordinary run. This matches `bin/engine-detect.mjs`; the two ladders are kept in step.
+
+Two Codex specifics documented for anyone porting the other engines' agents: there is no `tools:`
+allow-list (use `sandbox_mode`), and `model:` must not be carried over — the Claude/OpenCode agents
+name `sonnet`/`opus`, which are not Codex model ids. Codex also has no `instructions[]` equivalent, so
+`@import` content must be flattened into `AGENTS.md` rather than merely dropped.
+
+`test/test-init-env-engines.sh` now covers Codex, including a guard rejecting `CODEX_HOME` as the
+detection marker and an offline probe that `multi_agent` is stable and enabled.
+
 ## 0.30.1 — 2026-08-15
 
 **Installer guidance now follows the active engine.** The OpenCode installer detects Claude Code,
