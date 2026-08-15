@@ -2,6 +2,13 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.30.1 — 2026-08-15
+
+**Installer guidance now follows the active engine.** The OpenCode installer detects Claude Code,
+Codex, or OpenCode when runtime signals are available, supports an explicit `--engine` override,
+and recommends the correct invocation syntax (`/saki-builder:<skill>`, `$saki-builder:<skill>`, or
+`/<skill>`). Unknown environments receive all supported forms instead of a false engine claim.
+
 ## 0.30.0 — 2026-08-15
 
 **Codex now supports seamless plugin installation from the repository marketplace.** The release

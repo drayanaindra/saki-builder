@@ -9,7 +9,9 @@ trap 'rm -rf "$TMP"' EXIT
 TARGET="$TMP/cfg"
 
 bash "$REPO/bin/build-npm-bundle.sh" >/dev/null
-node "$REPO/bin/saki-install.mjs" --target "$TARGET" --bundle "$REPO/dist/opencode-bundle" >/dev/null
+OUTPUT="$(node "$REPO/bin/saki-install.mjs" --target "$TARGET" --bundle "$REPO/dist/opencode-bundle" --engine opencode)"
+grep -q "Detected engine: OpenCode" <<<"$OUTPUT" || { echo "FAIL: missing OpenCode detection output"; exit 1; }
+grep -q "Use saki-builder skills with: /<skill>" <<<"$OUTPUT" || { echo "FAIL: missing OpenCode recommendation"; exit 1; }
 
 # ── managed files/dirs land ────────────────────────────────────────────────
 [ -f "$TARGET/AGENTS.md" ] || { echo "FAIL: AGENTS.md missing"; exit 1; }
@@ -27,7 +29,7 @@ grep -q "SAKI_PLUGIN_ROOT=$REPO" "$TARGET/.saki-env" || { echo "FAIL: .saki-env 
 
 # ── idempotent: a second run must not change anything or create a backup ───
 BEFORE="$(find "$TARGET" -type f | sort)"
-node "$REPO/bin/saki-install.mjs" --target "$TARGET" --bundle "$REPO/dist/opencode-bundle" >/dev/null
+node "$REPO/bin/saki-install.mjs" --target "$TARGET" --bundle "$REPO/dist/opencode-bundle" --engine opencode >/dev/null
 AFTER="$(find "$TARGET" -type f | sort)"
 [ "$BEFORE" = "$AFTER" ] || { echo "FAIL: second run changed files"; exit 1; }
 [ -z "$(ls -d "$TARGET"/.saki-backup-* 2>/dev/null || true)" ] || { echo "FAIL: second run created a backup (not idempotent)"; exit 1; }

@@ -33,6 +33,8 @@ npx @saketek/saki-builder install                ← skills / commands / agents 
 ```
 
 Restart opencode — commands are bare (`/rplan`, `/prd`, `/build`, not `/saki-builder:rplan`).
+The installer detects the host engine for its recommendation; use `--engine claude|codex|opencode`
+to override detection when running outside the host process.
 Full install, update, uninstall, and publish instructions: **[docs/OPENCODE-INSTALL.md](docs/OPENCODE-INSTALL.md)**.
 
 ### Codex
@@ -42,7 +44,7 @@ through the root `skills/` directory. Install it directly from the repository:
 
 ```bash
 codex plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
-codex plugin add saki-builder@saki-builder
+codex plugin add saki-builder@saketek
 ```
 
 Full installation, skill usage, updates, and troubleshooting: **[docs/CODEX-INSTALL.md](docs/CODEX-INSTALL.md)**.

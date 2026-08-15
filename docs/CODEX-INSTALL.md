@@ -21,14 +21,14 @@ file or copy the plugin manually. Install it directly from the Git repository:
 
 ```bash
 codex plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
-codex plugin add saki-builder@saki-builder
+codex plugin add saki-builder@saketek
 ```
 
 For a local checkout, use its repository root as the marketplace source:
 
 ```bash
 codex plugin marketplace add /absolute/path/to/claude-config
-codex plugin add saki-builder@saki-builder
+codex plugin add saki-builder@saketek
 ```
 
 The repository's `.agents/plugins/marketplace.json` points Codex at the bundled plugin source.
@@ -91,6 +91,9 @@ codex plugin add saki-builder@personal
 ```
 
 Start a new Codex session after installation. Codex loads plugin skills for new sessions.
+
+If the shared installer is used from a shell where Codex cannot expose `CODEX_HOME`, pass
+`--engine codex` to make its post-install guidance use `$saki-builder:<skill>` explicitly.
 
 ## Verify the installation
 

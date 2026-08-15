@@ -45,6 +45,10 @@ directories only; a plugin module cannot contribute them. The installer:
 
 Pass `--target <dir>` to install into a different config dir and `--dry` to preview.
 
+The installer prints engine-specific invocation guidance. Use `--engine claude|codex|opencode`
+to override detection when the installer runs outside the host process. This option changes the
+recommendation only; Claude Code and Codex plugin installation remain owned by their native CLIs.
+
 ## Manual config (equivalent)
 
 Instead of `opencode plugin`, add the entry yourself:

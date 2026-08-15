@@ -34,6 +34,7 @@ import {
 import { homedir } from "os"
 import path from "path"
 import { fileURLToPath } from "url"
+import { detectEngine, recommendationFor } from "./engine-detect.mjs"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PKG = path.resolve(HERE, "..")
@@ -56,6 +57,7 @@ function args() {
   return {
     target: get("--target") ?? path.join(homedir(), ".config", "opencode"),
     bundle: get("--bundle") ?? path.join(PKG, "dist", "opencode-bundle"),
+    engine: get("--engine"),
     dry: argv.includes("--dry"),
   }
 }
@@ -141,7 +143,9 @@ function matches(to, content) {
   return readFileSync(to, "utf8") === content
 }
 
-const { target, bundle, dry } = args()
+const { target, bundle, dry, engine: explicitEngine } = args()
+const engine = detectEngine({ explicitEngine })
+const recommendation = recommendationFor(engine)
 const say = (msg) => console.log(`  ${dry ? "[dry]" : "✓"} ${msg}`)
 const warn = (msg) => console.log(`  ⚠ ${msg}`)
 
@@ -209,6 +213,18 @@ if (!dry) {
 }
 
 console.log("")
-console.log("Register the plugin so the safety hooks + run visibility load:")
+console.log(`Detected engine: ${recommendation.label}`)
+if (recommendation.command !== undefined) {
+  console.log(`Use saki-builder skills with: ${recommendation.command}`)
+  console.log(`Example: ${recommendation.example}`)
+} else {
+  console.log("Use one of these engine-specific forms:")
+  console.log("  Claude Code: /saki-builder:<skill>")
+  console.log("  Codex:       $saki-builder:<skill>")
+  console.log("  OpenCode:    /<skill>")
+  console.log("Override detection with: --engine claude|codex|opencode")
+}
+console.log("")
+console.log("OpenCode registration (required for safety hooks + run visibility):")
 console.log("  opencode plugin @saketek/saki-builder --global")
-console.log("then restart opencode.")
+console.log("then restart the active engine.")

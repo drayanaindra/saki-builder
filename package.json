@@ -1,6 +1,6 @@
 {
   "name": "@saketek/saki-builder",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "description": "A personal-scale shared toolkit for AI coding agents: research→plan→build→qa→review skills, safety hooks, adversarial reviewers, domain agents, and an execution protocol. OpenCode plugin edition of the saki-builder Claude Code plugin.",
   "exports": {
     "./server": "./opencode/plugins/plugin.ts",
@@ -15,6 +15,7 @@
     "config/docs/",
     "config/hooks/",
     "bin/saki-install.mjs",
+    "bin/engine-detect.mjs",
     "LICENSE",
     "README.md",
     "docs/OPENCODE-INSTALL.md"
@@ -53,6 +54,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@saketek/saki-builder": "^0.30.0"
+    "@saketek/saki-builder": "^0.30.1"
   }
 }
