@@ -1,6 +1,6 @@
 ---
 name: init-env
-description: Scaffold the agent development environment for a new project, for Claude Code and/or opencode. Creates the project rules file, hooks, agents, memory, and project structure.
+description: Scaffold the agent development environment for a new project, for Claude Code, opencode and/or Codex. Creates the project rules file, hooks, agents, memory, and project structure.
 disable-model-invocation: true
 ---
 
@@ -8,19 +8,26 @@ disable-model-invocation: true
 
 Set up the production development environment for this project: $ARGUMENTS
 
-This skill targets **two host engines — Claude Code and opencode.** They read different files, so
-scaffolding the wrong set produces an environment that *looks* initialized and loads nothing:
-opencode reads `CLAUDE.md` as a compatibility fallback but **never expands `@import` lines**, and it
-ignores `.claude/settings.json`, `.claude/agents/` and `.claude/skills/` entirely. Step 0 decides
-which set to write; every later step is parameterized by that decision.
+This skill targets **three host engines — Claude Code, opencode and Codex.** They read different
+files, so scaffolding the wrong set produces an environment that *looks* initialized and loads
+nothing:
+
+- **opencode** reads `CLAUDE.md` as a compatibility fallback but **never expands `@import` lines**,
+  and ignores `.claude/settings.json`, `.claude/agents/` and `.claude/skills/` entirely.
+- **Codex** does not read `CLAUDE.md` or `.claude/` at all — it reads `AGENTS.md` (the same file as
+  opencode) and `.codex/`. Scaffolding the claude set for a codex repo is the loudest version of this
+  failure: **everything** written is invisible to the host.
+
+Step 0 decides which set to write; every later step is parameterized by that decision.
 
 ## Step 0 — Detect the host engine + resolve roots (ALWAYS FIRST, both modes)
 
 Run the read-only probe, then apply the ladder:
 
 ```bash
-printf 'OPENCODE=%s CLAUDECODE=%s\n' "${OPENCODE:-unset}" "${CLAUDECODE:-unset}"
-ls -d AGENTS.md CLAUDE.md .opencode .claude/agents 2>/dev/null
+printf 'OPENCODE=%s CODEX_THREAD_ID=%s CODEX_CI=%s CLAUDECODE=%s\n' \
+  "${OPENCODE:-unset}" "${CODEX_THREAD_ID:-unset}" "${CODEX_CI:-unset}" "${CLAUDECODE:-unset}"
+ls -d AGENTS.md CLAUDE.md .opencode .codex .claude/agents 2>/dev/null
 SAKI_ENV="$(sed -n 's/^SAKI_PLUGIN_ROOT=//p' "$HOME/.config/opencode/.saki-env" 2>/dev/null)"
 for sub in docs hooks; do
   for d in "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/config/$sub" \
@@ -34,21 +41,43 @@ done
 
 **ENGINE ladder** — first match wins:
 
-1. `$ARGUMENTS` contains `--engine claude|opencode|both` → use it verbatim (explicit override).
+1. `$ARGUMENTS` contains `--engine <list>` → use it verbatim (explicit override). `<list>` is one or
+   more of `claude|opencode|codex`, comma-separated; `both` is an alias for `claude,opencode` and
+   `all` for all three.
 2. `OPENCODE` is set → `opencode`.
-3. `CLAUDECODE` is set → `claude`.
-4. Neither → `claude`.
+3. `CODEX_THREAD_ID` **or** `CODEX_CI` is set → `codex`.
+4. `CLAUDECODE` is set → `claude`.
+5. None → `claude`.
 
-`OPENCODE` is tested **before** `CLAUDECODE` on purpose: opencode launched from a Claude Code shell
-inherits `CLAUDECODE`, so an absence test would misfire; the reverse nesting does not occur.
+**Both non-claude engines are tested BEFORE `CLAUDECODE`, for the same reason.** opencode *and* codex
+launched from a Claude Code shell inherit `CLAUDECODE`, so testing it earlier misfires; the reverse
+nesting does not occur.
 
-**Upgrade rule** — after the ladder, if the repo already carries the *other* engine's markers, switch
-to `both`, so a mixed team does not have one engine's setup rot:
+> **Use `CODEX_THREAD_ID`/`CODEX_CI`, never `CODEX_HOME`, as the codex marker.** Verified against
+> codex-cli 0.147.0: a codex run exports `CODEX_CI=1` and `CODEX_THREAD_ID=<uuid>` to every child,
+> but exports `CODEX_HOME` **only when the caller pinned one** — so a `CODEX_HOME` test misses an
+> ordinary codex run entirely. It is also the weaker signal in the other direction: an operator who
+> exports `CODEX_HOME` in their shell profile would trip it while running under a different engine.
+>
+> `bin/engine-detect.mjs` implements this same ladder for the installer and is **kept in step with
+> this list — change both together** (`test/test-engine-detect.mjs` pins the ordering). It adds one
+> rung this list does not need: `CODEX_HOME` as a last-resort codex signal *below* `CLAUDECODE`,
+> since the installer runs from the operator's own shell where a configured preference is the only
+> hint available. It also returns `unknown` instead of defaulting to `claude`, because a wrong
+> command-form recommendation is worse than saying nothing; a scaffold has to pick, so this ladder
+> defaults.
 
-| ENGINE from ladder | repo also has | → |
-|---|---|---|
-| `claude` | `AGENTS.md` or `.opencode/` | `both` |
-| `opencode` | `CLAUDE.md` or `.claude/agents/` | `both` |
+**Upgrade rule** — after the ladder, if the repo already carries *another* engine's markers, add that
+engine too, so a mixed team does not have one engine's setup rot:
+
+| repo also has | add |
+|---|---|
+| `CLAUDE.md` or `.claude/agents/` | `claude` |
+| `AGENTS.md` **plus** `.opencode/` or `opencode.json` | `opencode` |
+| `.codex/` | `codex` |
+
+`AGENTS.md` alone does **not** imply opencode: codex reads the same file, so it is shared evidence —
+only an opencode-specific marker (`.opencode/`, `opencode.json`) settles it.
 
 **Roots** — `SAKI_DOCS` and `SAKI_HOOKS` come from the probe above. Use them **everywhere** instead of
 hardcoding `~/.claude/…` or `${CLAUDE_PLUGIN_ROOT}` — neither resolves in an opencode-only install.
@@ -59,21 +88,44 @@ State the outcome before doing any work: `ENGINE=<...>  SAKI_DOCS=<...>  SAKI_HO
 
 ## Engine → artifact map
 
-Every step below writes the row that matches `ENGINE`. For `both`, write **both** columns — the
-`both` recipes are designed so the rules body exists exactly once (no drift).
+Every step below writes the column(s) matching `ENGINE`. When `ENGINE` names more than one engine,
+write **each** column — the multi-engine recipes are designed so the rules body exists exactly once
+(no drift).
 
-| Concern | `claude` | `opencode` |
-|---|---|---|
-| Project rules | `CLAUDE.md` (with `@import`) | `AGENTS.md` (no `@import` — not expanded) |
-| Rule imports | `@~/.claude/docs/…`, `@.claude/memory/patterns.md` | `opencode.json` → `instructions[]` |
-| Config | `.claude/settings.json` | `opencode.json` (repo root, **merged**) |
-| Pre/PostToolUse hooks | `.claude/settings.json` `hooks` | `.opencode/plugin/quality-hooks.ts` |
-| Subagents | `.claude/agents/*.md` | `.opencode/agent/*.md` (`mode: subagent`) |
-| qa agent template source | `$SAKI_DOCS/../agents/qa.md` or `~/.claude/agents/qa.md` | `~/.config/opencode/agent/qa.md` |
-| Skill overrides | `.claude/skills/<n>/SKILL.md` | `.opencode/skill/<n>/SKILL.md` |
-| Project memory | `.claude/memory/` | `.claude/memory/` (same — see note) |
-| Init marker | `.claude/.env-init.json` | `.opencode/.env-init.json` |
-| Verify | run a test hook | `opencode debug config --pure`, `opencode agent list --pure` |
+| Concern | `claude` | `opencode` | `codex` |
+|---|---|---|---|
+| Project rules | `CLAUDE.md` (with `@import`) | `AGENTS.md` (no `@import` — not expanded) | `AGENTS.md` — **the same file as opencode**, write it once |
+| Rule imports | `@~/.claude/docs/…`, `@.claude/memory/patterns.md` | `opencode.json` → `instructions[]` | none — `AGENTS.md` must be self-contained (flatten every import in) |
+| Config | `.claude/settings.json` | `opencode.json` (repo root, **merged**) | `~/.codex/config.toml` (global). Per-repo config is only `[projects."<abs-path>"] trust_level` — **do not** write a repo-local `config.toml`, nothing reads it |
+| Pre/PostToolUse hooks | `.claude/settings.json` `hooks` | `.opencode/plugin/quality-hooks.ts` | plugin-level `config/hooks/hooks.json`, trusted per-hash under `[hooks.state]` in `~/.codex/config.toml` — **no per-repo hook file** |
+| Subagents | `.claude/agents/*.md` | `.opencode/agent/*.md` (`mode: subagent`) | `.codex/agents/*.toml` — see the schema note below |
+| qa agent template source | `$SAKI_DOCS/../agents/qa.md` or `~/.claude/agents/qa.md` | `~/.config/opencode/agent/qa.md` | same source as claude, converted to TOML |
+| Skill overrides | `.claude/skills/<n>/SKILL.md` | `.opencode/skill/<n>/SKILL.md` | `.codex/skills/<n>/SKILL.md` (same `SKILL.md` format as claude) |
+| Project memory | `.claude/memory/` | `.claude/memory/` (same — see note) | `.claude/memory/` (same — see note) |
+| Init marker | `.claude/.env-init.json` | `.opencode/.env-init.json` | `.codex/.env-init.json` |
+| Verify | run a test hook | `opencode debug config --pure`, `opencode agent list --pure` | `codex plugin list`, `ls .codex/agents` |
+
+> **codex subagents are TOML, and the schema differs from the other two — two traps:**
+> 1. There is **no `tools:` allow-list.** Restrict a read-only agent with `sandbox_mode = "read-only"`
+>    instead; omitting it does not make the agent read-only.
+> 2. **Do not port the `model:` line.** The claude/opencode agents name `sonnet`/`opus`, which are not
+>    codex model ids — a wrong id breaks the agent. Omit `model` and let
+>    `agents.default_subagent_model` apply.
+>
+> Required keys: `name`, `description`, `developer_instructions`. Also accepted: `model`,
+> `model_reasoning_effort`, `sandbox_mode`, `mcp_servers`, `skills.config`. Built-in agents are
+> `default`, `worker`, `explorer`; a custom agent of the same name takes precedence.
+
+> **Codex skills/commands come from the plugin, not from a scaffold.** Installing the saki-builder
+> plugin (`docs/CODEX-INSTALL.md`) brings the whole skill set; init-env does not scaffold it. Do
+> **not** also symlink `config/skills/` into `$CODEX_HOME/skills/` — that creates a second,
+> version-skewed copy of every skill and eats the skills context budget. `.codex/skills/` is for
+> *project-specific overrides* only.
+>
+> The installed id is **`saki-builder@saketek`** — `saketek` is the marketplace name in both catalogs
+> (`.claude-plugin/marketplace.json` for Claude Code, `.agents/plugins/marketplace.json` for codex),
+> so the plugin registers under the same id on either host. It appears in `~/.codex/config.toml` as
+> `[plugins."saki-builder@saketek"]`, which is what `CodexSkillsProof`-style checks read.
 
 > **Memory stays at `.claude/memory/` under every engine.** It is a directory label, not a Claude
 > runtime dependency — `/saki-builder:reflect` and `/saki-builder:retro` write there regardless of
@@ -147,10 +199,11 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      and rules file:
      ```bash
      ts=$(date +%Y%m%d-%H%M%S)
-     # per ENGINE: .claude + CLAUDE.md, and/or .opencode + AGENTS.md + opencode.json
+     # per ENGINE: .claude + CLAUDE.md · .opencode + AGENTS.md + opencode.json · .codex + AGENTS.md
      [ -d .claude ]   && mv .claude   ".claude.bak-$ts"
      [ -f CLAUDE.md ] && mv CLAUDE.md "CLAUDE.md.bak-$ts"
      [ -d .opencode ] && mv .opencode ".opencode.bak-$ts"
+     [ -d .codex ]    && mv .codex    ".codex.bak-$ts"
      [ -f AGENTS.md ] && mv AGENTS.md "AGENTS.md.bak-$ts"
      ```
      Only move the dirs/files belonging to the engine(s) you are about to scaffold. Never overwrite a
@@ -223,15 +276,25 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    - **`opencode`** → `AGENTS.md`, body **with no `@import` lines at all** (opencode does not expand
      them — an `@import` here is a silent no-op, which is exactly the bug this step exists to avoid).
      The same three imports are wired in Step 4 via `opencode.json` `instructions[]`.
-   - **`both`** → write the body **once** into `AGENTS.md`, then make `CLAUDE.md` a thin wiring file:
+   - **`codex`** → `AGENTS.md`, body with no `@import` lines — same file, same reason as opencode.
+     **But codex has no `instructions[]` equivalent**, so there is nowhere to wire the three imports:
+     paste the content that matters **inline** into `AGENTS.md` (flattened), or accept that those docs
+     never load. Writing `@import` lines and moving on is the silent-no-op failure again, one step
+     removed. If `ENGINE` also includes `opencode`, write `AGENTS.md` **once** — both engines read it.
+   - **more than one engine, including `claude`** → write the body **once** into `AGENTS.md`, then make
+     `CLAUDE.md` a thin wiring file:
      ```markdown
      @AGENTS.md
      @~/.claude/docs/ddd-patterns.md
      @~/.claude/docs/modular-architecture.md
      @.claude/memory/patterns.md
      ```
-     opencode reads `AGENTS.md` and ignores `CLAUDE.md` (first match wins); Claude Code reads
-     `CLAUDE.md` and pulls the body in. One body, no drift.
+     opencode and codex read `AGENTS.md` and ignore `CLAUDE.md`; Claude Code reads `CLAUDE.md` and
+     pulls the body in. One body, no drift.
+
+     ⚠ With `codex` in the set, the three `@import` lines above load for **claude only** — codex does
+     not expand them and has no `instructions[]`. Flatten anything codex must actually see into
+     `AGENTS.md` itself.
 
 3. **Create docs/project-context.md** — the ONE hand-written context file, scoped to what no tool derives:
    - Read the contract first — `$SAKI_DOCS/project-context-contract.md` (Step 0 resolved `SAKI_DOCS`
@@ -310,7 +373,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
       when `--no-verify` is present) and **throws** to block when tests fail. A `throw` in
       `tool.execute.before` is the only deny mechanism opencode offers.
 
-   NOTE for both engines: the catastrophic-command guard (`rm -rf /`, force-push to main, secrets in
+   NOTE for every engine: the catastrophic-command guard (`rm -rf /`, force-push to main, secrets in
    argv) is already active globally — `dangerous-command-guard.sh` via the saki-builder plugin on
    Claude Code, `safety-hooks.ts` via the opencode plugin. Do NOT recreate it per project.
 
@@ -352,7 +415,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    `.opencode/plugin/quality-hooks.ts` from Step 4b rather than adding shell scripts:
    - protect-files.sh (block edits to .env, lock files — project-specific patterns)
    - pre-commit-check.sh (run tests before commit) — already covered by Step 4b under opencode
-   - NOTE: the global dangerous-command guard is already active for both engines (see Step 4). Do NOT
+   - NOTE: the global dangerous-command guard is already active for every engine (see Step 4). Do NOT
      recreate it per-project.
 
 9. **Scaffold project-specific skill overrides** — `claude` → `.claude/skills/<name>/SKILL.md`;
@@ -395,7 +458,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      manual-test checklist cleanly separates from what `/saki-builder:qa` will automate
 
 10. **Scaffold Playwright test infrastructure** (if frontend detected) — engine-agnostic, identical
-   for both:
+   for every engine:
 
    a. Install dotenv if not present: `npm install dotenv --save-dev`
 

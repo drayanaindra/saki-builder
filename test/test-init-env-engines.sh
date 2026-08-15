@@ -21,10 +21,16 @@ has()  { [ "$(grep -cF -- "$2" "$1" || true)" -gt 0 ]; }
 # ── 1. the source skill covers both engines ─────────────────────────────────────
 [ -f "$SKILL" ] || fail "source skill missing: $SKILL"
 
-# Engine detection must be positive on BOTH sides — an absence test misfires when opencode is
-# launched from a Claude Code shell (it inherits CLAUDECODE).
-has "$SKILL" 'OPENCODE'   || fail "no OPENCODE detection signal in the skill"
-has "$SKILL" 'CLAUDECODE' || fail "no CLAUDECODE detection signal in the skill"
+# Engine detection must be positive for EVERY engine — an absence test misfires when opencode or
+# codex is launched from a Claude Code shell (both inherit CLAUDECODE).
+has "$SKILL" 'OPENCODE'         || fail "no OPENCODE detection signal in the skill"
+has "$SKILL" 'CLAUDECODE'       || fail "no CLAUDECODE detection signal in the skill"
+has "$SKILL" 'CODEX_THREAD_ID'  || fail "no codex detection signal in the skill"
+
+# CODEX_HOME is NOT a valid codex marker: codex exports it only when the caller pinned one, so a
+# CODEX_HOME test misses an ordinary codex run and the scaffold silently falls through to claude.
+[ "$(grep -cE '^[0-9]*\.?\s*`?CODEX_HOME`? is set' "$SKILL" || true)" -eq 0 ] \
+  || fail "skill detects codex via CODEX_HOME — use CODEX_THREAD_ID/CODEX_CI (see the Step 0 note)"
 
 # The opencode artifact set. Each entry is a file opencode actually reads; dropping any one of
 # them is the regression this test exists to catch.
@@ -45,6 +51,22 @@ done
 for token in 'CLAUDE.md' '.claude/settings.json' '.claude/agents/' '.claude/.env-init.json'; do
   has "$SKILL" "$token" || fail "skill lost the Claude artifact '$token'"
 done
+
+# The codex artifact set. Codex reads AGENTS.md (shared with opencode) and .codex/ — it reads
+# CLAUDE.md and .claude/ NOT AT ALL, so a claude-only scaffold is 100% invisible to it.
+for token in \
+  '.codex/agents/' \
+  '.codex/skills/' \
+  '.codex/.env-init.json' \
+  'developer_instructions' \
+  'sandbox_mode'
+do
+  has "$SKILL" "$token" || fail "skill does not scaffold '$token' for codex"
+done
+
+# Codex has no `instructions[]` equivalent, so @import content must be FLATTENED into AGENTS.md.
+# Without this warning the codex branch repeats opencode's silent-no-op bug one step removed.
+has "$SKILL" 'flatten' || fail "skill does not warn that codex cannot wire @import (flatten required)"
 
 # Roots must be resolved, not hardcoded: no bare ~/.claude hook or doc paths may remain, because
 # neither resolves in an opencode-only install.
@@ -105,4 +127,18 @@ else
   echo "  ~ opencode not installed — skipped the live discovery probe"
 fi
 
-echo "init-env engines OK (claude + opencode)"
+# ── 5. codex's subagent capability is real, not assumed ─────────────────────────
+# The skill's codex column scaffolds .codex/agents/*.toml, which is dead weight if codex ever ships
+# without multi-agent. Cheap + offline (no model call), unlike a live delegation probe.
+# Skipped (not failed) when codex is absent.
+if command -v codex >/dev/null 2>&1; then
+  codex features list >"${TMPDIR:-/tmp}/codex-features.txt" 2>/dev/null || true
+  grep -qE '^multi_agent[[:space:]]+stable[[:space:]]+true' "${TMPDIR:-/tmp}/codex-features.txt" \
+    || fail "codex multi_agent is not stable+enabled — the skill's .codex/agents/ column would be dead"
+  rm -f "${TMPDIR:-/tmp}/codex-features.txt"
+  echo "  ✓ codex $(codex --version | awk '{print $2}') has multi_agent stable+enabled"
+else
+  echo "  ~ codex not installed — skipped the subagent capability probe"
+fi
+
+echo "init-env engines OK (claude + opencode + codex)"
