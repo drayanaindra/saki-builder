@@ -13,7 +13,7 @@
 set -u
 
 MARKETPLACE_NAME="saketek"
-MARKETPLACE_URL="${MARKETPLACE_URL:-https://gitlab.com/drayanaindra/saki-builder.git}"
+MARKETPLACE_URL="${MARKETPLACE_URL:-https://github.com/drayanaindra/saki-builder.git}"
 PLUGIN="saki-builder@${MARKETPLACE_NAME}"
 CHECK_ONLY=0
 for a in "$@"; do [ "$a" = "--check" ] && CHECK_ONLY=1; done

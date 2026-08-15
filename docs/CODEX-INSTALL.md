@@ -20,7 +20,7 @@ The repository includes its Codex marketplace catalog, so you do not need to cre
 file or copy the plugin manually. Install it directly from the Git repository:
 
 ```bash
-codex plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
+codex plugin marketplace add https://github.com/drayanaindra/saki-builder.git
 codex plugin add saki-builder@saketek
 ```
 
@@ -40,7 +40,7 @@ into your personal Codex plugin directory:
 
 ```bash
 mkdir -p "$HOME/.codex/plugins"
-git clone https://gitlab.com/drayanaindra/saki-builder.git \
+git clone https://github.com/drayanaindra/saki-builder.git \
   "$HOME/.codex/plugins/saki-builder"
 ```
 

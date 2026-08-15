@@ -43,7 +43,7 @@ The repository includes a Codex-compatible plugin manifest and exposes the canon
 through the root `skills/` directory. Install it directly from the repository:
 
 ```bash
-codex plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
+codex plugin marketplace add https://github.com/drayanaindra/saki-builder.git
 codex plugin add saki-builder@saketek
 ```
 
