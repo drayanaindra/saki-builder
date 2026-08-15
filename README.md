@@ -35,6 +35,18 @@ npx @saketek/saki-builder install                ← skills / commands / agents 
 Restart opencode — commands are bare (`/rplan`, `/prd`, `/build`, not `/saki-builder:rplan`).
 Full install, update, uninstall, and publish instructions: **[docs/OPENCODE-INSTALL.md](docs/OPENCODE-INSTALL.md)**.
 
+### Codex
+
+The repository includes a Codex-compatible plugin manifest and exposes the canonical workflows
+through the root `skills/` directory. Install it directly from the repository:
+
+```bash
+codex plugin marketplace add https://gitlab.com/drayanaindra/saki-builder.git
+codex plugin add saki-builder@saki-builder
+```
+
+Full installation, skill usage, updates, and troubleshooting: **[docs/CODEX-INSTALL.md](docs/CODEX-INSTALL.md)**.
+
 **Driving it from an agent runner?** Hermes Agent, OpenClaw, or CI spawning `claude -p` in the
 background: set `SAKI_AGENT_MODE=1` and poll `tasks/.saki/latest.json` to see whether a run is alive,
 hung, or finished. Full contract + supervisor loop: **[docs/AGENT-RUNNERS.md](docs/AGENT-RUNNERS.md)**.

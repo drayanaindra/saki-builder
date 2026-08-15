@@ -150,9 +150,36 @@ if m:
 allow = settings.get("permissions", {}).get("allow", [])
 bash = {"*": "ask"}
 perm = {}
+# Only these inspection commands are safe to auto-allow. Everything else, including test/build/
+# runtime families and mutating or network commands, remains behind the catch-all approval gate.
+safe_bash_patterns = {
+    "ls",
+    "ls *",
+    "cat *",
+    "echo *",
+    "cd *",
+    "grep *",
+    "tail *",
+    "head *",
+    "wc *",
+    "which *",
+    "sort *",
+    "uniq *",
+    "column *",
+    "git status",
+    "git status --short",
+    "git diff",
+    "git diff --check",
+    "git diff --stat",
+    "git diff --name-only",
+    "git log",
+    "git log --oneline",
+}
 for entry in allow:
     if entry.startswith("Bash(") and entry.endswith(")"):
-        bash[entry[5:-1]] = "allow"
+        pattern = entry[5:-1]
+        if pattern in safe_bash_patterns:
+            bash[pattern] = "allow"
     elif entry in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         perm["edit"] = "allow"
     elif entry == "Read":
@@ -251,6 +278,14 @@ for entry in sorted(os.listdir(skills_dir)):
     n += 1
 PY
 echo "✓ commands/      ($(ls "$OUT/commands" | wc -l | tr -d ' ') files)"
+
+# OpenCode registers generated commands under bare names (/rplan, /qa, ...), while the canonical
+# Claude sources use the /saki-builder:<name> namespace. Keep checked-in and generated artifacts
+# executable in OpenCode, including AGENTS.md and subagent instructions that refer to commands.
+for stage in "$OUT/commands" "$OUT/AGENTS.md" "$OUT/agent"; do
+  node "$REPO/bin/namespace-refs.js" --reverse --dir "$stage" >/dev/null
+done
+echo "✓ refs          (de-namespaced for OpenCode)"
 
 # ── 5. optional install: symlink into ~/.config/opencode/ ──────────────────────
 if [[ "$INSTALL" == "1" ]]; then

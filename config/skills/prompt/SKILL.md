@@ -1,6 +1,6 @@
 ---
 name: prompt
-description: Expand a one-line prompt into a structured 6-section prompt: Role, Task, Context, Reasoning, Stop, Output. Use when you want to write a high-quality prompt from a quick idea.
+description: "Expand a one-line prompt into a structured 6-section prompt: Role, Task, Context, Reasoning, Stop, Output. Use when you want to write a high-quality prompt from a quick idea."
 ---
 
 # Prompt Expander

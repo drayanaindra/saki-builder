@@ -19,6 +19,9 @@ settings.local.json
 # Antigravity CLI — machine-local symlink dirs (created by setup-antigravity.sh)
 .agent/
 .agents/
+!.agents/
+!.agents/plugins/
+!.agents/plugins/marketplace.json
 
 # Claude Code ephemeral data (stays local per machine)
 projects/
@@ -29,6 +32,8 @@ file-history/
 telemetry/
 plugins/
 !opencode/plugins/
+!plugins/
+!plugins/saki-builder
 tasks/
 todos/
 plans/

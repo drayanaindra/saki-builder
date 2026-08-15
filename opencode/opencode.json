@@ -1,10 +1,46 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "opencode-go/deepseek-v4-flash",
+  "model": "anthropic/opus",
   "permission": {
+    "playwright*": "allow",
     "edit": "allow",
     "bash": {
-      "*": "ask"
+      "*": "ask",
+      "ls *": "allow",
+      "ls": "allow",
+      "cat *": "allow",
+      "echo *": "allow",
+      "cd *": "allow",
+      "grep *": "allow",
+      "tail *": "allow",
+      "head *": "allow",
+      "awk *": "allow",
+      "sed *": "allow",
+      "wc *": "allow",
+      "find *": "allow",
+      "which *": "allow",
+      "sort *": "allow",
+      "uniq *": "allow",
+      "column *": "allow",
+      "git status": "allow",
+      "git status --short": "allow",
+      "git diff": "allow",
+      "git diff --check": "allow",
+      "git diff --stat": "allow",
+      "git diff --name-only": "allow",
+      "git log": "allow",
+      "git log --oneline": "allow"
+    }
+  },
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true
     }
   },
   "plugin": [

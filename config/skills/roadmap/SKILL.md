@@ -1,6 +1,6 @@
 ---
 name: roadmap
-description: View or initialise the product roadmap — the single team-shareable portfolio artifact (tasks/roadmap.md) that lists every work item (epics · features · improvements · bugs), its goal, and status. The roadmap is the disciplined entry point of the workflow: every piece of work traces to an item here. `/saki-builder:roadmap` prints the portfolio; `/saki-builder:roadmap init` scaffolds the file. Add items with /saki-builder:add. Usage — /saki-builder:roadmap [init].
+description: "View or initialise the product roadmap — the single team-shareable portfolio artifact (tasks/roadmap.md) that lists every work item (epics · features · improvements · bugs), its goal, and status. The roadmap is the disciplined entry point of the workflow: every piece of work traces to an item here. `/saki-builder:roadmap` prints the portfolio; `/saki-builder:roadmap init` scaffolds the file. Add items with /saki-builder:add. Usage — /saki-builder:roadmap [init]."
 ---
 
 # Product Roadmap — the portfolio artifact
