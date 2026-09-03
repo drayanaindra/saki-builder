@@ -59,7 +59,7 @@ hung, or finished. Full contract + supervisor loop: **[docs/AGENT-RUNNERS.md](do
 
 ```
 /saki-builder:rplan     ← describe what you want to build; it writes a structured plan
-/saki-builder:approved  ← approve the plan, Claude switches to Sonnet and implements
+/saki-builder:approved  ← approve the plan, then implement with the host's frontier model
 /saki-builder:qa        ← runs your acceptance criteria as actual tests (curl, go test, etc.)
 /saki-builder:wrap      ← commits, pushes, cleans up
 ```
@@ -147,6 +147,9 @@ Every piece of work enters through `/saki-builder:add`, which assigns a track:
 
 The plugin can't write your personal settings. Copy what you want from
 `templates/settings.recommended.json` into `~/.claude/settings.json`.
+
+Workflow model choice is capability-based (`frontier` / `balanced` / `fast`), so each host or runner
+resolves it using its own model picker. See [`config/docs/model-policy.md`](config/docs/model-policy.md).
 
 To use RTK, SonarQube, or the macOS notifier, opt in separately — see `config/docs/hooks-personal.md`.
 

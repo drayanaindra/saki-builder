@@ -1,31 +1,24 @@
 ---
 name: rplan
 description: Create structured execution plan with an evidence-based readiness gate (Blocking Set) and risk assessment. Use for any non-trivial task before implementation.
+model_requirement: frontier
 ---
 
 # Structured Planning
 
-## Step 0: Switch to the most capable model
+## Step 0: Resolve the model capability
 
-Use the most capable model available for planning. On Claude Code, set the `opus` alias now; on opencode, pick your top-tier model via `/models` (the command runs either way):
+This skill declares `model_requirement: frontier`: use the highest-capability model available in the
+current host session. Apply `${CLAUDE_PLUGIN_ROOT}/config/docs/model-policy.md` when the host exposes
+model selection. Do not edit a global settings file or assume a vendor/model identifier. If the host
+cannot select a model, inherit the current one and report `Model capability: frontier requested` rather
+than claiming a concrete model was selected.
 
-```bash
-python3 -c "
-import json, pathlib
-p = pathlib.Path.home() / '.claude' / 'settings.json'
-if p.exists():
-    s = json.loads(p.read_text())
-    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
-    p.write_text(json.dumps(s, indent=2))
-    print('Model set to the most capable (opus alias)')
-else:
-    print('opencode: select the most capable model via /models')
-"
-```
+Then report `Model: FRONTIER | Status: Planning` when the host confirms the requirement is resolved;
+otherwise report `Model: INHERITED (frontier requested) | Status: Planning`.
 
-Then confirm with: `Model: MOST CAPABLE | Status: Planning`
-
-> This keeps you on the most capable model for planning and does **not** auto-restore afterward — `/saki-builder:approved` keeps the most capable model for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+The requirement persists for planning and implementation, but model selection remains owned by the
+host or its runner so the same skill works under Claude Code, OpenCode, Codex, and Gemini/Antigravity.
 
 ---
 
@@ -591,7 +584,7 @@ Recommendation: [one of the above]
 | Orphan criterion | a Success Criterion with no `→ 5.x` link and no guardrail | Link the PRD outcome or name the guardrail, else cut it |
 | Consumer-blind change | a step changes an existing signature/endpoint/field/config key, and the plan traces only the NEW call chain — nobody asked who calls it today | Run the Step-1 consumer inventory: grep every caller, give each a verdict, mitigate every `breaks` (§4b). Forward wiring answers "what will this call"; it never answers "what already calls this" |
 | Hollow Blocking table | empty Blocking table on a 9-step HIGH-risk plan with an unverified anchor | Re-walk §4a, classify every reference; every unverified anchor is Blocking |
-| Stale model pin | leaving `claude-opus-4-x` hardcoded in Step 0 | Use the `opus` alias (the most capable model) |
+| Stale model pin | hardcoding a vendor/model identifier in Step 0 | Declare `model_requirement: frontier` and let the host resolve it |
 
 ## Rules
 

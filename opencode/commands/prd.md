@@ -2,27 +2,19 @@
 description: "Generate Product Requirements Document from feature intent/description"
 ---
 
-## Step 0: Switch to the most capable model
+## Step 0: Resolve the model capability
 
-Use the most capable model available for PRD authoring. On Claude Code, set the `opus` alias now; on opencode, pick your top-tier model via `/models` (the command runs either way):
+This skill declares `model_requirement: frontier`: use the highest-capability model available in the
+current host session. Apply `config/docs/model-policy.md` when the host exposes model selection. Do
+not edit a global settings file or assume a vendor/model identifier. If the host cannot select a model,
+inherit the current one and report `Model capability: frontier requested` rather than claiming a concrete
+model was selected.
 
-```bash
-python3 -c "
-import json, pathlib
-p = pathlib.Path.home() / '.claude' / 'settings.json'
-if p.exists():
-    s = json.loads(p.read_text())
-    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
-    p.write_text(json.dumps(s, indent=2))
-    print('Model set to the most capable (opus alias)')
-else:
-    print('opencode: select the most capable model via /models')
-"
-```
+Then report `Model: FRONTIER | Status: Reading` when the host confirms the requirement is resolved;
+otherwise report `Model: INHERITED (frontier requested) | Status: Reading`.
 
-Then confirm with: `Model: MOST CAPABLE | Status: Reading`
-
-> This keeps you on the most capable model for PRD authoring and does **not** auto-restore afterward — `/rplan` keeps it on the most capable model for planning, and `/approved` keeps it for implementation. Use the `opus` alias (not a pinned `claude-opus-4-x`) so it stays current across releases instead of silently downgrading.
+The requirement persists for the PRD workflow, but model selection remains owned by the host or its
+runner so the same command works under Claude Code, OpenCode, Codex, and Gemini/Antigravity.
 
 ---
 

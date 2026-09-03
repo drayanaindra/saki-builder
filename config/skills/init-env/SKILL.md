@@ -108,8 +108,8 @@ write **each** column — the multi-engine recipes are designed so the rules bod
 > **codex subagents are TOML, and the schema differs from the other two — two traps:**
 > 1. There is **no `tools:` allow-list.** Restrict a read-only agent with `sandbox_mode = "read-only"`
 >    instead; omitting it does not make the agent read-only.
-> 2. **Do not port the `model:` line.** The claude/opencode agents name `sonnet`/`opus`, which are not
->    codex model ids — a wrong id breaks the agent. Omit `model` and let
+> 2. **Do not port a provider-specific `model:` line.** Model identifiers are host-specific and a
+>    wrong id breaks the agent. Omit `model` and let
 >    `agents.default_subagent_model` apply.
 >
 > Required keys: `name`, `description`, `developer_instructions`. Also accepted: `model`,
@@ -380,12 +380,12 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
 5. **Create the `planner` agent**:
    - Read-only planning subagent
    - Tools: Read, Grep, Glob, WebFetch, WebSearch
-   - Model: the most capable model available (fast enough for exploration; quality matters)
+   - Model requirement: `frontier` (the host resolves the highest-capability available model)
 
 6. **Create the `reviewer` agent**:
    - Fresh-context code reviewer
    - Tools: Read, Grep, Glob, Bash
-   - Model: the most capable model available (thorough review needs the best model)
+   - Model requirement: `frontier` (the host resolves the highest-capability available model)
 
 7. **Create the `qa` agent**:
    - Copy from the global template: `claude` → `~/.claude/agents/qa.md`; `opencode` →
@@ -398,7 +398,7 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
    **Where Steps 5–7 write, and in what shape:**
 
    - **`claude`** → `.claude/agents/<name>.md`, frontmatter as described above (`tools:` as a CSV
-     string, `model: <most capable model>`, optional `color:`).
+     string, `model_requirement: frontier`, optional `color:`). Do not add a provider-specific `model:`.
    - **`opencode`** → `.opencode/agent/<name>.md`, with three mandatory frontmatter differences —
      these are the same transforms `build-opencode.sh` applies to the shipped agents, and getting them
      wrong makes opencode reject or mis-register the agent:
@@ -406,10 +406,11 @@ Detect the mode from `$ARGUMENTS` and the repo, then follow the matching rule fo
      2. **drop the `tools:` CSV line** — opencode's schema expects an object, not a comma-separated
         string, so a Claude-style `tools:` line is a validation error. Use `permission:` if the agent
         genuinely needs a restriction, otherwise omit;
-     3. qualify the model as `provider/model` (e.g. `anthropic/claude-opus-4-x`), and map any named
-        `color:` to an opencode value (`yellow`/`orange`→`warning`, `blue`/`cyan`→`info`,
+     3. omit the provider-specific `model:` field so the agent inherits the host-selected model, and
+        map any named `color:` to an opencode value (`yellow`/`orange`→`warning`, `blue`/`cyan`→`info`,
         `green`→`success`, `red`/`pink`→`error`, `purple`/`violet`→`accent`).
-   - **`both`** → write both directories. The bodies are identical; only the frontmatter differs.
+   - **`both`** → write both directories. The bodies are identical; only host-specific frontmatter
+     differs. Model selection stays with each host.
 
 8. **Create project hook scripts** (if needed) — `claude` → `.claude/hooks/`, `opencode` → extend
    `.opencode/plugin/quality-hooks.ts` from Step 4b rather than adding shell scripts:

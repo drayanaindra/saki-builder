@@ -125,6 +125,31 @@ claude -p "/saki-builder:build I7" \
 - `--verbose` is **required** with `--output-format stream-json`.
 - `SAKI_TASK_ID` is optional; it just labels `task` in the state file so your logs read well.
 
+### Model resolution
+
+Workflow skills that need maximum reasoning quality declare `model_requirement: frontier`. This is a
+capability request, not a portable model id. Resolve it in the runner before spawning the session and
+pass the engine-native model option; never put one provider's id in the shared skill:
+
+```bash
+TASK="build I7"
+# The value is optional and is owned by the runner, not by the skill.
+CLAUDE_ARGS=()
+[ -n "${SAKI_FRONTIER_MODEL_CLAUDE:-}" ] && CLAUDE_ARGS+=(--model "$SAKI_FRONTIER_MODEL_CLAUDE")
+
+SAKI_AGENT_MODE=1 SAKI_TASK_ID="$TASK" \
+  claude -p "$TASK" "${CLAUDE_ARGS[@]}" \
+  --permission-mode acceptEdits \
+  --output-format stream-json --verbose \
+  </dev/null
+```
+
+For OpenCode, pass `SAKI_FRONTIER_MODEL_OPENCODE` through its native `--model provider/model` option.
+For Codex or another host, use that host's model selector with its own
+`SAKI_FRONTIER_MODEL_<ENGINE>` value. If no value is configured, omit the option and let the host's
+current session model apply. The skill must report `frontier requested` rather than pretending the
+requirement was resolved.
+
 ### Permission mode — and why the safety gates still hold
 
 | Mode | Use when |

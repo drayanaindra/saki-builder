@@ -1,6 +1,7 @@
 ---
 name: build
 description: Build a feature end-to-end without per-step approvals — plans, reviews, implements, and tests it. Use when you want results without managing the pipeline. For trivial fixes, skip. For step-by-step control, use /rplan instead. Auto-creates a feature branch and hard-blocks destructive database operations.
+model_requirement: frontier
 ---
 
 # Autonomous Plan-Review-Implement Pipeline
@@ -63,21 +64,9 @@ Resolve manually or use /rplan (manual mode) with explicit human approval.
 
 ## Phase 1: PLAN (/rplan behavior)
 
-Use the most capable model available (Claude Code: `opus` alias; opencode: `/models`):
-
-```bash
-python3 -c "
-import json, pathlib
-p = pathlib.Path.home() / '.claude' / 'settings.json'
-if p.exists():
-    s = json.loads(p.read_text())
-    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
-    p.write_text(json.dumps(s, indent=2))
-    print('Model set to the most capable (opus alias)')
-else:
-    print('opencode: select the most capable model via /models')
-"
-```
+Resolve `model_requirement: frontier` through the active host or runner using
+`config/docs/model-policy.md`. Do not edit a global settings file or assume a vendor/model identifier.
+If the host cannot select a model, inherit the current model and record `frontier requested`.
 
 Then execute the full /rplan process:
 1. Research phase — use `Glob`, `Grep`, and `Read` directly (NEVER `Agent` tool). Write `[task]-context.md`
@@ -226,20 +215,8 @@ OR
 ```
 
 **If confidence > 96%:**
-- Keep the most capable model active:
-  ```bash
-  python3 -c "
-  import json, pathlib
-  p = pathlib.Path.home() / '.claude' / 'settings.json'
-  if p.exists():
-      s = json.loads(p.read_text())
-      s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
-      p.write_text(json.dumps(s, indent=2))
-      print('Model set to the most capable (opus alias)')
-  else:
-      print('opencode: select the most capable model via /models')
-  "
-  ```
+- Resolve `model_requirement: frontier` through the active host or runner using
+  `config/docs/model-policy.md`; do not switch or persist a vendor-specific model from the workflow.
 - Proceed to Phase 4 immediately.
 
 **If confidence <= 96% after exhausting all resolvable probes:**
