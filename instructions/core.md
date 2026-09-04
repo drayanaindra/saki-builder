@@ -18,7 +18,7 @@ Trivial (typo, 1-line fix) → execute directly.
 
 ## Response Header
 
-`Model: [MOST CAPABLE] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`
+`Model: [FRONTIER|BALANCED|FAST|INHERITED] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`
 Required for non-trivial responses. Skip for trivial replies, acknowledgments, short clarifying questions.
 
 ## Readiness Gate

@@ -141,10 +141,11 @@ claude   = json.load(open(sys.argv[2])) if __import__("os").path.isfile(sys.argv
 
 cfg = {"$schema": "https://opencode.ai/config.json"}
 
-# model: claude-sonnet-4-6 -> anthropic/claude-sonnet-4-6  (verify against your opencode provider)
+# Only preserve an explicitly provider-qualified model. A Claude alias or bare model id has no
+# portable meaning in OpenCode and must be resolved by the OpenCode host/runner instead.
 m = settings.get("model")
-if m:
-    cfg["model"] = m if "/" in m else f"anthropic/{m}"
+if m and "/" in m:
+    cfg["model"] = m
 
 # permissions: allow-list -> opencode permission map (default everything else to "ask")
 allow = settings.get("permissions", {}).get("allow", [])
@@ -309,7 +310,7 @@ cat <<'EOF'
   • Orchestration skills (/build, /rplan→/approved→/qa→/reviewer): they run as
     markdown but the Agent/Skill multi-agent control flow is Claude-runtime-specific.
     Re-express in opencode's agent system before relying on /build.
-  • Verify the model id ("model" in opencode.json) against your opencode provider/auth
-    (Anthropic API key vs Claude Pro/Max bridge plugin).
+  • Resolve each skill's `model_requirement` through OpenCode's native model picker or runner.
+    The generator only preserves an explicitly qualified `provider/model` value.
   • Commit ./opencode/ so both engines stay versioned from one source.
 EOF

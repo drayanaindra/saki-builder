@@ -17,7 +17,7 @@ Full reference (phases, examples, decision matrix): `~/.claude/docs/execution-pr
 
 ## Response Header
 
-Format: `Model: [MOST CAPABLE] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`.
+Format: `Model: [FRONTIER|BALANCED|FAST|INHERITED] | Task: [...] | Role: [...] | Status: [Reading/Planning/Implementing/Testing/Complete]`.
 
 Required for: non-trivial responses (planning, implementing, multi-step work, role/status transitions).
 Skip for: trivial replies, acknowledgments ("ok", "got it"), short clarifying questions, single-line status updates.

@@ -1,5 +1,6 @@
 ---
 name: build
+model_requirement: frontier
 description: Autonomously execute a finished PRD (PRD-track) OR a single plan-track item (Improvement/Bug) end-to-end. PRD mode reads the PRD's vertical slices and runs /saki-builder:rplan → (/saki-builder:rplan-review if needed) → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → (security audit on security-relevant slices) on each slice; PLAN mode runs the same chain ONCE over one plan-track item — the hands-off equivalent of running /saki-builder:rplan → /saki-builder:rplan-review → /saki-builder:approved → /saki-builder:qa → /saki-builder:reviewer → /saki-builder:wrap by hand. Always runs the e2e suite and converges to clean before declaring done. No confirmation prompts. Usage — /saki-builder:build <E<n>|F<n>|prd-file.md | I<n>|B<n>|plan-file.md>.
 ---
 

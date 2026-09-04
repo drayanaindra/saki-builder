@@ -1,6 +1,6 @@
 {
   "name": "saki-builder",
-  "version": "0.30.3",
+  "version": "0.30.4",
   "description": "A personal-scale workflow toolkit for planning, building, testing, reviewing, and safely shipping software with Codex.",
   "author": {
     "name": "drayanaindra",

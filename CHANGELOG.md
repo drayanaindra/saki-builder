@@ -2,6 +2,13 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.30.4 — 2026-09-03
+
+Model selection is now capability-based across Claude Code, Codex, OpenCode, and other runners.
+Skills request the `frontier` capability and let the active host resolve its native model; generated
+OpenCode configuration no longer pins a vendor-specific model. Restores the `/build` skill so all
+pipeline references resolve during validation and packaging.
+
 ## 0.30.2 — 2026-08-15
 
 **`/init-env` now scaffolds Codex environments.** 0.30.1 shipped the installer's Codex detection but

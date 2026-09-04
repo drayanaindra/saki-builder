@@ -6,23 +6,13 @@ description: "Approve the current plan and keep the most capable model active. E
 
 The user has reviewed and approved the current plan. Do the following in order:
 
-## Step 1: Keep the most capable model active
+## Step 1: Resolve the model capability
 
-Ensure you are still running on the most capable model available. On Claude Code, set the `opus` alias; on opencode, keep your top-tier model selected via `/models`:
-
-```bash
-python3 -c "
-import json, pathlib
-p = pathlib.Path.home() / '.claude' / 'settings.json'
-if p.exists():
-    s = json.loads(p.read_text())
-    s['model'] = 'opus'  # alias — resolves to the best available model; never goes stale
-    p.write_text(json.dumps(s, indent=2))
-    print('Model set to the most capable (opus alias)')
-else:
-    print('opencode: select the most capable model via /models')
-"
-```
+This skill declares `model_requirement: frontier`: use the highest-capability model available in the
+current host session. Apply `config/docs/model-policy.md` when the host exposes model selection. Do
+not edit a global settings file or assume a vendor/model identifier. If the host cannot select a model,
+inherit the current one and report `Model capability: frontier requested` rather than claiming a concrete
+model was selected.
 
 ## Step 2: Load the plan + its research context
 
@@ -63,7 +53,10 @@ cited reason. Then re-run /approved.
 Respond with:
 
 ```
-Model: MOST CAPABLE | Status: Approved — XP implementation starting
+Model: FRONTIER | Status: Approved — XP implementation starting
+
+If the host could not resolve the requirement, use `Model: INHERITED (frontier requested)` in this
+header and continue only if that quality trade-off is acceptable for the caller.
 
 Plan: [filename]
 Steps: [N]
