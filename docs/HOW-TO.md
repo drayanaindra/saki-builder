@@ -35,11 +35,12 @@ Start a new session. Every command is now available as `/saki-builder:<name>`.
 /saki-builder:wrap      ← commits, pushes, cleans up
 ```
 
-For a new feature, add these before `rplan`:
+For a new feature, use the design stage before `rplan`:
 
 ```
-/saki-builder:prd       ← write product requirements first
-/saki-builder:proto     ← see a UI preview before any code is written
+/saki-builder:design-thinking-prototype  ← run when the UI problem or direction is still uncertain
+/saki-builder:prd                        ← write product requirements
+/saki-builder:proto                      ← render and approve the complete PRD journey
 ```
 
 Run `/help` to see the full command list.

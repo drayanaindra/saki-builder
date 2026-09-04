@@ -16,6 +16,7 @@ You are the Frontend Gateway. Detect intent from the current task and return the
 
 | Intent Keywords | Load Skill |
 |---|---|
+| `design UI`, `UX`, `prototype`, `interaction model`, `information architecture`, `user journey`, `visual direction` | `${CLAUDE_PLUGIN_ROOT}/config/skills/design-thinking-prototype/SKILL.md` |
 | `infinite loop`, `useEffect`, `hook loop`, `re-render loop` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/debugging-react-hooks/SKILL.md` |
 | `performance`, `render`, `memo`, `useMemo`, `useCallback`, `slow` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/optimizing-react-performance/SKILL.md` |
 | `implement design`, `build component`, `design to code`, `from figma` | `${CLAUDE_PLUGIN_ROOT}/config/skills/frontend/implementing-frontend-design/SKILL.md` |

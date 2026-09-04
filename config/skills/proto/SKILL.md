@@ -9,6 +9,12 @@ You produce **expectation-setting visibility**: what the end-user UI will look l
 the project's **real** design-system components and tokens, screenshotted across every state —
 **before** `/saki-builder:build` writes a line of production code. Pipeline: `/saki-builder:prd → /saki-builder:proto → /saki-builder:build`.
 
+**Design-thinking dependency.** Load
+`${CLAUDE_PLUGIN_ROOT}/config/skills/design-thinking-prototype/SKILL.md` before GATE 1 and use its
+**embedded `/proto` mode**. Do not restart discovery or route back into `/saki-builder:proto`: the PRD,
+personas, and shipped product supply Empathize/Define; Step 2.5 owns Ideate; Steps 5–6.5 own
+Prototype/expert review; Step 7 owns human approval; `/saki-builder:build` owns Implement.
+
 This is a *preview*, not a build. Hold the line on what it is and isn't:
 
 - **It IS faithful on**: layout, component selection, visual hierarchy, copy, look-and-feel,
@@ -501,17 +507,17 @@ that renders the right pixels but can't support the interaction the journey need
 - **SMALL** (local to one screen, absorbable as a variant/component) → it isn't really 🔶; resolve it as
   ⚠️/❌ and note it.
 - **BIG but design-only** (shell/nav restructure, a page's layout paradigm, a net-new pattern, or a ripple
-  across >1 screen — all *within* the PRD's scope) → **auto-resolve; do NOT pause.** But decide it with the
-  rigor of a **senior UI/UX designer**, not a snap pick: (1) enumerate 2–3 real options; (2) judge each against
-  the **existing design language** (does it still read as the same shipped app?), the **cost ladder** (the
-  lowest rung that faithfully holds the journey), the **interaction** the journey needs, **cross-screen
-  consistency**, **accessibility** (4.5:1 contrast, keyboard, landmarks), and **responsive** behavior at both
-  viewports; (3) commit to the option that is most faithful to the real app at the lowest cost, and add the
-  minimum — never a bigger redesign than the journey forces. Then **record the decision** in
-  `design-system-updates.md` (the options weighed · the pick · the rejected alternatives + why · the screens
-  affected), build it in **Step 2.6**, and let **Step 7b** be the human's review/reversal point — the same
-  auto-proceed-then-review backstop the gap analysis already uses. Never force-fit and never *silently*
-  redesign: auto-resolving means a **reasoned, recorded** design decision, not an unexamined one.
+  across >1 screen — all *within* the PRD's scope) → **auto-resolve; do NOT pause.** Apply the embedded
+  `/saki-builder:design-thinking-prototype` Ideate gate rather than making a snap pick: (1) enumerate 2–3
+  structurally different options; (2) state the falsifiable user/interaction hypothesis and largest risk
+  for each; (3) grade desirability, feasibility, and viability as strong/uncertain/weak with cited PRD,
+  persona, shipped-product, and stack evidence; (4) judge fit with the **existing design language**, the
+  **cost ladder**, required interaction, cross-screen consistency, accessibility (4.5:1 contrast,
+  keyboard, landmarks), and both viewports; (5) commit to the evidence-leading option at the lowest cost
+  and add the minimum. Record the hypotheses, three-lens grades, decision, rejected alternatives + why,
+  and affected screens in `design-system-updates.md`; build the choice in **Step 2.6** and let **Step 7b**
+  be the human's review/reversal point. Auto-resolving means a reasoned, recorded design decision, not an
+  unexamined one.
 - **BIG that alters SCOPE** (new features/screens, not just layout/pattern — beyond §8/§11) → **this is not a
   design decision proto may make** (it violates "never invent a feature beyond §11"), so proto **delegates**:
   **enter the Convergence loop** — invoke `/saki-builder:prd`/`/saki-builder:prd-review` to reconcile scope
@@ -1722,6 +1728,8 @@ Handoff notes: tasks/proto-<slug>/notes.md
 Local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — Cmd/Ctrl-click to open · stop: pkill -f "http.server <port>")
 Studio Preview: opens the static gallery (tasks/proto-<slug>/preview.html) via the Preview ↗ button
 Figma export: <Figma file URL — Tier A editable layers | Tier B screenshot board | skipped (no Figma MCP)>
+Design-thinking review: <not triggered — faithful reuse only | hypotheses + decision in design-system-updates.md>
+Validation level: <target-user validation performed | visual approval + browser expert review — user validation outstanding>
 
 Fidelity: faithful on layout/components/look/responsive/page-composition-in-real-shell/per-state;
           approximate on live data density + edge cases; no backend/logic.

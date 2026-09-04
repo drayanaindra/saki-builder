@@ -1,7 +1,7 @@
 {
   "name": "saki-builder",
   "displayName": "SAKI Builder",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "description": "Structured planning, implementation, QA, review, and shipping workflows for oh-my-pi.",
   "author": {
     "name": "drayanaindra",

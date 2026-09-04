@@ -10,6 +10,7 @@ You are the Frontend Gateway. Detect intent from the current task and return the
 
 | Intent Keywords | Load Skill |
 |---|---|
+| `design UI`, `UX`, `prototype`, `interaction model`, `information architecture`, `user journey`, `visual direction` | `skill://design-thinking-prototype` |
 | `infinite loop`, `useEffect`, `hook loop`, `re-render loop` | `skill://debugging-react-hooks` |
 | `performance`, `render`, `memo`, `useMemo`, `useCallback`, `slow` | `skill://optimizing-react-performance` |
 | `implement design`, `build component`, `design to code`, `from figma` | `skill://implementing-frontend-design` |

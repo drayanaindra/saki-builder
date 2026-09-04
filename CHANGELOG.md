@@ -1,6 +1,15 @@
 # Changelog — saki-builder
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
+
+## 0.32.0 — 2026-09-05
+
+- Adds `/saki-builder:design-thinking-prototype`, an evidence-led UI/UX workflow based on Figma's
+  design-thinking model, with structural ideation, runnable prototype, accessibility, responsive,
+  three-lens, and validation-honesty gates.
+- Routes exploratory frontend design through the new skill and embeds its decision gates into
+  `/saki-builder:proto` without changing proto's PRD, coverage, approval, or lock authority.
+
 ## 0.31.0 — 2026-09-04
 
 Native oh-my-pi support is now shipped as a first-class plugin surface:
