@@ -179,6 +179,67 @@ for (const sp of skillPaths) {
   }
 }
 
+// --- 5c. OMP package surfaces ---------------------------------------------
+const ompPlugin = readJSON('.omp-plugin/plugin.json')
+const ompMarket = readJSON('.omp-plugin/marketplace.json')
+if (ompPlugin) {
+  if (!ompPlugin.name || !ompPlugin.version) err('.omp-plugin/plugin.json: missing name/version')
+  if (plugin && ompPlugin.name !== plugin.name) err('OMP and Claude plugin names differ')
+  if (plugin && ompPlugin.version !== plugin.version) err('OMP and Claude plugin versions differ')
+  for (const field of ['skills', 'commands']) {
+    const rel = String(ompPlugin[field] || '').replace(/^\.\//, '')
+    if (!rel || !fs.existsSync(path.join(ROOT, rel))) err(`.omp-plugin/plugin.json: missing ${field} path ${rel}`)
+  }
+}
+if (ompPlugin && ompMarket) {
+  const entry = (ompMarket.plugins || []).find((p) => p.name === ompPlugin.name)
+  if (!entry) err('.omp-plugin/marketplace.json has no matching plugin entry')
+  else if (entry.version !== ompPlugin.version) err('OMP plugin and marketplace versions differ')
+}
+const ompPackage = readJSON('package.json')
+if (ompPackage && (!ompPackage.omp || !Array.isArray(ompPackage.omp.extensions))) {
+  err('package.json: missing omp.extensions array')
+} else if (ompPackage) {
+  for (const ext of ompPackage.omp.extensions) {
+    if (!fs.existsSync(path.join(ROOT, ext.replace(/^\.\//, '')))) err(`missing OMP extension: ${ext}`)
+  }
+}
+const ompSkills = listDir('omp/skills')
+for (const d of ompSkills) {
+  if (!d.isDirectory()) continue
+  const rel = path.join('omp/skills', d.name, 'SKILL.md')
+  if (!fs.existsSync(path.join(ROOT, rel))) { err(`${rel}: missing one-level OMP skill file`); continue }
+  const fm = frontmatter(path.join(ROOT, rel))
+  if (!fm || !fm.name || !fm.description) err(`${rel}: missing OMP name/description frontmatter`)
+}
+const ompCommandNames = new Set()
+for (const d of listDir('omp/commands')) {
+  if (!d.isFile() || !d.name.endsWith('.md')) err(`omp/commands contains non-command entry: ${d.name}`)
+  else ompCommandNames.add(d.name.replace(/\.md$/, ''))
+}
+if (!ompCommandNames.size) err('omp/commands: no generated commands')
+for (const d of listDir('agents')) {
+  if (!d.isFile() || !d.name.endsWith('.md')) continue
+  const fm = frontmatter(path.join(ROOT, 'agents', d.name))
+  if (!fm || !fm.name || !fm.description) err(`agents/${d.name}: missing OMP name/description frontmatter`)
+}
+if (!fs.existsSync(path.join(ROOT, 'rules/saki-builder.md'))) err('missing OMP rules/saki-builder.md')
+function assertPortableSurface (rel) {
+  if (rel === 'omp/skills/saki-builder-runtime') return
+  const abs = path.join(ROOT, rel)
+  if (!fs.existsSync(abs)) return
+  for (const d of fs.readdirSync(abs, { withFileTypes: true })) {
+    const child = path.join(rel, d.name)
+    if (d.isDirectory()) assertPortableSurface(child)
+    else if (/\.(md|sh|json|ts|js)$/.test(d.name)) {
+      const txt = fs.readFileSync(path.join(ROOT, child), 'utf8')
+      if (/\$\{CLAUDE_PLUGIN_ROOT\}/.test(txt)) err(`${child}: contains Claude-only plugin root`)
+      if (/ROOT\/skill:\/\//.test(txt)) err(`${child}: contains malformed skill URI path`)
+    }
+  }
+}
+for (const surface of ['omp/skills', 'omp/commands', 'agents', 'rules']) assertPortableSurface(surface)
+
 // --- 6. Soft: stray claude-config (until Phase-4 rename) -------------------
 // (warn-only; counted, not enumerated, to keep output tight)
 let leak = 0

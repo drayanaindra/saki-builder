@@ -49,6 +49,21 @@ codex plugin add saki-builder@saketek
 
 Full installation, skill usage, updates, and troubleshooting: **[docs/CODEX-INSTALL.md](docs/CODEX-INSTALL.md)**.
 
+### oh-my-pi (OMP)
+
+SAKI Builder ships as a native OMP plugin with one-level skills, namespaced commands, task agents,
+project rules, and an `ExtensionAPI` safety/lifecycle extension:
+
+```bash
+omp plugin marketplace add https://github.com/drayanaindra/saki-builder.git
+omp plugin install saki-builder@saketek
+```
+
+Restart OMP. Commands remain namespaced (`/saki-builder:rplan`, `/saki-builder:qa`, and so on).
+For autonomous run visibility, set `SAKI_AGENT_MODE=1`; the extension writes
+`tasks/.saki/<session>.json` and `tasks/.saki/latest.json`. Full OMP installation and troubleshooting:
+[docs/OMP-INSTALL.md](docs/OMP-INSTALL.md).
+
 **Driving it from an agent runner?** Hermes Agent, OpenClaw, or CI spawning `claude -p` in the
 background: set `SAKI_AGENT_MODE=1` and poll `tasks/.saki/latest.json` to see whether a run is alive,
 hung, or finished. Full contract + supervisor loop: **[docs/AGENT-RUNNERS.md](docs/AGENT-RUNNERS.md)**.

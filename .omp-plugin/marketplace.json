@@ -1,0 +1,20 @@
+{
+  "name": "saketek",
+  "description": "SAKI Builder workflow tools for oh-my-pi.",
+  "owner": {
+    "name": "drayanaindra",
+    "url": "https://github.com/drayanaindra"
+  },
+  "plugins": [
+    {
+      "name": "saki-builder",
+      "displayName": "SAKI Builder",
+      "source": "./",
+      "version": "0.31.0",
+      "description": "Structured planning, implementation, QA, review, and shipping workflows for oh-my-pi.",
+      "keywords": ["workflow", "planning", "code-review", "tdd"],
+      "category": "workflow",
+      "defaultEnabled": true
+    }
+  ]
+}

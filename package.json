@@ -1,10 +1,13 @@
 {
   "name": "@saketek/saki-builder",
-  "version": "0.30.4",
+  "version": "0.31.0",
   "description": "A personal-scale shared toolkit for AI coding agents: research→plan→build→qa→review skills, safety hooks, adversarial reviewers, domain agents, and an execution protocol. OpenCode plugin edition of the saki-builder Claude Code plugin.",
   "exports": {
     "./server": "./opencode/plugins/plugin.ts",
     ".": "./opencode/plugins/plugin.ts"
+  },
+  "omp": {
+    "extensions": ["./omp/extension.ts"]
   },
   "bin": {
     "saki-builder": "bin/saki-install.mjs"
@@ -12,25 +15,34 @@
   "files": [
     "opencode/plugins/*",
     "dist/opencode-bundle/",
+    "skills/",
+    "commands/",
+    "agents/",
+    "rules/",
+    "omp/",
+    ".omp-plugin/",
+    ".claude-plugin/",
     "config/docs/",
     "config/hooks/",
     "bin/saki-install.mjs",
     "bin/engine-detect.mjs",
     "LICENSE",
     "README.md",
-    "docs/OPENCODE-INSTALL.md"
+    "docs/OPENCODE-INSTALL.md",
+    "docs/OMP-INSTALL.md"
   ],
   "engines": {
     "node": ">=18",
     "opencode": ">=1.18.0"
   },
   "scripts": {
-    "test": "node test/validate.js && node test/test-model-policy.mjs && tsx test/test-safety-hooks.mts",
+    "test": "node test/validate.js && node test/test-model-policy.mjs && tsx test/test-safety-hooks.mts && tsx test/omp-plugin-smoke.mts",
     "test:safety": "tsx test/test-safety-hooks.mts",
+    "test:omp": "tsx test/omp-plugin-smoke.mts",
     "validate": "node test/validate.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "smoke": "tsx test/opencode-plugin-smoke.mts",
-    "prepack": "bash bin/build-npm-bundle.sh",
+    "prepack": "bash bin/build-omp-bundle.sh && bash bin/build-npm-bundle.sh",
     "install:opencode": "node bin/saki-install.mjs"
   },
   "devDependencies": {

@@ -1,0 +1,110 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/inject-core.js\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/repo-context.sh\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/check-plugin-update.js\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/dangerous-command-guard.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/coverage-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/format-staged.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/build-completion-gate.sh\"",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/pickup-completion-gate.sh\"",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/config/hooks/prd-review-completion-gate.sh\"",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ \"${SAKI_AGENT_MODE:-}\" = \"1\" ] || exit 0; exec node \"${CLAUDE_PLUGIN_ROOT}/config/hooks/agent-session.js\"'",
+            "timeout": 5
+          }
+        ],
+        "matcher": "agent_needs_input|idle_prompt"
+      }
+    ]
+  }
+}

@@ -1,6 +1,17 @@
 # Changelog — saki-builder
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
+## 0.31.0 — 2026-09-04
+
+Native oh-my-pi support is now shipped as a first-class plugin surface:
+
+- Adds OMP manifests, marketplace metadata, generated one-level skills, namespaced commands,
+  task agents, package rules, and an `ExtensionAPI` extension.
+- Ports dangerous-command, secret, quality-gate, lifecycle, autonomous-state, and continuation
+  behavior to OMP.
+- Adds OMP-native `init-env` and `update` workflows plus installation and troubleshooting docs.
+- Removes the personal 9Router provider from the repository-local OpenCode config.
+
 
 ## 0.30.4 — 2026-09-03
 
@@ -8,6 +19,10 @@ Model selection is now capability-based across Claude Code, Codex, OpenCode, and
 Skills request the `frontier` capability and let the active host resolve its native model; generated
 OpenCode configuration no longer pins a vendor-specific model. Restores the `/build` skill so all
 pipeline references resolve during validation and packaging.
+## 0.30.3 — 2026-08-15
+
+Release the Codex-compatible `/init-env` scaffold and synchronized plugin metadata under a new,
+immutable npm version.
 
 ## 0.30.2 — 2026-08-15
 

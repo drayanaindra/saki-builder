@@ -13,5 +13,5 @@
     "forceConsistentCasingInFileNames": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["opencode/plugins/*.ts", "config/docs/templates/*.ts", "test/*.mts"]
+  "include": ["opencode/plugins/*.ts", "omp/*.ts", "config/docs/templates/*.ts", "test/*.mts"]
 }

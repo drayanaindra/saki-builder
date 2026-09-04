@@ -1,0 +1,23 @@
+{
+  "name": "saki-builder",
+  "displayName": "SAKI Builder",
+  "version": "0.31.0",
+  "description": "Structured planning, implementation, QA, review, and shipping workflows for oh-my-pi.",
+  "author": {
+    "name": "drayanaindra",
+    "url": "https://github.com/drayanaindra"
+  },
+  "homepage": "https://github.com/drayanaindra/saki-builder",
+  "repository": "https://github.com/drayanaindra/saki-builder.git",
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "planning",
+    "code-review",
+    "tdd",
+    "skills",
+    "agents"
+  ],
+  "skills": "./omp/skills",
+  "commands": "./omp/commands"
+}
