@@ -2,6 +2,13 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.34.0 — 2026-09-05
+
+- Makes `/saki-builder:design-audit` usable for protected existing screens through safe browser sessions or
+  documented project mock-auth seams, with redacted auth contracts carried into `/saki-builder:proto`.
+- Makes proto render authenticated UI with deterministic mock principals while preserving the real shell and
+  feature components, and supports explicit self-contained state simulations for headless/no-UI projects.
+
 ## 0.33.0 — 2026-09-05
 
 - Adds `/saki-builder:design-audit`, a rendered, read-only existing-UI audit that freezes desktop/mobile

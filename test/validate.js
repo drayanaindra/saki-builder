@@ -258,19 +258,26 @@ requireTokens('config/skills/design-audit/SKILL.md', [
   'baseline-source.json',
   'worktreeSha256',
   'captureState',
+  '--auth=auto|browser|project-mock',
+  'project-mock',
+  'productionAuthExercised',
   '--audit=tasks/design-audit-<slug>'
 ])
 requireTokens('skills/design-audit/SKILL.md', [
   '/saki-builder:design-audit',
   '/saki-builder:proto',
   'baseline-source.json',
-  'worktreeSha256',
+  'project-mock',
+  'productionAuthExercised',
   'captureState'
 ])
 requireTokens('config/skills/proto/SKILL.md', [
   '--audit=<audit-dir>',
   'baseline-source.json',
   'auditDigestSha256',
+  'auth-simulation.json',
+  'provider-mock',
+  'Self-contained simulation',
   '[audit-route:<route>]',
   'proto-comparison-template.html',
   '__BEFORE_AFTER_DATA_BASE64__',

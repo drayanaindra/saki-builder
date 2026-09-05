@@ -10,7 +10,7 @@
       "name": "saki-builder",
       "displayName": "SAKI Builder",
       "source": "./",
-      "version": "0.33.0",
+      "version": "0.34.0",
       "description": "Structured planning, implementation, QA, review, and shipping workflows for oh-my-pi.",
       "keywords": ["workflow", "planning", "code-review", "tdd"],
       "category": "workflow",

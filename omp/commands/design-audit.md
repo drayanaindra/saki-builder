@@ -7,7 +7,8 @@ description: "Audit an existing web interface against its real users, brand, des
 Usage:
 
 ```text
-/saki-builder:design-audit <route-or-scope> [--preserve|--overhaul] [--prd=<E<n>|F<n>|prd-file.md>] [--restart]
+/saki-builder:design-audit <route-or-scope> [--preserve|--overhaul] [--prd=<E<n>|F<n>|prd-file.md>]
+  [--auth=auto|browser|project-mock] [--restart]
 ```
 
 Examples:
@@ -19,10 +20,14 @@ Examples:
 
 Produce a **rendered baseline, evidence-backed critique, bounded treatment, and proto handoff**. Do not
 modify application source. The result must let a reviewer compare the same screen at the same viewport
-before and after `/saki-builder:proto` renders the proposed treatment.
+before and after `/saki-builder:proto` renders the proposed treatment. Existing authentication is a
+rendering prerequisite, not a reason to replace the UI with a login redirect.
 
 This skill diagnoses visual and interaction quality. It does not implement the redesign, change product
-behavior, invent PRD scope, or claim that visual preference proves a user or business outcome.
+behavior, invent PRD scope, or claim that visual preference proves a user or business outcome. `--auth=auto`
+is the default: prefer a safe existing browser session, then a project-documented local mock/development-
+auth seam. `--auth=browser` requires the former; `--auth=project-mock` requires the latter. Never persist
+cookies, bearer tokens, passwords, or real user identifiers in audit artifacts.
 
 ## Core boundary
 
@@ -50,8 +55,8 @@ When these disagree, the PRD wins on scope and behavior; the audit may only cons
 
 ## Step 0 — Resolve input and artifact directory
 
-1. Parse the route/scope, redesign mode, optional PRD, and `--restart`.
-2. Default to `--preserve`. Use `--overhaul` only when explicitly supplied.
+1. Parse the route/scope, redesign mode, optional PRD, `--auth` mode, and `--restart`.
+2. Default to `--preserve` and `--auth=auto`. Use `--overhaul` only when explicitly supplied.
 3. Derive a filesystem-safe `<slug>` from the scope and write only under:
 
 ```text
@@ -60,7 +65,8 @@ tasks/design-audit-<slug>/
 
 4. If the directory exists and `--restart` is absent, resume from the first missing or invalid artifact.
    Preserve an existing baseline PNG only when `baseline-source.json` exists and still matches the current
-   source identity and capture settings. An orphan or unbound PNG is stale and requires `--restart`.
+   source identity, capture settings, and auth contract. An orphan or unbound PNG is stale and requires
+   `--restart`.
 5. If `--restart` is present, replace only this skill's artifact directory. Never delete or edit application
    files.
 6. Resolve `--prd` exactly as `/saki-builder:proto` does. Record its path when available; do not create or
@@ -96,9 +102,19 @@ contrast in context, responsive composition, or whether a page looks formulaic.
 4. Open the requested route/scope. Verify the expected app shell and target content are visible.
 5. Fail on uncaught page errors, framework error boundaries, failed primary resources, or a login/error page
    captured in place of the requested authenticated screen.
-6. Never bypass authentication or seed the database directly. Use an existing safe session and existing data.
-   If the requested state needs credentials or data that cannot be obtained safely, mark that screen
-   `BLOCKED` and finish all other reachable screens; do not fabricate it.
+6. Resolve authentication before capture when the requested screen is protected:
+   - `browser-session`: use the host browser's already-authenticated session; never export its cookies or
+     tokens. Record only the redacted principal role/label needed to reproduce the visual state.
+   - `project-mock`: use the project's documented local development/mock-auth seam (mock provider, demo
+     principal, test identity, or dev-only session mode). Do not invent credentials, seed production data,
+     or weaken real auth middleware. Record the seam and invocation without secrets.
+   - `public`: use no authenticated principal for a genuinely public screen.
+   If neither a safe browser session nor a documented project seam exists, mark the protected screen
+   `BLOCKED` with `authRequired: true`; do not capture the login redirect as its baseline and do not claim
+   the protected UI was audited.
+7. Write the resolved auth contract into `baseline-source.json`, `baseline.json`, and the proto handoff:
+   mode (`public`, `browser-session`, `project-mock`, or `blocked`), principal role/label, session state,
+   provider boundary, and whether production auth itself was exercised. Persist no secret or cookie.
 
 If no requested screen can be rendered, stop:
 
@@ -107,9 +123,9 @@ HARD STOP — DESIGN AUDIT HAS NO RENDERED BASELINE
 A source-only critique cannot prove visual quality. Resolve the named server/session/render blocker, then rerun.
 ```
 
----
-
-## Step 2 — Freeze the screen manifest
+An authenticated screen with a safe resolved contract is renderable even when its auth provider is mocked;
+the audit must label that baseline as `project-mock` and proto must use the same principal/role for its
+after-state. A `blocked` auth screen keeps the audit `partial` and cannot produce a READY handoff.
 
 Inventory exactly the requested scope, not the whole product unless the user requested the whole product.
 Walk the rendered shell and route only far enough to identify the screens and states inside that scope.
@@ -177,6 +193,14 @@ Before writing the first PNG, atomically write `baseline-source.json`:
       "worktreeSha256": "<sha256-of-dirty-paths-and-bytes>"
     }
   },
+  "auth": {
+    "mode": "project-mock",
+    "required": true,
+    "principal": { "role": "operator", "label": "demo operator" },
+    "sessionState": "authenticated",
+    "providerBoundary": "auth/session provider",
+    "productionAuthExercised": false
+  },
   "capture": {
     "viewports": {
       "desktop": { "width": 1280, "height": 832 },
@@ -223,6 +247,14 @@ Write `baseline.json` as strict JSON:
       "worktreeSha256": "<sha256-of-dirty-paths-and-bytes>"
     },
     "url": "http://127.0.0.1:<port>/pricing"
+  },
+  "auth": {
+    "mode": "project-mock",
+    "required": true,
+    "principal": { "role": "operator", "label": "demo operator" },
+    "sessionState": "authenticated",
+    "providerBoundary": "auth/session provider",
+    "productionAuthExercised": false
   },
   "viewports": {
     "desktop": { "width": 1280, "height": 832 },
@@ -391,6 +423,15 @@ Write both a human-readable `proto-handoff.md` and strict machine-readable `prot
   },
   "findings": "audit.md",
   "treatment": "treatment.md",
+  "auth": {
+    "mode": "project-mock",
+    "required": true,
+    "principal": { "role": "operator", "label": "demo operator" },
+    "sessionState": "authenticated",
+    "providerBoundary": "auth/session provider",
+    "productionAuthExercised": false,
+    "simulationRequired": true
+  },
   "screens": [
     {
       "key": "pricing-overview",
@@ -426,17 +467,16 @@ normalized audit directory. No path may be absolute or contain `..`.
 
 ## Screen pairs
 | Key | Screen | Route/state | Desktop baseline | Mobile baseline | Finding IDs |
-
-## Visual treatment
-## Component contract
-## Required states
-## Acceptance
-## Preserve
-## Non-goals
 ```
 
 The handoff is `ready` only when:
 
+- every protected screen has a resolved auth contract; `blocked` auth screens force `partial`;
+- the handoff auth contract names the principal role/label and session state proto must simulate, without
+  containing credentials, cookies, bearer tokens, or real user identifiers;
+- `project-mock` baselines cite the project's documented mock/development-auth seam;
+- `browser-session` baselines record no exported session material and proto must still use a deterministic
+  mock principal for the after-state;
 - `baseline-source.json` exists, matches the current source/capture identity, and binds every preserved PNG;
 - every JSON key is unique and appears in `screen-manifest.md`;
 - every screen has both valid baseline PNGs at the exact dimensions;
@@ -506,3 +546,7 @@ reviewed in proto's before/after comparison; user or usability validation is sti
 - PRD owns scope and behavior; audit owns visual diagnosis; proto owns visual proof.
 - Same key, state, viewport, and dimensions before and after or no comparison claim.
 - Baseline PNGs without matching pre-capture `baseline-source.json` provenance are stale, never resumable.
+- Protected screens use a safe browser session or a documented project mock; auth redirects are never
+  mislabeled as authenticated baselines.
+- Auth metadata is redacted and deterministic; no cookie, token, password, or real identifier enters an
+  artifact.

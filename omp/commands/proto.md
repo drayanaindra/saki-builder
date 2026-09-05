@@ -79,9 +79,13 @@ editable layers, run a full `/saki-builder:proto` on the Figma-connected machine
 - every screen key matches `[a-z0-9][a-z0-9-]*`, is unique, declares `state` plus `captureState`, and has
   desktop/mobile baseline PNGs; `captureState` is `page` for `default`/`happy` and otherwise equals the
   normalized state;
-- `baseline-source.json` exists, its source revision and capture viewports match `baseline.json`, and every
-  preserved PNG is bound to that pre-capture provenance;
-- `baseline.json` uses the same key, route, state, `captureState`, baseline paths, and viewports as the handoff;
+- `auth` exists and uses `public`, `browser-session`, or `project-mock`; `blocked` auth is rejected;
+- protected screens name the principal role/label and authenticated session state that the proto simulation
+  must reproduce; no auth object contains a secret, cookie, bearer token, password, or real user identifier;
+- `baseline-source.json` exists, its source revision, auth contract, and capture viewports match `baseline.json`,
+  and every preserved PNG is bound to that pre-capture provenance;
+- `baseline.json` uses the same key, route, state, `captureState`, baseline paths, auth contract, and viewports
+  as the handoff;
 - `baseline.json.source.revision` has non-empty `head` and `worktreeSha256` strings. Recompute the documented
   worktree fingerprint; a changed HEAD or fingerprint makes the audit stale and requires rerunning
   `/saki-builder:design-audit --restart`;
@@ -89,17 +93,14 @@ editable layers, run a full `/saki-builder:proto` on the Figma-connected machine
   audit directory (no absolute path or `..`);
 - `audit` and a non-null `prd` are repository-root-relative identities, remain inside the project root, and
   resolve respectively to the supplied audit directory and this invocation's PRD.
-
-On any failure, HARD STOP with the exact field/file that failed. Never downgrade a partial audit into a
-comparison. Read the audit's **Preserve**, **Treatment**, **Acceptance**, and **Non-goals** as visual
-constraints. They do not override PRD §8–§11, authorize new behavior, or narrow the complete journey.
 Keep the validated handoff in memory; do **not** write `audit-source.json` yet. Compute
 `auditDigestSha256` over these validated audit inputs in sorted repository-relative path order:
 `proto-handoff.json`, `proto-handoff.md`, `baseline.json`, `baseline-source.json`, `audit.md`, `treatment.md`,
 and every referenced baseline PNG. For each file hash UTF-8 path + NUL + byte length + NUL + exact bytes.
 Step 0.5 must compare any existing identity before it can decide whether resume is safe. After that decision,
 write `tasks/proto-<prd-slug>/audit-source.json` with the normalized audit path, revision HEAD/fingerprint,
-`auditDigestSha256`, and each handoff screen's key, route, state, `captureState`, and baseline paths.
+`auditDigestSha256`, the complete auth contract, and each handoff screen's key, route, state, `captureState`,
+and baseline paths. The auth contract is identity data, not a credential store.
 
 ---
 
@@ -162,12 +163,12 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
    full manifest resumes only a no-`--slice` invocation. On any scope mismatch, do NOT resume — announce it
    and start fresh (or tell the user to pass the matching flag, or `--restart`).
    **Audit identity must also match before any write.** When `--audit` is present, first read any existing
-   `audit-source.json` and compare its normalized directory, complete screen tuples, HEAD, worktree
-   fingerprint, and `auditDigestSha256` to the validated audit held in memory; when absent, no prior audit
-   source may be inherited. Exact match permits resume. Any difference makes audit-sensitive checkpoints
-   stale: invalidate the old comparison artifacts and restart proto from GATE 1 under the new treatment before
-   writing the new identity. Do not overwrite the old identity first, and do not reuse the harness or after
-   frames merely because their filenames match.
+   `audit-source.json` and compare its normalized directory, complete screen tuples, complete auth contract,
+   HEAD, worktree fingerprint, and `auditDigestSha256` to the validated audit held in memory; when absent,
+   no prior audit source may be inherited. Exact match permits resume. Any difference makes audit-sensitive
+   checkpoints stale: invalidate the old comparison artifacts and restart proto from GATE 1 under the new
+   treatment before writing the new identity. Do not overwrite the old identity first, and do not reuse the
+   harness or after frames merely because their filenames match.
 3. **Walk the checkpoint ledger in order; find the highest contiguous DONE, resume at the next phase.** A
    checkpoint is DONE only when its artifact is present **AND** its own gate re-verifies — presence ≠
    correctness, a half-written file is not DONE:
@@ -835,16 +836,35 @@ throws on first render (works on a toy app, fails on a real one). Before mountin
 
 **Two distinct jobs — keep them separate (this is the heart of full-shell composition):**
 - **Providers → MOCK** (theme, toast, i18n/locale, auth/session, data-layer): wrap the preview in
-  them with everything external **mocked**. Never boot real auth/session or hit a DB — supply a mock
+  them with everything external mocked. Never boot real auth/session or hit a DB — supply a mock
   session/user, a mock locale + messages, and stub the data-layer with static mock data.
 - **Layout / chrome → RENDER REAL** (the app shell from Gate 2: nav, header, sidebar, footer): these
-  are presentational, so **render them for real around the slice** — that is what makes the preview
-  look like the actual page. Do NOT mock or strip the shell.
+  are presentational, so render them for real around the slice. Do NOT mock or strip the shell.
 
-If the provider chain is **env-dependent and not cheaply mockable** (e.g. auth requires live keys at
-module load) so the real shell can't mount, do NOT fight it — fall back to the bare harness (5b#2),
-and note the lost chrome in **§Fidelity reductions** of `index.md`.
+When `--audit` supplies `auth`, the mock principal, role, session state, and permission shape MUST match
+that contract. Generate `tasks/proto-<slug>/auth-simulation.json` before the first capture:
 
+```json
+{
+  "schema": 1,
+  "mode": "provider-mock",
+  "principal": { "role": "operator", "label": "demo operator" },
+  "sessionState": "authenticated",
+  "permissions": ["<redacted capability names>"],
+  "mockedBoundaries": ["auth/session provider", "data layer"],
+  "realComponents": ["<shell and feature import paths>"],
+  "routeNamespace": "/proto-preview"
+}
+```
+
+Do not copy a browser cookie, token, password, or real identifier into this file. If the audit contract is
+`project-mock`, use the same documented project seam or an equivalent preview-only provider mock; do not
+silently switch the principal or role. If the audit contract is `browser-session`, the after-state still
+uses this deterministic mock so proto is reproducible and does not depend on a live session.
+
+If the provider chain is env-dependent and not cheaply mockable (e.g. auth requires live keys at module load)
+so the real shell can't mount, do NOT invent a production bypass. Use a preview-only provider seam or the
+bare harness fallback below, and record the lost chrome/auth fidelity in `index.md`.
 ### 5b. Harness choice (in priority order — by page-composition fidelity)
 
 What the user ultimately sees is the **captured** screenshots (Step 6), embedded in the static
@@ -875,24 +895,44 @@ the real page will look** — the more it composes the real app shell, the more 
    chrome**, so **append the fidelity reduction to §Fidelity reductions in `index.md`** ("rendered without the app shell").
    **Storybook** (`.stories.tsx`, the `component` skill's convention) is an equivalent isolation
    option here.
+3. **Self-contained simulation** (for a headless/no-UI repository or a deliberately static workflow
+   prototype) — write a real-looking `index.html` with the project's actual interaction/state contract and
+   mock data, plus a minimal `preview.html` wrapper that embeds it. Use explicit state controls or query
+   parameters to switch loading/empty/error/permission/awaiting/verified states. This is the pattern used by
+   the target `saki-cli` prototype: state buttons update visible status, explanation, and action affordance
+   together, while the wrapper gives the artifact a stable browser entrypoint. It is valid only when the
+   project has no browser shell to compose or the PRD explicitly requests a static simulation; label the
+   result `simulation`, not a production route, and record that no real shell was available.
 
 (The preview always lives in the `proto-preview` namespace — isolation + `/saki-builder:build` teardown, Step 8.
 It is a **capture harness**, not a live route.)
 
 ### 5c. Auth gate (default-deny middleware)
 
-Many apps run **default-deny** auth middleware: any route not in a public allowlist redirects to
-`/login`. A preview route will be redirected (`307 → /login`) and never render. Add a **scoped,
-reverted-on-cleanup** bypass so ONLY the preview namespace skips auth — real routes are unaffected,
-so a running dev server / the user's session sees no behavior change:
+Many apps run default-deny auth middleware: any route not in a public allowlist redirects to `/login`. A
+preview route will be redirected (`307 → /login`) and never render. Resolve this in the following order:
+
+1. Prefer the real app's documented preview/dev-auth seam or inject the auth/session provider mock identified
+   in 5a. The mocked principal MUST match the audit auth contract.
+2. If middleware still blocks the route, add a **scoped, dev-only, reverted-on-cleanup** bypass for ONLY the
+   preview namespace. Derive the exact middleware return shape from the project's implementation; do not
+   paste the framework-specific example below unchanged. The bypass may skip the redirect, but it MUST NOT
+   fabricate production cookies, tokens, claims, or data access. The preview provider remains the authority.
+3. Record the exact bypass file/condition, provider mock entrypoint, principal role, and cleanup action in
+   `auth-simulation.json`. A missing cleanup record is a blocking failure.
+
+Illustrative shape only — adapt to the real middleware contract:
 
 ```ts
-// __PROTO__ — dev-only preview routes bypass auth (throwaway; remove on cleanup)
-if (strippedPathname.startsWith('/proto-preview')) return intlMiddleware(request);
+// __PROTO__ — dev-only preview route; throwaway and reverted on cleanup
+if (process.env.NODE_ENV !== 'production' && strippedPathname.startsWith('/proto-preview')) {
+  return continueToPreviewRoute(request);
+}
 ```
 
-Place it at the TOP of the middleware, before the auth check. Record it in the cleanup contract
-(Step 8) — it must be reverted with the route.
+Never broaden the bypass to all routes, disable real auth globally, or make an unauthenticated production
+route. If neither a provider mock nor a safe route-scoped seam can mount the real shell, use the explicitly
+labeled bare/static simulation fallback and record the lost auth/shell fidelity.
 
 ### 5d. Mount, mark, serve
 
@@ -910,11 +950,15 @@ Place it at the TOP of the middleware, before the auth check. Record it in the c
   cleanly, after all content, at every viewport.
 - **Isolation:** preview files live only under the `proto-preview` namespace (or Storybook) so they
   are trivially deletable and can never reach production.
+- **Auth simulation gate:** `auth-simulation.json` exists, contains no secret material, matches the audit
+  principal/role/session contract, names every mocked provider boundary, names the real shell/feature imports,
+  and records the exact preview-only middleware seam plus cleanup action when one was needed. A screenshot of
+  a login redirect, a real live session, or a mock principal that differs from the audit contract is not a
+  valid protected-screen frame.
 - **Typecheck/lint the harness FIRST (cheap pre-render catch):** before serving, run the project's
   typechecker/linter over the generated `proto-preview/*` files (`tsc --noEmit`, `eslint <files>`, or the
   repo's own script). A used-but-not-imported symbol or a type error is a runtime crash that renders the
   error boundary (real, observed: `useState` used without importing it → `ReferenceError` on every render).
-  Catching it here costs one command; missing it costs a whole gallery of captured error frames.
 - **Provenance check FIRST (BLOCKING — proves the render reuses the real implementation):** before
   serving, grep the generated `proto-preview/*` files and confirm they **`import` the real app shell AND
   every EXISTING feature component named in the Step 2.4 Reuse Map**, by their recorded import paths.
@@ -1487,6 +1531,8 @@ proposed proto frame using the same stable key, state, viewport, and dimensions.
 - every audited key appears once in the proto manifest and once in `comparison-data.json`;
 - each manifest row's `audit-route`, `audit-state`, and `audit-capture` tags and each comparison-data entry's
   route, state, and `captureState` exactly match the handoff;
+- `auth-simulation.json` exists and exactly matches the handoff auth principal, role, session state, and
+  mocked-boundary contract; no auth secret material is present;
 - every before and after PNG exists at the path derived from its key + `captureState` and has the declared
   viewport dimensions;
 - every finding ID exists in `audit.md`;
@@ -1887,6 +1933,7 @@ HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-thro
 Shareable bundle: tasks/proto-<slug>/preview-bundle.html  (single self-contained file — every screenshot inlined; send as one attachment, no folder needed)
 Audit source: <tasks/design-audit-<audit-slug> | none>
 Before/after comparison: <tasks/proto-<slug>/comparison.html — N/N audited screens paired | not requested>
+Auth simulation: tasks/proto-<slug>/auth-simulation.json  (principal/role/session + mocked boundaries)
 Audit findings: <resolved IDs; explicitly accepted MINOR unresolved IDs; none>
 Handoff notes: tasks/proto-<slug>/notes.md
 Local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — Cmd/Ctrl-click to open · stop: pkill -f "http.server <port>")
@@ -1936,6 +1983,8 @@ in `<SAKI_DOCS>/proto-incidents.md` (read on demand, not loaded every run).
 - **Never screenshot a crashed render, and never ship duplicate frames** — a missing sentinel fails the frame; **byte-identical** page frames fail the Coverage Gate. Presence is not correctness (Step 6a · Coverage Gate).
 - **Never capture one viewport** — **BOTH** desktop (1280) and mobile (390); `design.md` is mobile-first (Step 6a).
 - **Audit evidence is immutable** — `--audit` consumes only a READY handoff, preserves its baseline, and pairs by exact key/state/viewport/dimensions (Input · Step 2.4 · 6b-ter).
+- **Protected UI uses deterministic simulation** — never boot live auth or persist session material; mock the
+  audit principal/session and keep the real shell/features (Step 5a–5c).
 - **Comparison does not replace coverage** — `preview.html` proves the whole PRD journey; `comparison.html` proves only audited screen deltas, and both gates must pass (Coverage Gate · Audit Comparison Gate).
 - **Figma export is additive and honest** — only when the MCP is connected, always state the tier, never the canonical deliverable (Step 6c).
 - **Proto is the single lock writer** — it stamps the freeze marker + §15 UI reference only, never scope; never locks a `--slice` PARTIAL run (Step 8.5).

@@ -88,11 +88,13 @@ That's the core loop for any bug or improvement. For a new UI feature, use the d
 ... then rplan → approved → qa → wrap
 ```
 
-For an existing-UI redesign, capture the shipped baseline first:
+For an existing-UI redesign, capture the shipped baseline first. Protected screens use an existing safe
+browser session or a project-documented mock/development-auth seam; no cookies or tokens are stored. Proto
+then simulates the same principal/session while importing the real shell and feature components:
 
 ```text
-/saki-builder:design-audit <scope> --prd=<prd> → evidence, treatment, and immutable baseline
-/saki-builder:proto <prd> --audit=<audit-dir>  → complete journey plus before/after comparison
+/saki-builder:design-audit <scope> --prd=<prd> [--auth=auto|browser|project-mock]
+/saki-builder:proto <prd> --audit=<audit-dir>  → complete journey plus auth-consistent before/after comparison
 ```
 
 ---
