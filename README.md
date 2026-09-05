@@ -79,13 +79,20 @@ hung, or finished. Full contract + supervisor loop: **[docs/AGENT-RUNNERS.md](do
 /saki-builder:wrap      ← commits, pushes, cleans up
 ```
 
-That's the core loop for any bug or improvement. For a new feature, use the design stage before planning:
+That's the core loop for any bug or improvement. For a new UI feature, use the design stage before planning:
 
-```
-/saki-builder:design-thinking-prototype  ← run when the UI problem or direction is still uncertain
-/saki-builder:prd                        ← write the product requirements
-/saki-builder:proto                      ← render and approve the complete PRD journey
+```text
+/saki-builder:design-thinking-prototype ← explore when the UI problem or direction is uncertain
+/saki-builder:prd                       ← write the product requirements
+/saki-builder:proto                     ← render and approve the complete journey
 ... then rplan → approved → qa → wrap
+```
+
+For an existing-UI redesign, capture the shipped baseline first:
+
+```text
+/saki-builder:design-audit <scope> --prd=<prd> → evidence, treatment, and immutable baseline
+/saki-builder:proto <prd> --audit=<audit-dir>  → complete journey plus before/after comparison
 ```
 
 ---
@@ -108,6 +115,7 @@ That's the core loop for any bug or improvement. For a new feature, use the desi
 | `/saki-builder:prd` | Turn a feature idea into a Product Requirements Document (user stories, slices, acceptance criteria). |
 | `/saki-builder:prd-review` | Adversarial review of the PRD by a parallel judge panel before you build anything. |
 | `/saki-builder:design-thinking-prototype` | Explore and validate UI/UX direction through evidence, structural alternatives, runnable prototypes, and honest usability review before implementation. |
+| `/saki-builder:design-audit` | Capture an existing UI at desktop/mobile, diagnose evidence-backed design and AI-slop issues, and hand a preservation-bounded treatment to `/saki-builder:proto` for before/after review. |
 | `/saki-builder:proto` | Render a throwaway UI preview of the PRD using your real design system + Playwright screenshots. |
 
 ### Quality & Review

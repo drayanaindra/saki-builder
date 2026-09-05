@@ -240,6 +240,110 @@ function assertPortableSurface (rel) {
 }
 for (const surface of ['omp/skills', 'omp/commands', 'agents', 'rules']) assertPortableSurface(surface)
 
+// --- 5d. Design-audit → proto comparison contract --------------------------
+function requireTokens (rel, tokens) {
+  const abs = path.join(ROOT, rel)
+  if (!fs.existsSync(abs)) {
+    err(`missing design comparison contract file: ${rel}`)
+    return
+  }
+  const text = fs.readFileSync(abs, 'utf8')
+  for (const token of tokens) {
+    if (!text.includes(token)) err(`${rel}: missing design comparison contract token "${token}"`)
+  }
+}
+requireTokens('config/skills/design-audit/SKILL.md', [
+  'proto-handoff.json',
+  'baseline.json',
+  'baseline-source.json',
+  'worktreeSha256',
+  'captureState',
+  '--audit=tasks/design-audit-<slug>'
+])
+requireTokens('skills/design-audit/SKILL.md', [
+  '/saki-builder:design-audit',
+  '/saki-builder:proto',
+  'baseline-source.json',
+  'worktreeSha256',
+  'captureState'
+])
+requireTokens('config/skills/proto/SKILL.md', [
+  '--audit=<audit-dir>',
+  'baseline-source.json',
+  'auditDigestSha256',
+  '[audit-route:<route>]',
+  'proto-comparison-template.html',
+  '__BEFORE_AFTER_DATA_BASE64__',
+  'Audit Comparison Gate'
+])
+requireTokens('omp/skills/design-audit/SKILL.md', [
+  '/saki-builder:design-audit',
+  '/saki-builder:proto',
+  'baseline-source.json',
+  'worktreeSha256',
+  'captureState'
+])
+requireTokens('omp/commands/design-audit.md', [
+  '/saki-builder:design-audit',
+  '/saki-builder:proto',
+  'baseline-source.json',
+  'proto-handoff.json'
+])
+requireTokens('opencode/commands/design-audit.md', [
+  '/design-audit',
+  '/proto',
+  'baseline-source.json',
+  'proto-handoff.json',
+  'worktreeSha256'
+])
+requireTokens('omp/skills/proto/SKILL.md', [
+  '--audit=<audit-dir>',
+  'auditDigestSha256',
+  '[audit-route:<route>]',
+  '__BEFORE_AFTER_DATA_BASE64__',
+  'Audit Comparison Gate'
+])
+requireTokens('omp/commands/proto.md', [
+  '/saki-builder:design-audit',
+  '/saki-builder:proto',
+  'auditDigestSha256',
+  '[audit-route:<route>]',
+  '__BEFORE_AFTER_DATA_BASE64__'
+])
+requireTokens('opencode/commands/proto.md', [
+  '/design-audit',
+  '/proto',
+  'auditDigestSha256',
+  '[audit-route:<route>]',
+  '__BEFORE_AFTER_DATA_BASE64__',
+  'Audit Comparison Gate'
+])
+requireTokens('omp/skills/saki-builder-runtime/docs/templates/proto-comparison-template.html', [
+  '__PROTO_COMPARISON__',
+  '__BEFORE_AFTER_DATA_BASE64__',
+  'id="split"'
+])
+requireTokens('config/docs/templates/proto-comparison-template.html', [
+  '__PROTO_COMPARISON__',
+  '__BEFORE_AFTER_DATA_BASE64__',
+  'id="viewport"',
+  'id="split"'
+])
+const comparisonTemplate = fs.readFileSync(
+  path.join(ROOT, 'config/docs/templates/proto-comparison-template.html'),
+  'utf8'
+)
+const comparisonPayloadMarkers = comparisonTemplate.match(/__BEFORE_AFTER_DATA_BASE64__/g) || []
+if (comparisonPayloadMarkers.length !== 1) {
+  err(`config/docs/templates/proto-comparison-template.html: expected exactly one comparison payload marker, found ${comparisonPayloadMarkers.length}`)
+}
+const designAuditSurface = path.join(ROOT, 'skills/design-audit')
+if (!fs.existsSync(designAuditSurface)) {
+  err('missing design audit skill surface: skills/design-audit')
+} else if (fs.realpathSync(designAuditSurface) !== fs.realpathSync(path.join(ROOT, 'config/skills/design-audit'))) {
+  err('skills/design-audit: does not resolve to config/skills/design-audit')
+}
+
 // --- 6. Soft: stray claude-config (until Phase-4 rename) -------------------
 // (warn-only; counted, not enumerated, to keep output tight)
 let leak = 0

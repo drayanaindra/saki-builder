@@ -2,6 +2,15 @@
 
 All notable changes to the saki-builder plugin. Versions track `.claude-plugin/plugin.json`.
 
+## 0.33.0 — 2026-09-05
+
+- Adds `/saki-builder:design-audit`, a rendered, read-only existing-UI audit that freezes desktop/mobile
+  baselines, separates marketing and product heuristics, records evidence-backed anti-slop findings, and
+  emits human-readable plus machine-readable proto handoffs.
+- Extends `/saki-builder:proto` with optional `--audit=<tasks/design-audit-*>`, stable screen-key
+  reconciliation, immutable baseline preservation, and a browser-verified `comparison.html` with
+  side-by-side and slider views. Full-journey coverage and audit comparison remain separate blocking gates.
+
 ## 0.32.0 — 2026-09-05
 
 - Adds `/saki-builder:design-thinking-prototype`, an evidence-led UI/UX workflow based on Figma's

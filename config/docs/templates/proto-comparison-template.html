@@ -1,0 +1,294 @@
+<!-- __PROTO_COMPARISON__ permanent template for /saki-builder:proto audit comparisons.
+     Replace the script data placeholder with base64-encoded UTF-8 JSON. Keep all image paths relative. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proto before / after</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d0f12;
+      --panel: #16191e;
+      --panel-2: #20242b;
+      --line: #343a44;
+      --text: #f4f6f8;
+      --muted: #9ca6b3;
+      --accent: #74a7ff;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    button, select { font: inherit; }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgb(13 15 18 / 94%);
+      backdrop-filter: blur(14px);
+    }
+    .brand { margin-right: auto; }
+    h1 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+    .brand p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+    select, .mode-button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 0 12px;
+    }
+    .mode-button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+    main { padding: 24px; }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      margin: 0 auto 16px;
+      max-width: 1600px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .meta strong { color: var(--text); font-weight: 600; }
+    .stage {
+      max-width: 1600px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .side-by-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    figure { margin: 0; min-width: 0; }
+    figure + figure { border-left: 1px solid var(--line); }
+    figcaption {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .frame { overflow: auto; max-height: calc(100dvh - 190px); background: var(--panel-2); }
+    .frame img { display: block; width: 100%; height: auto; }
+    .slider { position: relative; display: none; overflow: hidden; background: var(--panel-2); }
+    .slider img { display: block; width: 100%; height: auto; }
+    .slider .after-image {
+      position: absolute;
+      inset: 0;
+      clip-path: inset(0 0 0 var(--split));
+    }
+    .slider .rule {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: var(--split);
+      width: 2px;
+      background: var(--accent);
+      transform: translateX(-1px);
+      pointer-events: none;
+    }
+    .slider input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      cursor: ew-resize;
+      opacity: 0;
+    }
+    .slider:has(input:focus-visible) {
+      box-shadow: inset 0 0 0 3px var(--accent);
+    }
+    .slider-label {
+      position: absolute;
+      top: 12px;
+      z-index: 2;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgb(13 15 18 / 88%);
+      padding: 6px 8px;
+      color: var(--text);
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .slider-label.before { left: 12px; }
+    .slider-label.after { right: 12px; }
+    .findings {
+      max-width: 1600px;
+      margin: 16px auto 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    .findings h2 { margin: 0 0 10px; font-size: 14px; }
+    .findings ul { margin: 0; padding-left: 20px; color: var(--muted); }
+    .findings li + li { margin-top: 6px; }
+    .finding-id { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .empty { padding: 40px; text-align: center; color: var(--muted); }
+    body.slider-mode .side-by-side { display: none; }
+    body.slider-mode .slider { display: block; }
+    @media (max-width: 760px) {
+      main { padding: 12px; }
+      .bar { padding: 12px; }
+      .brand { width: 100%; }
+      .side-by-side { grid-template-columns: 1fr; }
+      figure + figure { border-left: 0; border-top: 1px solid var(--line); }
+      .frame { max-height: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <h1>Before / after</h1>
+      <p>Same screen, state, and viewport. Every change traces to an audit finding.</p>
+    </div>
+    <label>Screen
+      <select id="screen"></select>
+    </label>
+    <label>Viewport
+      <select id="viewport">
+        <option value="desktop">Desktop 1280 × 832</option>
+        <option value="mobile">Mobile 390 × 844</option>
+      </select>
+    </label>
+    <button class="mode-button" id="side" type="button" aria-pressed="true">Side by side</button>
+    <button class="mode-button" id="slide" type="button" aria-pressed="false">Slider</button>
+  </header>
+  <main>
+    <div id="empty" class="empty" hidden>No comparable screen pairs were provided.</div>
+    <section id="content" hidden>
+      <div class="meta">
+        <span><strong id="title"></strong></span>
+        <span id="route"></span>
+        <span id="state"></span>
+      </div>
+      <div class="stage">
+        <div class="side-by-side">
+          <figure>
+            <figcaption><span>Before</span><span>Shipped baseline</span></figcaption>
+            <div class="frame"><img id="before" alt=""></div>
+          </figure>
+          <figure>
+            <figcaption><span>After</span><span>Proto treatment</span></figcaption>
+            <div class="frame"><img id="after" alt=""></div>
+          </figure>
+        </div>
+        <div class="slider" id="slider" style="--split:50%">
+          <img id="slider-before" alt="">
+          <img class="after-image" id="slider-after" alt="">
+          <span class="slider-label before">Before</span>
+          <span class="slider-label after">After</span>
+          <span class="rule"></span>
+          <input id="split" type="range" min="0" max="100" value="50" aria-label="Reveal before or after">
+        </div>
+      </div>
+      <aside class="findings">
+        <h2>Audit findings addressed</h2>
+        <ul id="findings"></ul>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const COMPARISONS = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob('__BEFORE_AFTER_DATA_BASE64__'), (character) => character.charCodeAt(0))
+    ));
+    const elements = {
+      screen: document.querySelector('#screen'),
+      viewport: document.querySelector('#viewport'),
+      content: document.querySelector('#content'),
+      empty: document.querySelector('#empty'),
+      title: document.querySelector('#title'),
+      route: document.querySelector('#route'),
+      state: document.querySelector('#state'),
+      before: document.querySelector('#before'),
+      after: document.querySelector('#after'),
+      sliderBefore: document.querySelector('#slider-before'),
+      sliderAfter: document.querySelector('#slider-after'),
+      findings: document.querySelector('#findings'),
+      split: document.querySelector('#split'),
+      slider: document.querySelector('#slider'),
+      side: document.querySelector('#side'),
+      slide: document.querySelector('#slide')
+    };
+
+    function imageFor(comparison, phase) {
+      return comparison[phase][elements.viewport.value];
+    }
+
+    function render() {
+      const comparison = COMPARISONS[Number(elements.screen.value) || 0];
+      if (!comparison) {
+        elements.content.hidden = true;
+        elements.empty.hidden = false;
+        return;
+      }
+      elements.empty.hidden = true;
+      elements.content.hidden = false;
+      elements.title.textContent = comparison.title;
+      elements.route.textContent = comparison.route;
+      elements.state.textContent = comparison.state;
+      const before = imageFor(comparison, 'before');
+      const after = imageFor(comparison, 'after');
+      const viewport = elements.viewport.value;
+      elements.before.src = before;
+      elements.after.src = after;
+      elements.sliderBefore.src = before;
+      elements.sliderAfter.src = after;
+      elements.before.alt = `Before: ${comparison.title}, ${viewport}`;
+      elements.after.alt = `After: ${comparison.title}, ${viewport}`;
+      elements.sliderBefore.alt = elements.before.alt;
+      elements.sliderAfter.alt = elements.after.alt;
+      elements.findings.replaceChildren(...comparison.findings.map((finding) => {
+        const item = document.createElement('li');
+        const id = document.createElement('span');
+        id.className = 'finding-id';
+        id.textContent = finding.id;
+        item.append(id, document.createTextNode(` ${finding.label}`));
+        return item;
+      }));
+    }
+
+    function setMode(mode) {
+      const sliderMode = mode === 'slider';
+      document.body.classList.toggle('slider-mode', sliderMode);
+      elements.side.setAttribute('aria-pressed', String(!sliderMode));
+      elements.slide.setAttribute('aria-pressed', String(sliderMode));
+    }
+
+    for (const [index, comparison] of COMPARISONS.entries()) {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = comparison.title;
+      elements.screen.append(option);
+    }
+    elements.screen.addEventListener('change', render);
+    elements.viewport.addEventListener('change', render);
+    elements.side.addEventListener('click', () => setMode('side'));
+    elements.slide.addEventListener('click', () => setMode('slider'));
+    elements.split.addEventListener('input', () => {
+      elements.slider.style.setProperty('--split', `${elements.split.value}%`);
+    });
+    render();
+  </script>
+</body>
+</html>

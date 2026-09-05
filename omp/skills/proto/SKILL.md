@@ -7,10 +7,10 @@ description: Render a faithful, throwaway UI preview of a finished PRD's COMPLET
 
 You produce **expectation-setting visibility**: what the end-user UI will look like, rendered with
 the project's **real** design-system components and tokens, screenshotted across every state —
-**before** `/saki-builder:build` writes a line of production code. Pipeline: `/saki-builder:prd → /saki-builder:proto → /saki-builder:build`.
+**before** `/saki-builder:build` writes a line of production code. Pipeline: optional `/saki-builder:design-audit` → `/saki-builder:prd → /saki-builder:proto → /saki-builder:build`.
 
-**Design-thinking dependency.** Load
-`skill://design-thinking-prototype` before GATE 1 and use its
+**Design-thinking dependency.** Load `<SAKI_SKILLS>/design-thinking-prototype/SKILL.md` before GATE 1 and
+use its
 **embedded `/proto` mode**. Do not restart discovery or route back into `/saki-builder:proto`: the PRD,
 personas, and shipped product supply Empathize/Define; Step 2.5 owns Ideate; Steps 5–6.5 own
 Prototype/expert review; Step 7 owns human approval; `/saki-builder:build` owns Implement.
@@ -48,9 +48,10 @@ it removes the *look* risk, not the *behavior* work.
 
 ## Input
 
-Usage: `/saki-builder:proto <E<n>|F<n> | prd-file.md> [--slice=N] [--restart]` (filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>`
-to (re)export an existing gallery to Figma without re-rendering (runs Step 6c only). An interrupted run
-**resumes** at the next incomplete phase by default (Step 0.5); `--restart` forces a clean run from scratch.
+Usage: `/saki-builder:proto <E<n>|F<n> | prd-file.md> [--slice=N] [--audit=<tasks/design-audit-*>] [--restart]`
+(filler words fine) — or `/saki-builder:proto --figma-only <gallery-dir>` to (re)export an existing gallery
+to Figma without re-rendering (runs Step 6c only). An interrupted run **resumes** at the next incomplete
+phase by default; `--restart` forces a clean run from scratch.
 
 Locate the PRD exactly like `/saki-builder:build`. **PRD-track item id (`E<n>` or `F<n>`) — the disciplined
 path:** if the argument is an item id, read `tasks/roadmap.md`, find `### <id>`, and resolve its
@@ -69,9 +70,59 @@ The live route isn't running in this mode, so **Tier B** (screenshot board from 
 path; the `<prd-slug>` for the Figma file name comes from the gallery dir (`proto-<slug>/`). For **Tier A**
 editable layers, run a full `/saki-builder:proto` on the Figma-connected machine instead (it re-renders the live route).
 
+**`--audit=<audit-dir>` mode — rendered before/after comparison.** Resolve the path to
+`tasks/design-audit-<slug>/` and read `proto-handoff.json`, `proto-handoff.md`, `baseline-source.json`,
+`baseline.json`, `audit.md`, and `treatment.md` before Step 0. The handoff is usable only when:
+
+- JSON `schema` is `1` and `status` is `ready`;
+- `audit` resolves to the supplied directory;
+- `viewports` are exactly desktop `1280×832` and mobile `390×844`;
+- every screen key matches `[a-z0-9][a-z0-9-]*`, is unique, declares `state` plus `captureState`, and has
+  desktop/mobile baseline PNGs; `captureState` is `page` for `default`/`happy` and otherwise equals the
+  normalized state;
+- `baseline-source.json` exists, its source revision and capture viewports match `baseline.json`, and every
+  preserved PNG is bound to that pre-capture provenance;
+- `baseline.json` uses the same key, route, state, `captureState`, baseline paths, and viewports as the handoff;
+- `baseline.json.source.revision` has non-empty `head` and `worktreeSha256` strings. Recompute the documented
+  worktree fingerprint; a changed HEAD or fingerprint makes the audit stale and requires rerunning
+  `/saki-builder:design-audit --restart`;
+- `findings`, `treatment`, and baseline paths are audit-directory-relative and remain inside the normalized
+  audit directory (no absolute path or `..`);
+- `audit` and a non-null `prd` are repository-root-relative identities, remain inside the project root, and
+  resolve respectively to the supplied audit directory and this invocation's PRD.
+
+On any failure, HARD STOP with the exact field/file that failed. Never downgrade a partial audit into a
+comparison. Read the audit's **Preserve**, **Treatment**, **Acceptance**, and **Non-goals** as visual
+constraints. They do not override PRD §8–§11, authorize new behavior, or narrow the complete journey.
+Keep the validated handoff in memory; do **not** write `audit-source.json` yet. Compute
+`auditDigestSha256` over these validated audit inputs in sorted repository-relative path order:
+`proto-handoff.json`, `proto-handoff.md`, `baseline.json`, `baseline-source.json`, `audit.md`, `treatment.md`,
+and every referenced baseline PNG. For each file hash UTF-8 path + NUL + byte length + NUL + exact bytes.
+Step 0.5 must compare any existing identity before it can decide whether resume is safe. After that decision,
+write `tasks/proto-<prd-slug>/audit-source.json` with the normalized audit path, revision HEAD/fingerprint,
+`auditDigestSha256`, and each handoff screen's key, route, state, `captureState`, and baseline paths.
+
 ---
 
-## Step 0 — Design engine (read the recorded choice, then route)
+## Step 0 — Resolve portable skill and document roots
+
+Before reading a bundled asset, resolve logical roots once and use them everywhere below:
+
+- `<SAKI_SKILLS>` is the first readable skill root from the active plugin's skill directory,
+  `${SAKI_PLUGIN_ROOT}/config/skills`, the package root recorded in
+  `$HOME/.config/opencode/.saki-env` plus `/config/skills`, `$HOME/.config/opencode/skills`,
+  `$HOME/.omp/skills`, or the host's `skill://` resolver.
+- `<SAKI_DOCS>` is the first readable docs root from the active plugin checkout, the same SAKI/package roots
+  plus `/config/docs`, `$HOME/.omp/docs`, or `skill://saki-builder-runtime/docs`.
+
+Probe the exact required file under each candidate; a directory's existence alone is insufficient. Codex can
+derive the plugin checkout from the loaded `skills/proto` source; OpenCode's npm installer records its package
+root in `.saki-env`; OMP uses `skill://`. If a required asset cannot be resolved after this ladder, HARD STOP
+and list the attempted non-secret paths. Never assume a host-specific plugin-root variable exists.
+
+---
+
+## Step 0.1 — Design engine (read the recorded choice, then route)
 
 Before loading the PRD, read the project's recorded **design engine** — it decides whether this preview
 is rendered **natively** (the canonical path) or seeded from a **Figma** source. Run from the repo root:
@@ -111,6 +162,13 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
    `PARTIAL (--slice=N)` covers ONE slice — resume only when THIS invocation passes the same `--slice=N`; a
    full manifest resumes only a no-`--slice` invocation. On any scope mismatch, do NOT resume — announce it
    and start fresh (or tell the user to pass the matching flag, or `--restart`).
+   **Audit identity must also match before any write.** When `--audit` is present, first read any existing
+   `audit-source.json` and compare its normalized directory, complete screen tuples, HEAD, worktree
+   fingerprint, and `auditDigestSha256` to the validated audit held in memory; when absent, no prior audit
+   source may be inherited. Exact match permits resume. Any difference makes audit-sensitive checkpoints
+   stale: invalidate the old comparison artifacts and restart proto from GATE 1 under the new treatment before
+   writing the new identity. Do not overwrite the old identity first, and do not reuse the harness or after
+   frames merely because their filenames match.
 3. **Walk the checkpoint ledger in order; find the highest contiguous DONE, resume at the next phase.** A
    checkpoint is DONE only when its artifact is present **AND** its own gate re-verifies — presence ≠
    correctness, a half-written file is not DONE:
@@ -123,7 +181,7 @@ every artifact); `--figma-only` also skips it (export-only path). Otherwise:
 | 4 | 5 | the `proto-preview/*` harness route exists | 5d provenance + typecheck pass; the 5c middleware bypass is still present (re-add if missing) |
 | 4.5 | 5.5 | `devserver.json` exists and is schema-valid | pid alive **AND** its cwd is the project root (`lsof -a -p <pid> -d cwd`) **AND** `lsof -nP -i :<port> -sTCP:LISTEN` shows `127.0.0.1` (query by port, `-n` for numeric — see 5.5d/5.5f); if dead, foreign, or non-loopback ⇒ **NOT DONE — re-enter Step 5.5** (5.5a reuse-or-reboot), never 6a directly |
 | 5 | 6a | `proto-capture.mjs` + `hotspots.json` + the page PNGs exist | Coverage-Gate diff (manifest vs `*-page-*.png`); if frames are missing, resume INTO 6a and re-run the capture to fill only the gaps |
-| 6 | 6b | `preview.html`, `preview-bundle.html` **and** `index.md` exist | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis); **`index.md` carries its `## Fidelity reductions` section** (an empty list is valid — a MISSING section means the producer spec never ran, so this checkpoint is NOT DONE). **On resume, do NOT write an empty list to satisfy this:** the section is *accumulated* across 5b/5c/6a/6c, which are in-context judgments with no other durable artifact, so a fresh context cannot reconstruct what an earlier run noted. Write `- (earlier reductions not recoverable — run resumed at 6b)` instead, so a silently-empty list can never read as "nothing was reduced" — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
+| 6 | 6b | `preview.html`, `preview-bundle.html` **and** `index.md` exist; audit runs also require `comparison.html`, `comparison-data.json`, and `before/` | the Step 6b `title:` / `page:` counts; the bundle has `data:image/png;base64` refs (6b-bis); audit runs pass the Comparison Gate (6b-ter); **`index.md` carries its `## Fidelity reductions` section** (an empty list is valid — a MISSING section means the producer spec never ran, so this checkpoint is NOT DONE). **On resume, do NOT write an empty list to satisfy this:** the section is *accumulated* across 5b/5c/6a/6c, which are in-context judgments with no other durable artifact, so a fresh context cannot reconstruct what an earlier run noted. Write `- (earlier reductions not recoverable — run resumed at 6b)` instead, so a silently-empty list can never read as "nothing was reduced" — if `preview.html` exists but the bundle is missing/stale, just re-run `proto-bundle.mjs` (cheap, deterministic — not a from-scratch phase) |
 | 7 | 8 | `proto-<slug>/notes.md` exists | non-empty |
 | 8 | 8.5 | `proto-<slug>/.prd-locked` exists (and the PRD carries `<!-- prd-locked: … -->` when the PRD file exists) | marker present |
 
@@ -213,10 +271,12 @@ Cite the persona when it drives a visual decision: `→ persona/buyer.md §5`.
 **Write the Screen Manifest — the coverage contract (BLOCKING artifact, no negotiation).** Enumerate
 EVERY screen the finished PRD produces — the entry point, every §8 user-visible slice, every backend-slice
 *outcome* screen, every connective glue screen, every shell nav/affordance destination (Gate 2's walk),
-and the terminal success — as a numbered list to `tasks/proto-<prd-slug>/screen-manifest.md`, each row
-tagged `[slice §8.N]` / `[glue]` / `[shell-affordance]` / `[outcome]`. This list is the **canonical screen
-count** for the whole run. Lead the file with the shareable header (below) so it is legible to a teammate
-who wasn't in the run:
+and the terminal success — as a numbered list to `tasks/proto-<prd-slug>/screen-manifest.md`. Every row
+has a stable `[key:<screen-key>]` tag plus its provenance tag (`[slice §8.N]` / `[glue]` /
+`[shell-affordance]` / `[outcome]`). Audit-matched rows additionally persist exact
+`[audit-route:<route>] [audit-state:<logical-state>] [audit-capture:<captureState>]` tags. Keys match
+`[a-z0-9][a-z0-9-]*` and drive capture filenames. This list is the **canonical screen count** for the whole
+run. Lead the file with the shareable header below so it is legible to a teammate who was not in the run:
 
 ### screen-manifest.md
 
@@ -225,6 +285,15 @@ who wasn't in the run:
 **Owner:** <@name | unassigned> · **Status:** Frozen | PARTIAL (--slice=N) · **Updated:** <YYYY-MM-DD>
 **PRD @** <path>@<git sha>
 ```
+
+**Audit-key reconciliation (when `--audit` is present).** Every key in `proto-handoff.json.screens` must
+appear exactly once in this manifest. Its `audit-route`, `audit-state`, and `audit-capture` tags must exactly
+match the handoff route, logical state, and `captureState`; its `captureState` must also exist in that screen's
+Step 6a `states` mapping. The PRD journey may contain additional after-only screens, but an audited key may
+not disappear, be renamed, or map to multiple logical screens. A missing or mismatched key/route/state means
+the audit and PRD describe different scopes: HARD STOP and name the mismatch. Do not expand the PRD merely
+to make a stale audit pass; rerun `/saki-builder:design-audit` against the intended PRD/scope or use the
+matching PRD.
 The Coverage Gate (before Completion) hard-checks that every row has a captured
 frame. It is "what the flow looks like when the PRD is complete" written down once, so completeness is
 *verifiable*, not asserted. Derive it mechanically from the PRD — do NOT pause to let scope be negotiated
@@ -321,7 +390,7 @@ This gate is the entire reason "1:1" is true rather than aspirational. Detect:
   library with reusable primitives.
 - **Tokens** — Tailwind `@theme` directive / `tailwind.config.*`; CSS custom properties
   (`--color-*`, `:root` vars); a `tokens.*` / `theme.*` file. The canonical shape is the
-  **Design System Contract Part B** role schema (`skill://saki-builder-runtime/docs/design-system-contract.md`):
+  **Design System Contract Part B** role schema (`<SAKI_DOCS>/design-system-contract.md`):
   the eight color roles (`primary · surface · surface-raised · border · text · text-muted · danger · success`)
   should exist as `--color-<role>` / `theme.colors.<role>`. If `design.md` (the project's Part A block) is
   present, read it — it names the token source. Tokens that exist but don't fill the Part B roles = **Partial**.
@@ -368,8 +437,11 @@ senior designer doesn't start from the spec — they open the *existing* app, se
 only then ask three questions per screen: **(a) where does a component need to be *added*?** **(b) which
 existing component needs to *scale* (a variant)?** **(c) how does the user *interact* here, and does the
 current component set support that interaction?** Those three questions ARE the gap analysis (2.5) — 2.4 is
-the "look first" that must precede them. So for any screen that **modifies an existing page**, capture that
-page's **current-state screenshot** as the visual baseline you design the delta against.
+the "look first" that must precede them. Outside an audit run, capture any modified existing page's
+**current-state screenshot** as the visual baseline. With `--audit`, the audit baseline is immutable evidence:
+do not recapture it. Validate its PNG dimensions from the IHDR header, copy each handoff frame to
+`tasks/proto-<slug>/before/<key>-<captureState>-{desktop,mobile}.png`, and record the source path/revision in
+`audit-source.json`. A missing, mismatched, or changed baseline hard-stops comparison generation.
 
 **A brand-new screen has no direct predecessor — but it is NEVER a blank canvas (BLOCKING anchor).** It
 always has a **nearest-analogous shipped page**: the closest same-product surface by *shape* — a list, a
@@ -637,7 +709,7 @@ Apply each confirmed ⚠️/❌ from Step 2.5 using the resolution path its spec
   Token additions:          - tokens.status.review: '#a371f7'  (or --color-status-review: #a371f7)
   ```
 
-**Build every NEW/⚠️ component to the Design System Contract** (`skill://saki-builder-runtime/docs/design-system-contract.md`):
+**Build every NEW/⚠️ component to the Design System Contract** (`<SAKI_DOCS>/design-system-contract.md`):
 tokens-only (Part B roles, no raw values), every applicable state (Part C.3), the Part F quality floor, and
 built the way the project's **gold-standard component** (`design.md` Part A) is built. Real component, not an
 approximation — that's the whole point of codifying before render.
@@ -1144,14 +1216,16 @@ this order drives the gallery (6b). For **each screen capture the page frame fir
 shot of the whole composed page in the real shell, 5b#1), then the other **states** (loading / empty /
 validation-error / server-error), at **BOTH viewports** — desktop (1280) and mobile (390); `design.md` is
 mobile-first, so a desktop-only capture hides the layout the design actually optimizes for. Save
-`tasks/proto-<prd-slug>/<slice-n>-<state>-<viewport>.png` (use `<state>=page` for the happy frame).
+`tasks/proto-<prd-slug>/<screen-key>-<state>-<viewport>.png` (use `<state>=page` for the happy frame).
+When `--audit` maps a manifest row, its capture slug MUST equal the audit key so before/after pairing is
+deterministic; non-audited journey rows use their normal stable manifest key.
 
 **One script does both** — screenshots every frame AND measures each journey hotspot (6a-bis) in the same
 headless pass, emitting `hotspots.json` for 6b. Write it to `tasks/proto-<prd-slug>/proto-capture.mjs` and
 run from the repo root — the URL comes from **Step 5.5's `devserver.json`**, never a guessed port
 (`node tasks/proto-<slug>/proto-capture.mjs`; `PROTO_URL` still overrides for manual debugging):
 
-**Template:** `skill://saki-builder-runtime/docs/templates/proto-capture-template.mjs`.
+**Template:** `<SAKI_DOCS>/templates/proto-capture-template.mjs`.
 
 **Transcribe contract (four steps, not a description):**
 1. **Read** the template.
@@ -1190,6 +1264,10 @@ appends to **§Fidelity reductions** below. Write it with exactly these sections
 
 ## Journey overview
 <the journey-ordered page frames, desktop + mobile, in the order the user walks them>
+
+## Before / after
+<audit runs only: link `comparison.html`, name the audit source, and list resolved/unresolved finding IDs;
+omit this section when no `--audit` was supplied>
 
 ## Fidelity reductions
 <one line per reduction — an EMPTY list is a valid, meaningful result. Never omit the section.>
@@ -1262,11 +1340,11 @@ Self-contained: inline `<style>` + inline `<script>`, **no external/CDN deps**. 
 `SCREENS` array in journey order; each screen lists its state→viewport PNGs and its hotspot. Fill the
 `SCREENS` array from 6a (PNG names) + 6a-bis (hotspot rects); the template logic does not change.
 
-**Template:** `skill://saki-builder-runtime/docs/templates/proto-gallery-template.html` — the full gallery markup lives there,
+**Template:** `<SAKI_DOCS>/templates/proto-gallery-template.html` — the full gallery markup lives there,
 not inline, so this skill doesn't carry ~100 lines of HTML into every run.
 
 **Transcribe contract (not a description — do these four things):**
-1. **Read** `skill://saki-builder-runtime/docs/templates/proto-gallery-template.html`.
+1. **Read** `<SAKI_DOCS>/templates/proto-gallery-template.html`.
 2. **Fill in** its `SCREENS` array from 6a (PNG filenames per state × viewport) + 6a-bis (hotspot rects,
    as percentages). The array is the only part you change; the surrounding logic does not change.
 3. **Write** the completed result to `tasks/proto-<slug>/preview.html`.
@@ -1361,6 +1439,70 @@ since the page frames carry the journey. **Re-run `proto-bundle.mjs` after any S
 shared file reflects the final, approved gallery (a one-command, idempotent rebuild). Size note: base64 adds
 ~⅓ over the raw PNGs, so a large journey bundles to a few MB — fine for email/Slack; if a recipient balks at
 the size, send the folder (or a zip of `tasks/proto-<slug>/`) instead.
+
+### 6b-ter. Audit comparison gallery (`comparison.html`, only with `--audit`)
+
+The comparison is evidence, not decoration. It pairs the audit's immutable shipped baseline with the
+proposed proto frame using the same stable key, state, viewport, and dimensions.
+
+1. Read `<SAKI_DOCS>/templates/proto-comparison-template.html`; never reinvent its
+   side-by-side/slider controls.
+2. Build `tasks/proto-<slug>/comparison-data.json` as a JSON array in audit handoff order. Each entry is:
+
+```json
+{
+  "key": "pricing-validation",
+  "title": "Pricing validation",
+  "route": "/pricing",
+  "state": "validation-error",
+  "captureState": "validation-error",
+  "before": {
+    "desktop": "before/pricing-validation-validation-error-desktop.png",
+    "mobile": "before/pricing-validation-validation-error-mobile.png"
+  },
+  "after": {
+    "desktop": "pricing-validation-validation-error-desktop.png",
+    "mobile": "pricing-validation-validation-error-mobile.png"
+  },
+  "findings": [
+    { "id": "DA-001", "label": "Validation recovery is now visible inline" }
+  ]
+}
+```
+
+   Finding labels summarize the visible resolution; IDs and wording must trace to `audit.md`. Do not mark
+   an unresolved finding resolved merely because an after frame exists.
+3. UTF-8 JSON-encode that array, base64-encode the bytes, replace only
+   `__BEFORE_AFTER_DATA_BASE64__` in the template with the base64 text, and write
+   `tasks/proto-<slug>/comparison.html`. Base64 is required: raw JSON inside a classic `<script>` lets a
+   title or finding containing `</script>` terminate the element. Keep every image path relative and
+   preserve the `__PROTO_COMPARISON__` sentinel.
+4. Open `comparison.html` in a real browser. For every entry, switch desktop/mobile and side-by-side/slider;
+   verify all four images load, the selection changes the screen, and the slider changes the reveal.
+5. Link the comparison from `index.md`. Proto's normal `preview.html` remains the canonical complete-journey
+   gallery; comparison is an additive audit view.
+
+**Comparison Gate (BLOCKING):**
+
+- comparison count equals `proto-handoff.json.screens.length`;
+- every audited key appears once in the proto manifest and once in `comparison-data.json`;
+- each manifest row's `audit-route`, `audit-state`, and `audit-capture` tags and each comparison-data entry's
+  route, state, and `captureState` exactly match the handoff;
+- every before and after PNG exists at the path derived from its key + `captureState` and has the declared
+  viewport dimensions;
+- every finding ID exists in `audit.md`;
+- recomputed `auditDigestSha256` equals `audit-source.json` so baseline, treatment, findings, and handoff
+  could not change during the proto run;
+- all browser-loaded images have `naturalWidth > 0`;
+- no baseline file was regenerated from the proto harness.
+
+Any mismatch hard-stops the run before Step 7:
+
+```text
+HARD STOP — BEFORE/AFTER COMPARISON INCOMPLETE
+Audit requires N comparable screens; M passed exact key/state/viewport pairing.
+Missing or mismatched: <keys and files>. Fix the mapping or rerun the audit; do not claim improvement.
+```
 
 ---
 
@@ -1461,6 +1603,12 @@ human sees them in Step 7, so the human reviews design intent, not slop the skil
    the mean any app would produce?"* The reference is the grading key — never a fixed checklist alone
    (a checklist passes costume-slop; only the reference catches the tasteful-but-generic drift).
 
+**Audit treatment check (when `--audit` is present).** Grade each mapped after frame against the cited
+finding's evidence, treatment, preserve rule, and proto acceptance. An attractive redesign that fails to
+resolve the diagnosed hierarchy/recovery/accessibility problem, or that breaks a preserved element, is
+`TELL FOUND` for this gate: fix at the owning token/component/composition layer, re-capture, rebuild
+`comparison.html`, and re-check. Outcome claims remain hypotheses until user/usability evidence exists.
+
 **Legitimacy escape (Part F's own rule):** a tell is a defect only when it's a *default drift*. If the
 pinned DIRECTIONAL REFERENCE genuinely asks for it (a neon-signage product truly is near-black+acid),
 it passes — cite the reference line that licenses it.
@@ -1514,12 +1662,13 @@ Three gotchas this guards — **all hit in a real test**, do not "simplify" them
 
 ### 7b. Present
 
-Show `index.md`. Restate the fidelity contract. Ask **two approval questions**:
+Show `index.md`. On audit runs, open `comparison.html` first, then the full `preview.html` journey. Restate
+the fidelity contract. Ask **two approval questions**:
 
-> 1. "Does this match what you expected the end user to see — or adjust before `/saki-builder:build`?"
-> 2. "Now that you're seeing the real components rendered, do you want to revise any of them? (The specs
->    were auto-applied in Step 2.5 using existing conventions, and Step 2.6 already built them as real
->    design-system components — a change now is a tweak to the real component, applied in Step 7.5.)"
+> 1. "Does the after state resolve the cited audit findings while preserving the named strengths and product
+>    behavior, or should the visual treatment change before `/saki-builder:build`?"
+> 2. "Does the complete journey match what you expect the end user to see, including the real components and
+>    responsive states, or should any component be revised?"
 
 Iterate on **look and components only** (component choice, layout, copy, spacing, states shown, token
 names, variant naming). If the user wants behavior changes, that is a PRD/rplan concern, not proto — say so
@@ -1547,6 +1696,8 @@ final state.
   with the `__PROTO__` sentinel — and re-screenshot only the affected frames. Then **re-run
   `proto-bundle.mjs`** (6b-bis) so `preview-bundle.html` reflects the re-captured frames — a one-command,
   idempotent rebuild.
+  On audit runs, re-open `comparison.html` after the re-capture; stable filenames update the view without
+  rewriting baseline evidence. Re-run the Comparison Gate before presenting again.
 
 `/saki-builder:build` then promotes these real presentational components (mock data → real data + state + tests +
 backend wiring); it does NOT re-invent them. Write that as a hard dependency in the handoff notes (Step 8):
@@ -1561,10 +1712,14 @@ Write `tasks/proto-<slug>/notes.md` capturing, per screen: the **real components
 the **token references** used, and the **states** confirmed. Purpose: `/saki-builder:build` **promotes** these
 presentational components (mock data → real data + state + tests + backend wiring) instead of
 re-picking from scratch.
+For audit runs, also record the audit path/revision, each finding ID with `resolved` or `unresolved`, the
+preserved elements checked, and the `comparison.html` path. A visual approval may accept an explicitly
+unresolved MINOR finding; BLOCKING/MAJOR findings cannot be silently carried into build.
 
-State the **cleanup contract** explicitly. The **static gallery — `preview.html` + `preview-bundle.html` + the PNGs +
-`index.md`** — is the deliverable that persists as the record; **Pipeline Studio opens `preview.html`**
-(read-only, via `/api/proto/...`), while `preview-bundle.html` is the single-file copy you share (6b-bis).
+State the **cleanup contract** explicitly. The **static gallery — `preview.html` + `preview-bundle.html` +
+the PNGs + `index.md` (and audit-run `comparison.html` + `comparison-data.json` + `before/`)** — is the
+deliverable that persists as the record; **Pipeline Studio opens `preview.html`** (read-only, via
+`/api/proto/...`), while `preview-bundle.html` is the single-file copy you share (6b-bis).
 It persists as the record regardless. The throwaway `proto-preview/*` route (incl. the
 `/proto-preview` index) and the Step 5c middleware bypass also **persist after the proto run** — but
 only because they are the **capture harness** and `/saki-builder:build`'s promotion source, **NOT** because the
@@ -1651,6 +1806,13 @@ on a *present* screen may still be noted-and-omitted per Step 3. A missing *scre
 fix it and re-capture. `--slice=N` is the only way the manifest may be smaller than the full journey, and
 that run is stamped `PARTIAL` everywhere so it can never be mistaken for full coverage.
 
+## Audit Comparison Gate (BLOCKING — audit runs only)
+
+After the full-journey Coverage Gate passes, re-run 6b-ter's Comparison Gate against
+`proto-handoff.json`, `audit-source.json`, `comparison-data.json`, `before/`, and the final page PNGs.
+Coverage proves the whole PRD journey rendered; this separate gate proves every audited screen has an exact,
+traceable before/after pair. Do not lock the PRD or claim visual improvement while either gate fails.
+
 ---
 
 ## Step 8.5 — Lock the approval (the explicit freeze before `/saki-builder:build`)
@@ -1724,6 +1886,9 @@ Coverage Gate: PASSED — N/N manifested screens captured at both viewports   (o
 Screenshots: tasks/proto-<slug>/index.md  (page overview + per-state, desktop + mobile)
 HTML gallery: tasks/proto-<slug>/preview.html  (PNG-based Figma-flow: click-through + overview + state/viewport toggles; opens file:// AND in Studio)
 Shareable bundle: tasks/proto-<slug>/preview-bundle.html  (single self-contained file — every screenshot inlined; send as one attachment, no folder needed)
+Audit source: <tasks/design-audit-<audit-slug> | none>
+Before/after comparison: <tasks/proto-<slug>/comparison.html — N/N audited screens paired | not requested>
+Audit findings: <resolved IDs; explicitly accepted MINOR unresolved IDs; none>
 Handoff notes: tasks/proto-<slug>/notes.md
 Local preview: http://127.0.0.1:<port>/preview.html  (terminal runs — Cmd/Ctrl-click to open · stop: pkill -f "http.server <port>")
 Studio Preview: opens the static gallery (tasks/proto-<slug>/preview.html) via the Preview ↗ button
@@ -1741,6 +1906,7 @@ Next actions:
 > Open the exported Figma file to review/edit the layers (if Step 6c ran)
 > Share tasks/proto-<slug>/preview-bundle.html — one self-contained file (screenshots inlined; no sibling folder needed)
 > Review tasks/proto-<slug>/index.md and confirm the look
+> Open tasks/proto-<slug>/comparison.html and inspect each audit finding at desktop + mobile (audit runs)
 > /saki-builder:build tasks/<prd-file>  (the PRD is now 🔒 Locked — build proceeds; promotes these components into real implementation, design system already updated)
 ```
 (The static `preview.html` is what the Studio opens — no marker line is needed. The `preview.json`
@@ -1752,7 +1918,7 @@ manifest of 5e is optional/legacy and ignored by the current Studio; only mentio
 
 The Steps above are the single normative home for every gate — each invariant below is a one-line
 reject-on-sight cue naming the Step that owns it. Rationale and the observed failure behind each gate live
-in `skill://saki-builder-runtime/docs/proto-incidents.md` (read on demand, not loaded every run).
+in `<SAKI_DOCS>/proto-incidents.md` (read on demand, not loaded every run).
 
 - **Preview, not build** — no backend, real data, state logic, tests, or prod routes (Intro · Step 5).
 - **PRD is the source of truth; never re-elicit scope** — journey from §8, states from §9/§10, boundaries from §11 (GATE 1).
@@ -1770,6 +1936,8 @@ in `skill://saki-builder-runtime/docs/proto-incidents.md` (read on demand, not l
 - **Never trust a `curl` 200 as the render check** — it sees SSR HTML; the authoritative gate is the `__PROTO__` sentinel in the **LIVE DOM**, plus no `pageerror`/error boundary (Step 5d · Step 6a).
 - **Never screenshot a crashed render, and never ship duplicate frames** — a missing sentinel fails the frame; **byte-identical** page frames fail the Coverage Gate. Presence is not correctness (Step 6a · Coverage Gate).
 - **Never capture one viewport** — **BOTH** desktop (1280) and mobile (390); `design.md` is mobile-first (Step 6a).
+- **Audit evidence is immutable** — `--audit` consumes only a READY handoff, preserves its baseline, and pairs by exact key/state/viewport/dimensions (Input · Step 2.4 · 6b-ter).
+- **Comparison does not replace coverage** — `preview.html` proves the whole PRD journey; `comparison.html` proves only audited screen deltas, and both gates must pass (Coverage Gate · Audit Comparison Gate).
 - **Figma export is additive and honest** — only when the MCP is connected, always state the tier, never the canonical deliverable (Step 6c).
 - **Proto is the single lock writer** — it stamps the freeze marker + §15 UI reference only, never scope; never locks a `--slice` PARTIAL run (Step 8.5).
 
